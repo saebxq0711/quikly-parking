@@ -1,0 +1,10 @@
+# No se suben a Vercel: secretos y documentos con credenciales de prueba.
+.env
+.env.*
+!.env.example
+redeban_api.md
+siigo_api.md
+*.pdf
+node_modules
+.next
+tsconfig.tsbuildinfo

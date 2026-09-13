@@ -1,0 +1,18 @@
+node_modules/
+.next/
+out/
+build/
+.env
+.env.local
+.env*.local
+*.log
+.DS_Store
+next-env.d.ts
+/prisma/*.db
+/prisma/migrations/dev.db*
+.vercel
+tsconfig.tsbuildinfo
+redeban_api.md
+siigo_api.md
+# Manuales de proveedores (propietarios): no van al repositorio publico.
+*.pdf

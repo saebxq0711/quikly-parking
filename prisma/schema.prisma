@@ -1,0 +1,546 @@
+// Base de datos PROPIA de la plataforma de pago.
+// NO replica la base de datos de Nova Parking (el sistema existente de Edier):
+// los tiquetes, las tarifas y el calculo del monto siguen siendo propiedad de ese
+// sistema y se consultan por API. Aqui solo vive lo que la plataforma agrega:
+// usuarios, roles, puntos de pago, pagos, facturas, credenciales y auditoria.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  SUPERADMIN
+  ADMIN_PARQUEADERO
+  PUNTO_PAGO
+}
+
+/// Tipos de vehiculo soportados por el punto de pago.
+/// El mapeo hacia el sistema existente vive en src/integrations/nova-parking/vehicle-types.ts
+enum VehicleType {
+  CAR
+  MOTORCYCLE
+  BICYCLE
+  SCOOTER
+}
+
+/// Con que dato se identifica el vehiculo.
+///
+/// Solo el CARRO se busca por placa; eso esta confirmado. Para el resto todavia
+/// no se ha definido cual sera el identificador —numero de tiquete, un codigo
+/// impreso, lo que decida el sistema del parqueadero—, asi que hay dos formas
+/// genericas segun si ese dato es numerico o alfanumerico. Cuando se defina, se
+/// elige aqui sin tocar codigo.
+enum VehicleIdentifierKind {
+  /// Placa del vehiculo.
+  PLATE
+  /// Identificador solo numerico.
+  TICKET_ID
+  /// Identificador alfanumerico (un codigo impreso, por ejemplo).
+  CODE
+}
+
+/// Estados de un pago. Derivados de los codigos reales de SIPConnector (Anexo 4 del
+/// manual V1.5) y del contrato de /api/payments/ticket/<id>/estado/ de Nova Parking.
+enum PaymentStatus {
+  /// Creado en esta plataforma, todavia no enviado al datafono.
+  PENDING
+  /// Nova Parking acepto la orden y los datos ya estan en la nube de SIPConnector (Cod:00).
+  INITIATED
+  /// El datafono ya inicio la operacion (Cod:01 / Cod:02).
+  IN_PROGRESS
+  /// Transaccion financiera aprobada.
+  APPROVED
+  /// Transaccion financiera rechazada por la red o el banco.
+  DECLINED
+  /// Error tecnico: el consumo del servicio fallo (Cod:99) o el sistema no respondio.
+  FAILED
+  /// Vencio la vigencia sin respuesta del datafono.
+  TIMEOUT
+  /// Cancelado por el operador antes de resolverse.
+  CANCELLED
+  /// Anulado despues de aprobado (operacion 1 de SIPConnector).
+  REFUNDED
+}
+
+/// En que va la operacion dentro del datafono.
+///
+/// El datafono esta conectado por serial y NO cobra solo: la orden queda puesta
+/// y alguien tiene que iniciarla fisicamente en el aparato. Estas etapas salen
+/// de los codigos Cod:00 / Cod:01 / Cod:02 del Anexo 4 y son lo que permite
+/// decirle al operador que hacer en cada momento.
+enum TerminalStage {
+  /// La orden esta en la nube; falta iniciar el cobro en el datafono.
+  WAITING_TERMINAL
+  /// El datafono tomo la operacion (tecla verde). Cod:01
+  STARTED
+  /// El datafono esta leyendo la tarjeta. Cod:02
+  READING_CARD
+  /// Ya hay desenlace.
+  RESOLVED
+}
+
+enum PaymentMethod {
+  CARD
+  CASH
+}
+
+enum InvoiceStatus {
+  NOT_REQUIRED
+  PENDING
+  SENT
+  ACCEPTED
+  FAILED
+}
+
+enum CredentialProvider {
+  NOVA_PARKING
+  REDEBAN
+  SIIGO
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+model ParkingLot {
+  id       String  @id @default(cuid())
+  /// Identificador legible usado en URLs (/p/<slug>/...)
+  slug     String  @unique
+  name     String
+  nit      String?
+  address  String?
+  city     String?
+  timezone String  @default("America/Bogota")
+  active   Boolean @default(true)
+
+  /// URL base del sistema existente para ESTE parqueadero.
+  /// Produccion: el dominio del tunel (ej. https://api.parkingpinning.com).
+  /// Desarrollo: el simulador (http://127.0.0.1:8100).
+  novaBaseUrl String?
+
+  users        User[]
+  /// Uno solo por parqueadero (indice unico en `payment_points`).
+  paymentPoint PaymentPoint?
+  searchRules  VehicleSearchRule[]
+  payments     Payment[]
+  credentials  IntegrationCredential[]
+  auditLogs    AuditLog[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  customers Customer[]
+
+  @@map("parking_lots")
+}
+
+/// Como busca ESTE parqueadero cada tipo de vehiculo.
+///
+/// Existe porque cada parqueadero es un proyecto y un tunel distintos: uno
+/// puede identificar las motos por placa (camara ANPR) y otro por numero de
+/// tiquete con QR. Sin esto habria que tocar codigo para cada sitio.
+/// Si un parqueadero no define reglas, se usan las de
+/// `src/integrations/nova-parking/vehicle-types.ts`.
+model VehicleSearchRule {
+  id           String     @id @default(cuid())
+  parkingLot   ParkingLot @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
+  parkingLotId String
+
+  vehicleType    VehicleType
+  identifierKind VehicleIdentifierKind
+  /// Segmento de `find-ticket/<segmento>/`. Normalmente car, moto o bike.
+  searchSegment  String
+
+  /// Parametros extra de la consulta, sin el `?` (ej. `by=id`).
+  ///
+  /// Existe porque la moto se busca por numero de tiquete, y la ruta de moto
+  /// necesita `by=id` para no buscar por placa. Configurable para no tener que
+  /// tocar codigo si otro sitio expone la busqueda de otra forma.
+  searchQuery String?
+
+  /// Que se le pide en pantalla al cliente y con que ejemplo.
+  ///
+  /// Es configurable porque el identificador de moto, bicicleta y patineta esta
+  /// por definir: cuando se sepa, se escribe aqui como llamarlo y el kiosco lo
+  /// dice bien, sin desplegar nada. Vacio = el texto por defecto del tipo.
+  inputLabel       String?
+  inputPlaceholder String?
+  /// Permite ocultar un tipo de vehiculo que este parqueadero no atiende.
+  enabled          Boolean @default(true)
+  sortOrder        Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([parkingLotId, vehicleType])
+  @@map("vehicle_search_rules")
+}
+
+model PaymentPoint {
+  id           String     @id @default(cuid())
+  parkingLot   ParkingLot @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
+  parkingLotId String
+  name         String
+  /// Codigo interno del punto de pago dentro del parqueadero.
+  code         String
+  active       Boolean    @default(true)
+
+  /// Metadatos que Nova Parking usa al armar la trama de SIPConnector.
+  /// Se guardan aqui solo para trazabilidad y para poder enviarlos como override
+  /// cuando el sistema existente lo acepte. La configuracion real del datafono
+  /// (CodigoUnico / Clave) vive en Nova Parking, nunca aqui.
+  terminalCode String?
+  cashierCode  String?
+  boxNumber    String?
+
+  /// Si el kiosco tiene impresora de recibos. Lo marca el administrador: una
+  /// pagina web no tiene forma de saber si hay una impresora conectada.
+  hasPrinter Boolean @default(false)
+
+  users    User[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// UN solo punto de pago por parqueadero: es la regla del negocio, y al
+  /// dejarla como restriccion de base de datos no depende de que ninguna
+  /// pantalla se acuerde de comprobarla.
+  @@unique([parkingLotId])
+  @@map("payment_points")
+}
+
+// ---------------------------------------------------------------------------
+// Identidad y acceso
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String
+  /// Hash Argon2id. Nunca se almacena la contrasena en claro.
+  passwordHash String
+  role         Role
+  active       Boolean @default(true)
+
+  /// Parqueadero al que pertenece. NULL solo para SUPERADMIN.
+  parkingLot   ParkingLot? @relation(fields: [parkingLotId], references: [id], onDelete: Restrict)
+  parkingLotId String?
+
+  /// Punto de pago asignado. Obligatorio en la practica para el rol PUNTO_PAGO.
+  paymentPoint   PaymentPoint? @relation(fields: [paymentPointId], references: [id], onDelete: SetNull)
+  paymentPointId String?
+
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  /// Contador de intentos fallidos consecutivos, para el bloqueo temporal.
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime?
+
+  sessions      Session[]
+  payments      Payment[]
+  auditLogs     AuditLog[]
+  resetRequests PasswordResetRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parkingLotId])
+  @@map("users")
+}
+
+/// Sesiones persistidas para poder revocarlas del lado del servidor.
+/// La cookie lleva un JWT firmado cuyo `jti` es el id de esta fila; si la fila
+/// no existe o esta revocada, la sesion no vale aunque el JWT siga firmado.
+model Session {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Solicitud de restablecimiento de contrasena.
+///
+/// No hay envio de correo: montar un flujo de "te enviamos un enlace" sin un
+/// servicio de correo configurado seria simular algo que no ocurre. En su lugar
+/// la solicitud queda registrada y la atiende un administrador, que entrega la
+/// contrasena nueva por el canal que ya usa con esa persona.
+model PasswordResetRequest {
+  id    String @id @default(cuid())
+  email String
+
+  /// Usuario correspondiente, si el correo existe. Se guarda para poder
+  /// resolver la solicitud, pero al solicitante nunca se le confirma si existe.
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+
+  resolvedAt   DateTime?
+  resolvedById String?
+  ip           String?
+
+  /// SHA-256 del token que viaja en el enlace del correo. Se guarda el hash y
+  /// no el token: si alguien lee esta tabla no puede entrar a ninguna cuenta,
+  /// igual que con las contrasenas.
+  tokenHash String? @unique
+
+  /// El enlace caduca. Un correo viejo reenviado o encontrado meses despues no
+  /// puede abrir una cuenta.
+  expiresAt DateTime?
+
+  /// Un solo uso. Se marca al cambiar la clave, no antes.
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([resolvedAt, createdAt])
+  @@map("password_reset_requests")
+}
+
+/// Cliente que paga en el kiosco.
+///
+/// Se guarda aqui, ademas de en SIIGO, por dos razones: el kiosco puede saludar
+/// por su nombre sin depender de que la facturacion responda, y si SIIGO esta
+/// caido el cobro sigue funcionando y la factura se emite despues.
+///
+/// Va por parqueadero porque la facturacion tambien lo es: cada sitio factura
+/// con su propia empresa y su propia base de clientes.
+model Customer {
+  id           String     @id @default(cuid())
+  parkingLot   ParkingLot @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
+  parkingLotId String
+
+  /// Numero de documento. Es como lo reconoce el cliente en el kiosco.
+  identification String
+  /// Tipo de documento segun el catalogo de SIIGO. "13" es cedula.
+  idType         String  @default("13")
+  firstName      String
+  lastName       String
+  phone          String?
+  email          String?
+
+  /// Identificador en SIIGO, cuando ya se creo alla.
+  siigoId String?
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([parkingLotId, identification])
+  @@map("customers")
+}
+
+// ---------------------------------------------------------------------------
+// Pagos
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id String @id @default(cuid())
+
+  /// Token aleatorio del enlace del comprobante (`/factura/<token>`). Va en el QR
+  /// impreso y abre datos de un pago real, asi que no puede ser el id: tiene
+  /// que ser imposible de adivinar.
+  receiptToken String? @unique
+
+  parkingLot   ParkingLot @relation(fields: [parkingLotId], references: [id], onDelete: Restrict)
+  parkingLotId String
+
+  paymentPoint   PaymentPoint? @relation(fields: [paymentPointId], references: [id], onDelete: SetNull)
+  paymentPointId String?
+
+  /// Usuario que opero el cobro.
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+
+  vehicleType       VehicleType
+  /// Identificador con el que se encontro el vehiculo (placa o id de tiquete).
+  vehicleIdentifier String
+  identifierKind    VehicleIdentifierKind
+  plate             String?
+
+  /// Id del ParkingTicket en el sistema existente. Es la llave de union entre
+  /// los dos sistemas: NO es una FK, el tiquete vive en la base de Nova Parking.
+  externalTicketId String
+
+  /// Cliente que pago, identificado en el kiosco por su numero de documento.
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+
+  /// Copia de sus datos en el momento del cobro. Se guardan desnormalizados
+  /// porque son el soporte de la factura: si el cliente cambia sus datos
+  /// despues, la factura ya emitida no debe cambiar con ellos.
+  customerName     String?
+  customerDocument String?
+
+  /// Monto en pesos colombianos, entero. COP no usa decimales y SIPConnector
+  /// exige enteros sin simbolos (Anexo 1).
+  amount Int
+
+  method PaymentMethod @default(CARD)
+  status PaymentStatus @default(PENDING)
+
+  /// Identificador de la transaccion enviado al sistema existente / SIPConnector.
+  /// Maximo 10 caracteres por restriccion del manual (campo IdTransaccion).
+  providerTransactionId String? @unique
+
+  /// Codigo de aprobacion devuelto por la red cuando el pago es aprobado.
+  authorizationCode String?
+  /// Franquicia, mascara de tarjeta y tipo de cuenta devueltos por la red.
+  cardBrand         String?
+  cardMask          String?
+  accountType       String?
+  /// Numero de recibo del datafono, necesario para una eventual anulacion.
+  receiptNumber     String?
+
+  /// Resto del voucher que devuelve el medio de pago (Anexo 2 del manual).
+  /// Del BIN solo se conserva lo que el propio servicio entrega; el numero
+  /// completo de la tarjeta no se guarda nunca.
+  rrn             String?
+  bin             String?
+  installments    String?
+  terminalNumber  String?
+  /// Fecha y hora tal como las entrega el datafono (AAMMDD y HHMM).
+  transactionDate String?
+  transactionTime String?
+  /// Red que proceso el pago (Anexo 5).
+  network         String?
+
+  /// En que va la operacion dentro del datafono, y ultimo codigo tecnico
+  /// recibido del servicio. Es lo que permite guiar al operador paso a paso.
+  terminalStage TerminalStage @default(WAITING_TERMINAL)
+  providerCode  String?
+
+  /// Motivo legible del rechazo o del fallo, apto para mostrar al operador.
+  failureReason String?
+  /// Respuesta cruda del proveedor, para diagnostico. Nunca contiene secretos.
+  providerRaw   Json?
+
+  invoice Invoice?
+
+  startedAt  DateTime?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([parkingLotId, createdAt])
+  @@index([parkingLotId, status])
+  @@index([externalTicketId])
+  @@index([plate])
+  @@map("payments")
+}
+
+/// Garantiza que un doble clic, un refresh o un reintento de red no generen
+/// dos cobros. La clave la envia el cliente; el resultado se cachea.
+model IdempotencyKey {
+  key       String   @id
+  scope     String
+  paymentId String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Facturacion (SIIGO)
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id        String  @id @default(cuid())
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  paymentId String  @unique
+
+  status InvoiceStatus @default(PENDING)
+
+  /// Identificadores devueltos por SIIGO.
+  siigoInvoiceId String?
+  number         String?
+  cufe           String?
+  publicUrl      String?
+
+  attempts        Int       @default(0)
+  lastError       String?
+  lastAttempt     DateTime?
+  requestPayload  Json?
+  responsePayload Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Configuracion e integraciones
+// ---------------------------------------------------------------------------
+
+/// Credenciales y configuracion de servicios externos.
+/// Los valores marcados como `secret` se guardan cifrados con AES-256-GCM
+/// (src/lib/crypto/secrets.ts) y NUNCA se devuelven al navegador en claro.
+model IntegrationCredential {
+  id       String             @id @default(cuid())
+  provider CredentialProvider
+
+  /// NULL = configuracion global de la plataforma (solo SUPERADMIN).
+  parkingLot   ParkingLot? @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
+  parkingLotId String?
+
+  key    String
+  /// Texto cifrado si `secret` es true; texto plano si es false.
+  value  String
+  secret Boolean @default(true)
+
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([provider, parkingLotId, key])
+  @@map("integration_credentials")
+}
+
+// ---------------------------------------------------------------------------
+// Auditoria
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+
+  parkingLot   ParkingLot? @relation(fields: [parkingLotId], references: [id], onDelete: SetNull)
+  parkingLotId String?
+
+  /// Ej: AUTH_LOGIN, PAYMENT_START, PAYMENT_RESULT, CREDENTIAL_UPDATE
+  action   String
+  entity   String?
+  entityId String?
+  /// Contexto adicional. Filtrado por scrubSecrets() antes de escribirse.
+  metadata Json?
+
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([parkingLotId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

@@ -1,0 +1,343 @@
+@import 'tailwindcss';
+
+/*
+  UN SOLO MUNDO VISUAL para todo el sistema (CLAUDE.md seccion 28).
+
+  El punto de pago fijo la identidad: superficie profunda, acento indigo,
+  confirmacion esmeralda. La administracion la hereda entera; lo que cambia
+  entre las dos no es el color sino la densidad — el kiosco se opera de pie y a
+  un brazo de distancia, el panel se lee sentado.
+
+  Por que oscuro y no claro: el punto de pago vive encendido todo el dia en una
+  pantalla fija, muchas veces en un parqueadero con poca luz. Una superficie
+  clara a pantalla completa deslumbra en ese escenario. La administracion adopta
+  la misma superficie para que un operario que pasa de una a otra no cambie de
+  producto.
+*/
+
+@theme {
+  /* --- Acento: accion primaria, seleccion y foco. Nunca decoracion. ------ */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+
+  /* --- Neutros. La escala completa, para tener pasos reales de jerarquia. */
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #020617;
+
+  /* --- Semanticos. Vocabulario unico de estado en toda la aplicacion. ---- */
+  --color-ok-300: #6ee7b7;
+  --color-ok-400: #34d399;
+  --color-ok-500: #10b981;
+  --color-ok-600: #059669;
+  --color-warn-300: #fcd34d;
+  --color-warn-400: #fbbf24;
+  --color-warn-500: #f59e0b;
+  --color-bad-300: #fca5a5;
+  --color-bad-400: #f87171;
+  --color-bad-500: #ef4444;
+  --color-bad-600: #dc2626;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+  Capas de superficie. La barra lateral es una capa distinta del contenido
+  (mas fria y profunda) para que la navegacion se lea como cromo y no como
+  contenido; es la segunda capa neutra que pide una interfaz de trabajo.
+*/
+:root {
+  --surface-base: #060a16;
+  --surface-chrome: #0b1120;
+  --surface-raised: #111a2e;
+  --surface-raised-hover: #16203a;
+  --surface-sunken: #05080f;
+
+  --line-subtle: rgb(148 163 184 / 0.12);
+  --line-strong: rgb(148 163 184 / 0.22);
+
+  /* Texto sobre superficie oscura. Los secundarios se tintan del mismo azul
+     de la superficie en lugar de un gris neutro, para que no se vean sucios. */
+  --text-primary: #f1f5f9;
+  --text-secondary: #a6b4cc;
+  --text-muted: #7e8da8;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--surface-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+  Variante para kiosco en horizontal.
+
+  Un kiosco apaisado suele ser ancho pero bajo (1280x720, 1024x600). El
+  problema ahi no es el ancho sino la ALTURA: el teclado en pantalla mas el
+  campo mas los botones no caben en columna. Por eso la condicion mira la
+  altura y no un breakpoint de ancho — un iPad en horizontal y un monitor
+  panoramico corto necesitan el mismo tratamiento aunque midan muy distinto.
+*/
+@custom-variant kland (@media (orientation: landscape) and (max-height: 860px));
+/* Alturas muy justas (600px y menos): se recorta todavia mas. */
+@custom-variant kshort (@media (orientation: landscape) and (max-height: 660px));
+
+/*
+  Cursor de mano en todo lo que se puede pulsar.
+
+  Tailwind v4 dejo de aplicar `cursor: pointer` a los botones —lo hacia en v3—,
+  asi que sin esto toda la interfaz se siente muerta: nada indica que sea
+  pulsable. Se excluye lo deshabilitado, que debe verse como lo que es.
+*/
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+summary,
+label:has(input[type='checkbox']),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+/* El punto de pago es tactil: sin seleccion accidental al tocar y sin el
+   retardo de 300 ms del doble tap. */
+.touch-surface {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Foco visible y consistente. Se dibuja por fuera para que nunca lo tape el
+   borde del propio control. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* Barras de desplazamiento acordes a la superficie: en oscuro, la barra clara
+   del sistema corta la composicion. */
+* {
+  scrollbar-color: rgb(148 163 184 / 0.25) transparent;
+  scrollbar-width: thin;
+}
+
+/* Numeros tabulares en montos y datos: las cifras no bailan al actualizarse. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+  Un unico momento de movimiento autorizado en todo el producto: la espera del
+  datafono. Es el unico instante donde el usuario no puede hacer nada y
+  necesita saber que el sistema sigue vivo.
+*/
+@keyframes halo {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.halo {
+  animation: halo 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrada de un paso del flujo. Corta y desde un estado ya visible, para que
+   no se perciba como una espera adicional. */
+.step-in {
+  animation: rise 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ------------------------------------------------ Comprobante impreso -----
+   Papel termico de 80 mm (area imprimible ~72 mm). En pantalla no existe: solo
+   aparece al imprimir, y al imprimir desaparece todo lo demas.
+
+   Negro sobre blanco declarado a mano: la aplicacion es oscura, y la mayoria de
+   los navegadores no imprimen fondos, asi que sin esto saldria texto claro sobre
+   papel blanco — ilegible.
+   ------------------------------------------------------------------------- */
+.print-receipt {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-receipt,
+  .print-receipt * {
+    visibility: visible;
+  }
+
+  .print-receipt {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 72mm;
+    padding: 3mm 4mm 8mm;
+    background: #fff;
+    color: #000;
+    font-family: ui-monospace, 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .receipt-title {
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .receipt-subtitle {
+    margin: 1mm 0 0;
+    text-align: center;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .receipt-rule {
+    margin: 2.5mm 0;
+    border-top: 1px dashed #000;
+  }
+
+  .receipt-row,
+  .receipt-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 3mm;
+  }
+
+  .receipt-row span:last-child {
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .receipt-total {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .receipt-qr {
+    width: 34mm;
+    margin: 4mm auto 1mm;
+  }
+
+  .receipt-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .receipt-note {
+    margin: 1.5mm 0 0;
+    text-align: center;
+    font-size: 10px;
+  }
+
+  /* Factura de SIIGO: encabezado del emisor, items y CUFE. */
+  .receipt-center {
+    margin: 0.5mm 0 0;
+    text-align: center;
+  }
+
+  .receipt-heading {
+    margin: 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .receipt-strong {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .receipt-item {
+    margin: 0 0 1.5mm;
+  }
+
+  .receipt-item p {
+    margin: 0;
+  }
+
+  .receipt-fine-label {
+    margin: 2.5mm 0 0;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .receipt-fine {
+    margin: 0;
+    font-size: 8px;
+    line-height: 1.3;
+    word-break: break-all;
+  }
+}
