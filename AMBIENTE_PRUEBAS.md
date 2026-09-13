@@ -45,7 +45,7 @@ El modo de pruebas **no borra nada**. Esto es lo que había en Supabase justo an
 | Redeban | Ambiente de **pruebas** (`sipconnectortest.azurewebsites.net`), red 0. Usuario y clave cifrados |
 | SIIGO | Ambiente de **pruebas**: comprobante 27939, vendedor 916, forma de pago 9441 "Datáfono Redeban", servicio `PARQUEADERO`, cliente por defecto 222222222 "Consumidor final". Timbre DIAN **apagado**, correo **apagado**, facturación **activa**. Clave cifrada |
 
-Las claves (token, Redeban, SIIGO, Resend, base de datos) están cifradas en Supabase y en `Punto de pago/.env.production.local`, que no se sube a git.
+Las claves (token, Redeban, SIIGO, Resend, base de datos) están cifradas en Supabase y en `Punto de pago/.env.produccion.local`, que no se sube a git. (No se llama `.env.production.local` a proposito: Next.js carga ese nombre solo al correr en produccion, y cualquier `npm start` en el PC quedaria apuntando a la base de produccion.)
 
 ---
 
