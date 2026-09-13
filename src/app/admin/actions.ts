@@ -256,6 +256,41 @@ export async function testNovaConnection(
   }
 }
 
+/**
+ * Modo de pruebas del parqueadero.
+ *
+ * Encendido, el kiosco usa el sistema del parqueadero SIMULADO (ver
+ * `integrations/nova-parking/simulator.ts`) para probar escaner, impresora y datafono
+ * sin el tunel. La URL y el token reales no se tocan: al apagarlo vuelven a usarse.
+ */
+export async function setParkingTestMode(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const actor = await requireRole('SUPERADMIN');
+  const parkingLotId = String(formData.get('parkingLotId') ?? '');
+  if (!parkingLotId) return fail('Falta el parqueadero.');
+
+  const testMode = formData.get('testMode') !== null;
+  await db.parkingLot.update({ where: { id: parkingLotId }, data: { testMode } });
+
+  await recordAudit({
+    action: AuditAction.PARKING_LOT_UPDATED,
+    actorId: actor.id,
+    parkingLotId,
+    entity: 'ParkingLot',
+    entityId: parkingLotId,
+    metadata: { modoPruebas: testMode },
+  });
+
+  revalidatePath('/admin/parqueaderos');
+  return ok(
+    testMode
+      ? 'Modo de pruebas activado: el sistema del parqueadero esta simulado.'
+      : 'Modo de pruebas apagado: se usa la conexion real con el parqueadero.',
+  );
+}
+
 /* ------------------------------------------------- Medio de pago (Redeban) */
 
 const redebanSchema = z.object({

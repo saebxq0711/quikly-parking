@@ -90,6 +90,7 @@ export default async function ParkingLotDetailPage({
           parkingLotId={lot.id}
           baseUrl={connection.baseUrl}
           hasOwnToken={connection.hasOwnToken}
+          testMode={connection.testMode}
         />
 
         <RedebanCard

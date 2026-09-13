@@ -34,7 +34,7 @@ export default async function PosPage({
 
   const lot = await db.parkingLot.findUnique({
     where: { slug },
-    select: { id: true, name: true, active: true },
+    select: { id: true, name: true, active: true, testMode: true },
   });
   if (!lot) notFound();
 
@@ -89,6 +89,7 @@ export default async function PosPage({
         inputPlaceholder: rule.inputPlaceholder,
       }))}
       parkingLotName={lot.name}
+      testMode={lot.testMode}
       paymentPointName={point.name}
       hasPrinter={point.hasPrinter}
       livePayment={live ? serializePayment(live) : null}

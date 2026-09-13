@@ -122,6 +122,12 @@ model ParkingLot {
   timezone String  @default("America/Bogota")
   active   Boolean @default(true)
 
+  /// Modo de pruebas: el sistema del parqueadero se SIMULA dentro de esta web
+  /// (`src/integrations/nova-parking/simulator.ts`) para probar escaner, impresora y
+  /// datafono sin el tunel ni el servidor del parqueadero. `novaBaseUrl` y el token
+  /// se conservan: al apagarlo vuelve a usarse la conexion real.
+  testMode Boolean @default(false)
+
   /// URL base del sistema existente para ESTE parqueadero.
   /// Produccion: el dominio del tunel (ej. https://api.parkingpinning.com).
   /// Desarrollo: el simulador (http://127.0.0.1:8100).

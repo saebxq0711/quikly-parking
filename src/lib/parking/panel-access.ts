@@ -24,14 +24,15 @@ export async function panelAccess(slug: string): Promise<{
 
   const lot = await db.parkingLot.findUnique({
     where: { slug },
-    select: { id: true, name: true, slug: true, novaBaseUrl: true, active: true },
+    select: { id: true, name: true, slug: true, novaBaseUrl: true, active: true, testMode: true },
   });
   if (!lot) notFound();
 
   const allowed = user.role === 'SUPERADMIN' || user.parkingLotId === lot.id;
   if (!allowed) notFound();
 
-  if (!lot.novaBaseUrl) return { lot, client: null };
+  // En modo de pruebas no hace falta URL: el sistema esta simulado.
+  if (!lot.novaBaseUrl && !lot.testMode) return { lot, client: null };
 
   try {
     return { lot, client: await novaClientFor(lot.id) };

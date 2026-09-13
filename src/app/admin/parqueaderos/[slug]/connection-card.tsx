@@ -3,8 +3,8 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ActionForm } from '@/components/action-form';
-import { Alert, Card, CardHeader, Field, Input } from '@/components/ui';
-import { testNovaConnection, updateParkingConnection } from '../../actions';
+import { Alert, Card, CardHeader, Checkbox, Field, Input } from '@/components/ui';
+import { setParkingTestMode, testNovaConnection, updateParkingConnection } from '../../actions';
 
 /**
  * Conexion con el sistema de ESTE parqueadero.
@@ -17,10 +17,12 @@ export function ConnectionCard({
   parkingLotId,
   baseUrl,
   hasOwnToken,
+  testMode,
 }: {
   parkingLotId: string;
   baseUrl: string | null;
   hasOwnToken: boolean;
+  testMode: boolean;
 }) {
   return (
     <Card>
@@ -30,6 +32,30 @@ export function ConnectionCard({
       />
 
       <div className="space-y-5 p-5">
+        {testMode ? (
+          <Alert tone="warning" title="Modo de pruebas activo">
+            El kiosco NO consulta el sistema real: usa un parqueadero simulado. Los cobros y
+            las facturas si son reales en los ambientes de prueba de Redeban y SIIGO.
+          </Alert>
+        ) : null}
+
+        <div className="rounded-lg bg-white/[0.03] px-4 py-4">
+          <ActionForm action={setParkingTestMode} submitLabel="Guardar modo" onSuccessReset={false}>
+            <input type="hidden" name="parkingLotId" value={parkingLotId} />
+            <Checkbox
+              name="testMode"
+              defaultChecked={testMode}
+              label="Modo de pruebas (sistema del parqueadero simulado)"
+            />
+            <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
+              Para probar escaner, impresora y datafono sin el tunel. Cualquier placa valida
+              (ABC123) es un carro por $2.000; cualquier codigo valido (A7B48) es una moto
+              por $1.500 o una bici/patineta por $1.000. ZZZ999 y Z9Z99 no existen. La
+              conexion real de abajo no se borra.
+            </p>
+          </ActionForm>
+        </div>
+
         {baseUrl ? (
           <>
             <div className="rounded-lg bg-white/[0.03] px-4 py-3">

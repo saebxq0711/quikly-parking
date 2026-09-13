@@ -102,6 +102,7 @@ export function PosFlow({
   paymentPointName,
   hasPrinter,
   livePayment,
+  testMode = false,
 }: {
   vehicles: PosVehicle[];
   parkingLotName: string;
@@ -114,6 +115,8 @@ export function PosFlow({
    * operacion viva tras una recarga o tras salir y volver.
    */
   livePayment: PaymentDTO | null;
+  /** Modo de pruebas: el sistema del parqueadero esta simulado. Se avisa en pantalla. */
+  testMode?: boolean;
 }) {
   const [step, setStep] = useState<Step>(livePayment ? 'waiting' : 'type');
   const [vehicle, setVehicle] = useState<PosVehicle | null>(null);
@@ -331,6 +334,11 @@ export function PosFlow({
           </p>
           <p className="truncate text-xs text-[var(--text-muted)]">
             Punto de pago
+            {testMode ? (
+              <span className="ml-2 rounded bg-warn-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn-300 ring-1 ring-warn-400/30">
+                Modo de pruebas
+              </span>
+            ) : null}
           </p>
         </ExitGate>
 

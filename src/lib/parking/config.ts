@@ -3,6 +3,7 @@ import { db } from '../db';
 import { AppError } from '../errors';
 import { getCredentials } from '../credentials';
 import { NovaParkingClient } from '@/integrations/nova-parking/client';
+import { SimulatedNovaParkingClient } from '@/integrations/nova-parking/simulator';
 import { VEHICLE_TYPES } from '@/integrations/nova-parking/vehicle-types';
 
 /**
@@ -117,7 +118,7 @@ export async function novaClientFor(
 ): Promise<NovaParkingClient> {
   const lot = await db.parkingLot.findUnique({
     where: { id: parkingLotId },
-    select: { id: true, novaBaseUrl: true, active: true, name: true },
+    select: { id: true, novaBaseUrl: true, active: true, name: true, testMode: true },
   });
 
   if (!lot) throw new AppError('NOT_FOUND');
@@ -126,6 +127,9 @@ export async function novaClientFor(
       publicMessage: 'Este parqueadero esta inactivo.',
     });
   }
+
+  // Modo de pruebas: sistema simulado, sin tunel. La conexion real queda guardada.
+  if (lot.testMode) return new SimulatedNovaParkingClient(lot.id);
 
   const baseUrl = lot.novaBaseUrl;
   if (!baseUrl) {
@@ -151,11 +155,12 @@ export async function novaClientFor(
 export async function getConnectionSummary(parkingLotId: string): Promise<{
   baseUrl: string | null;
   hasOwnToken: boolean;
+  testMode: boolean;
 }> {
   const [lot, credentials] = await Promise.all([
     db.parkingLot.findUnique({
       where: { id: parkingLotId },
-      select: { novaBaseUrl: true },
+      select: { novaBaseUrl: true, testMode: true },
     }),
     getCredentials({ provider: 'NOVA_PARKING', parkingLotId }),
   ]);
@@ -163,5 +168,6 @@ export async function getConnectionSummary(parkingLotId: string): Promise<{
   return {
     baseUrl: lot?.novaBaseUrl ?? null,
     hasOwnToken: Boolean(credentials.platformToken),
+    testMode: lot?.testMode ?? false,
   };
 }
