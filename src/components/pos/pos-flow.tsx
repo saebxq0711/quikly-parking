@@ -24,6 +24,8 @@ import { ExitGate } from './exit-gate';
 import { CustomerStep, type CustomerData } from './customer-step';
 import { Receipt } from './receipt';
 import { InvoiceTicket } from './invoice-ticket';
+import { impresoraEmparejada, imprimirPorUsb } from '@/lib/printing/usb-printer';
+import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
 
 /**
  * Flujo del punto de pago (CLAUDE.md secciones 6, 7, 8 y 27).
@@ -1061,6 +1063,47 @@ function Result({
   }, []);
 
   /*
+    Por donde sale el papel.
+
+    Si este navegador tiene una impresora USB emparejada (tablet, ver
+    `usb-printer.ts`), se le mandan los comandos ESC/POS directo: no hay controlador ni
+    cuadro de impresion. Si no, se imprime por el navegador como antes (PC con la
+    impresora instalada y Chrome con --kiosk-printing).
+  */
+  const [porNavegador, setPorNavegador] = useState(false);
+
+  useEffect(() => {
+    if (!imprimir || impresion === 'factura-en-camino' || yaImprimio.current) return;
+
+    let vigente = true;
+    (async () => {
+      const impresora = await impresoraEmparejada().catch(() => null);
+      if (!vigente) return;
+      if (!impresora) {
+        setPorNavegador(true);
+        return;
+      }
+
+      yaImprimio.current = true;
+      try {
+        const datos =
+          impresion === 'factura' && factura
+            ? facturaEscPos(factura, payment)
+            : comprobanteEscPos(payment, parkingLotName);
+        await imprimirPorUsb(impresora, datos);
+      } catch (error) {
+        console.error('[kiosco] no se pudo imprimir por USB', error);
+      } finally {
+        if (vigente) setListo(true);
+      }
+    })();
+
+    return () => {
+      vigente = false;
+    };
+  }, [imprimir, impresion, factura, payment, parkingLotName]);
+
+  /*
     La pantalla vuelve sola: nadie del parqueadero esta ahi para dejarla lista
     para el siguiente cliente.
 
@@ -1171,11 +1214,11 @@ function Result({
         </div>
       )}
 
-      {imprimir && factura ? (
+      {imprimir && porNavegador && factura ? (
         <InvoiceTicket invoice={factura} payment={payment} onReady={alListo} />
       ) : null}
 
-      {imprimir && impresion === 'comprobante' ? (
+      {imprimir && porNavegador && impresion === 'comprobante' ? (
         <Receipt
           payment={payment}
           parkingLotName={parkingLotName}

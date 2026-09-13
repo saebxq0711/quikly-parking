@@ -77,7 +77,11 @@ Para activarlo, la web tiene que estar publicada con su dominio (`APP_URL`) y en
 **Impresoras (todas por USB al equipo de cada kiosco):**
 
 - **Kiosco de entrada:** la impresora va a la Raspberry; se activa con `"impresora"` en el JSON del sitio (`auto`, `si`, `no`). Sin impresora, todo queda en pantalla y celular.
-- **Kiosco de pago (esta web):** el navegador imprime con la impresora predeterminada del equipo. Se marca en Administración → parqueadero → *Este kiosco tiene impresora de recibos*, y el navegador se abre con `--kiosk --kiosk-printing` para que no salga el cuadro de impresión. Al aprobarse el pago se espera la **factura de SIIGO** (hasta ~30 s) y se imprime la factura; si SIIGO no la emite a tiempo, se imprime el comprobante de pago con un QR que abre la factura cuando esté lista.
+- **Kiosco de pago (esta web):** se marca en Administración → parqueadero → *Este kiosco tiene impresora de recibos*, y el papel sale de una de dos formas:
+  - **Tablet Android con Chrome (sin controladores):** la impresora se conecta por USB (cable OTG) y se autoriza una sola vez en `/p/<sitio>/pos/impresora`, a la que se llega desde el menú oculto del kiosco. La web le manda los comandos ESC/POS directo (`src/lib/printing/`).
+  - **PC con Windows:** se instala el controlador de la impresora, se deja como predeterminada y Chrome se abre con `--kiosk --kiosk-printing`.
+  
+  El kiosco usa la primera si encuentra una impresora autorizada y, si no, la segunda. Al aprobarse el pago se espera la **factura de SIIGO** (hasta ~30 s) y se imprime la factura; si SIIGO no la emite a tiempo, se imprime el comprobante de pago con un QR que abre la factura cuando esté lista.
 
 **Correo:** a un cliente nuevo se le pide nombre, apellido y **correo, obligatorio**, con el texto "Aquí te enviaremos tu factura electrónica". Si un cliente conocido no tiene correo guardado, se le pide antes de continuar. El envío lo hace SIIGO: la opción *Enviar la factura electrónica al correo del cliente* tiene que estar activa en la configuración de facturación del parqueadero, y el comprobante debe ser electrónico.
 

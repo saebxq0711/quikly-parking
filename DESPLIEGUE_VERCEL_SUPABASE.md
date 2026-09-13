@@ -88,13 +88,26 @@ En resumen: **Vercel y Supabase para la web**. El backend del parqueadero ya est
 
 ## 5. El kiosco de pago en el parqueadero
 
-Es un PC (o mini PC) con pantalla táctil, el escáner QR, el datáfono y la impresora.
+Pantalla táctil con el escáner QR, el datáfono y la impresora de recibos (probada con **DigitalPos / Gainscha GA-E200I**, 80 mm). Hay dos formas de montarlo.
+
+### A. Tablet Android (recomendado: sin controladores)
+
+La web le habla a la impresora por USB con sus propios comandos (ESC/POS). No se instala nada.
+
+1. Conectar la impresora a la tablet con un cable **OTG** (USB-C o micro-USB a USB) y encenderla.
+2. Abrir **Google Chrome** (no otro navegador: WebUSB solo está en Chrome) en `https://<tu dominio>/login` e iniciar sesión con el usuario del punto de pago.
+3. En el kiosco, mantener presionado el nombre del parqueadero 3 segundos → **Configurar la impresora del kiosco** → **Conectar impresora** → elegirla → **Imprimir prueba**. Chrome la recuerda: no se vuelve a pedir.
+4. Dejar la tablet fija en el kiosco: *Ajustes → Seguridad → Fijar aplicación* (o "Anclar pantalla") sobre Chrome.
+
+### B. PC con Windows
+
+En Windows la impresora queda tomada por el sistema, así que se imprime por el navegador:
 
 1. **Impresora térmica de 80 mm:**
-   - Conectarla por USB, encenderla e **instalar el controlador del fabricante**.
+   - Conectarla por USB, encenderla e **instalar el controlador del fabricante** (Gainscha/DigitalPos).
    - Tiene que aparecer en *Configuración → Bluetooth y dispositivos → Impresoras y escáneres*.
    - Ponerla como **predeterminada** y fijar el papel en 80 mm en *Preferencias de impresión*.
-   - Si solo aparecen "Microsoft Print to PDF" o "XPS", Windows no la está viendo y el kiosco no imprimirá.
+   - Si solo aparecen "Microsoft Print to PDF" o "XPS", falta el controlador: Windows ve la impresora (puerto USB001) pero no tiene cola para imprimir.
 2. **Escáner QR USB:** funciona como un teclado; no se configura nada.
 3. **Chrome en modo kiosco,** con un acceso directo que se abra al iniciar Windows:
    ```

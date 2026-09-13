@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 /**
  * Salida del kiosco, oculta a la vista.
@@ -30,6 +30,7 @@ export function ExitGate({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState('');
@@ -117,6 +118,14 @@ export function ExitGate({
                 {error}
               </p>
             ) : null}
+
+            {/* La configuracion de la impresora vive detras de este mismo gesto oculto. */}
+            <a
+              href={`${pathname.replace(/\/pos(\/.*)?$/, '/pos')}/impresora`}
+              className="mt-4 inline-block text-sm font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+            >
+              Configurar la impresora del kiosco
+            </a>
 
             <div className="mt-5 flex gap-3">
               <button
