@@ -23,7 +23,7 @@ function explicar(error: unknown): string {
   const nombre = error instanceof Error ? error.name : '';
   if (nombre === 'NotFoundError') return 'No se eligio ninguna impresora.';
   if (nombre === 'SecurityError' || nombre === 'NetworkError') {
-    return 'El sistema no deja usar la impresora directamente. En un PC con Windows la impresora queda tomada por su controlador: instala el controlador y usa la impresion del navegador (ver la guia). En una tablet Android, desconecta y vuelve a conectar el cable.';
+    return 'El sistema no deja usar la impresora directamente. En un PC con Windows la impresora esta tomada por su controlador de impresion: en el Administrador de dispositivos cambiale el controlador por "WinUsb Device", desconectala, vuelve a conectarla y toca Conectar impresora (ver la guia). En una tablet Android, desconecta y vuelve a conectar el cable.';
   }
   return error instanceof Error ? error.message : 'No fue posible usar la impresora.';
 }
@@ -111,9 +111,8 @@ export function PrinterSetup({
               <div className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
                 <p className="font-medium text-ink-100">Este navegador no conecta impresoras USB directamente.</p>
                 <p className="mt-1">
-                  En una tablet Android abre el kiosco en <strong>Google Chrome</strong>. En un PC con
-                  Windows, instala el controlador de la impresora y abre Chrome con{' '}
-                  <code>--kiosk-printing</code>: el kiosco imprimira por el navegador.
+                  Abre el kiosco en <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong>,
+                  en la tablet Android o en el PC con Windows.
                 </p>
               </div>
             </div>

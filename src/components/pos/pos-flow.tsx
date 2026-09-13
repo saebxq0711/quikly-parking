@@ -1099,10 +1099,13 @@ function Result({
             ? facturaEscPos(factura, payment)
             : comprobanteEscPos(payment, parkingLotName);
         await imprimirPorUsb(impresora, datos);
-      } catch (error) {
-        console.error('[kiosco] no se pudo imprimir por USB', error);
-      } finally {
         if (vigente) setListo(true);
+      } catch (error) {
+        // Autorizada pero no abre (cable suelto, Windows con su controlador de impresion):
+        // se intenta por el navegador para que el cliente no se quede sin papel.
+        console.error('[kiosco] no se pudo imprimir por USB', error);
+        yaImprimio.current = false;
+        if (vigente) setPorNavegador(true);
       }
     })();
 

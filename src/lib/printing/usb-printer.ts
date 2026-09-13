@@ -7,10 +7,11 @@
  * vez (Configuracion de impresora del kiosco) y desde ahi el navegador la recuerda y la
  * usa sin preguntar.
  *
- * DONDE FUNCIONA: Chrome en Android (tablet con cable OTG) y en ChromeOS. En un PC con
- * Windows la impresora queda tomada por el controlador de impresion de Windows y WebUSB
- * no la puede abrir: ahi se instala el controlador y el kiosco imprime por el navegador
- * (`--kiosk-printing`), que es el camino que ya existia.
+ * DONDE FUNCIONA: Chrome o Edge en Android (tablet con cable OTG), ChromeOS y Windows.
+ * En Windows la impresora llega tomada por su controlador de impresion (`usbprint`) y
+ * WebUSB no la puede abrir: hay que cambiarle el controlador por "WinUsb Device", que
+ * ya viene con Windows (guia de despliegue, seccion del PC con Windows). Si no se hace,
+ * queda el camino viejo: controlador del fabricante y Chrome con `--kiosk-printing`.
  */
 
 /** Clase USB "impresora". */
