@@ -59,7 +59,32 @@ const schema = z.object({
     .default('development'),
 });
 
-const parsed = schema.safeParse(process.env);
+/*
+  Variables vacias = no definidas. En Vercel (y en un .env copiado a medias) es comun
+  dejar `SIIGO_API_URL=` sin valor: sin esto, "" no pasa la validacion de URL y el build
+  falla en vez de usar el valor por defecto.
+*/
+const entorno: Record<string, string | undefined> = Object.fromEntries(
+  Object.entries(process.env).map(([clave, valor]) => [
+    clave,
+    typeof valor === 'string' && valor.trim() === '' ? undefined : valor?.trim(),
+  ]),
+);
+
+/*
+  APP_URL va en los QR impresos y en los enlaces de correo. Si no se configuro, en Vercel
+  se toma el dominio de produccion del proyecto (o el de la vista previa), que Vercel
+  entrega sin el https://.
+*/
+if (!entorno.APP_URL) {
+  const dominioVercel = entorno.VERCEL_PROJECT_PRODUCTION_URL ?? entorno.VERCEL_URL;
+  if (dominioVercel) entorno.APP_URL = `https://${dominioVercel}`;
+} else if (!/^https?:\/\//i.test(entorno.APP_URL)) {
+  // Escrito sin protocolo ("pago.midominio.com"): se asume https.
+  entorno.APP_URL = `https://${entorno.APP_URL}`;
+}
+
+const parsed = schema.safeParse(entorno);
 
 if (!parsed.success) {
   const detalle = parsed.error.issues
