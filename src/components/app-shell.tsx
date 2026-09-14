@@ -1,4 +1,6 @@
 import Image from 'next/image';
+import Link from 'next/link';
+import { MdLockOutline } from 'react-icons/md';
 import { SideNav, type NavItem } from './side-nav';
 import { LogoutButton } from './logout-button';
 
@@ -69,6 +71,13 @@ export function AppShell({
           <p className="px-3 pb-2 text-xs text-[var(--text-muted)]">
             {ROLE_LABEL[role]}
           </p>
+          <Link
+            href="/cuenta"
+            className="mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100"
+          >
+            <MdLockOutline className="h-4.5 w-4.5 shrink-0" aria-hidden focusable="false" />
+            Cambiar contrasena
+          </Link>
           <LogoutButton />
         </div>
       </aside>
@@ -84,6 +93,14 @@ export function AppShell({
             className="hidden h-5 w-auto shrink-0 sm:block"
           />
           <SideNav items={navItems} compact />
+          <Link
+            href="/cuenta"
+            aria-label="Cambiar contrasena"
+            title="Cambiar contrasena"
+            className="shrink-0 rounded-lg p-2 text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100"
+          >
+            <MdLockOutline className="h-4.5 w-4.5" aria-hidden focusable="false" />
+          </Link>
           <LogoutButton compact />
         </header>
 

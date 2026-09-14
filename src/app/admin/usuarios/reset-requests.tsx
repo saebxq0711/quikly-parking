@@ -33,7 +33,7 @@ export function ResetRequests({
     <Card>
       <CardHeader
         title={`Solicitudes de contrasena (${requests.length})`}
-        description="Restablece la clave del usuario y entregasela por tu canal habitual."
+        description="Cambiale la contrasena al usuario desde la lista y entregasela por tu canal habitual."
       />
       <ul className="divide-y divide-[var(--line-subtle)]">
         {requests.map((request) => (

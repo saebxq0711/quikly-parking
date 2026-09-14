@@ -106,7 +106,6 @@ export default async function PosPage({
       issuer={emisorDe(lot)}
       testMode={lot.testMode}
       paymentPointName={point.name}
-      hasPrinter={point.hasPrinter}
       livePayment={live ? serializePayment(live) : null}
     />
   );

@@ -22,10 +22,9 @@ import type { InvoiceDocumentDTO, InvoicePrintDTO } from '@/lib/billing/invoice-
 import { Keypad } from './keypad';
 import { ExitGate } from './exit-gate';
 import { CustomerStep, type CustomerData } from './customer-step';
-import { Receipt } from './receipt';
-import { InvoiceTicket } from './invoice-ticket';
+import { ReceiptScreen } from './receipt';
 import { impresoraEmparejada, imprimirPorUsb, vigilarImpresora } from '@/lib/printing/usb-printer';
-import type { ReceiptIssuer } from '@/lib/printing/receipt-data';
+import { comprobante, type ReceiptIssuer } from '@/lib/printing/receipt-data';
 import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
 
 /**
@@ -88,6 +87,15 @@ const POLL_TIMEOUT_MS = 240_000;
  */
 const RESULT_TIMEOUT_S = 15;
 
+/** Con el comprobante en pantalla hay que dar tiempo de leerlo o de escanear su QR. */
+const RECEIPT_TIMEOUT_S = 45;
+
+/**
+ * Cada cuanto se vuelve a cotizar mientras el cliente mira el total. La tarifa del
+ * parqueadero sigue corriendo: asi el valor en pantalla es el que se va a cobrar.
+ */
+const REQUOTE_INTERVAL_MS = 30_000;
+
 /**
  * Inactividad tras la cual se vuelve al inicio a media operacion.
  *
@@ -101,7 +109,6 @@ export function PosFlow({
   vehicles,
   parkingLotName,
   paymentPointName,
-  hasPrinter,
   issuer,
   livePayment,
   testMode = false,
@@ -112,11 +119,6 @@ export function PosFlow({
   issuer: ReceiptIssuer;
   /** Solo para soporte: no se muestra al cliente. */
   paymentPointName: string;
-  /**
-   * La administracion marco impresora. Una impresora USB autorizada se detecta sola
-   * (`vigilarImpresora`); esta marca decide si, sin USB, se imprime por el navegador.
-   */
-  hasPrinter: boolean;
   /**
    * Cobro en curso al abrir la pantalla, si lo hay. Permite retomar una
    * operacion viva tras una recarga o tras salir y volver.
@@ -182,6 +184,43 @@ export function PosFlow({
     }
   }
 
+  /*
+    Cotizacion en vivo. La tarifa sigue corriendo mientras el cliente llena sus datos
+    o lee el total, asi que al llegar al resumen y cada 30 s se vuelve a consultar.
+    Si el valor cambio se avisa: el cliente nunca paga algo distinto de lo que ve.
+  */
+  const montoVisto = useRef<number | null>(null);
+  useEffect(() => {
+    montoVisto.current = lookup?.amount ?? null;
+  }, [lookup]);
+
+  const requote = useCallback(async () => {
+    if (!vehicle || identifier.length === 0) return;
+    try {
+      const response = await fetch('/api/pos/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleType: vehicle.vehicleType, identifier }),
+      });
+      if (!response.ok) return;
+      const result = (await response.json()) as LookupResult;
+      if (montoVisto.current !== null && result.amount !== montoVisto.current) {
+        setError('El total se actualizo porque paso mas tiempo. Revisalo antes de pagar.');
+      }
+      setLookup(result);
+    } catch {
+      // Sin red se conserva el ultimo valor; el servidor lo vuelve a comprobar al pagar.
+    }
+  }, [vehicle, identifier]);
+
+  const enResumen = step === 'summary';
+  useEffect(() => {
+    if (!enResumen) return;
+    void requote();
+    const timer = setInterval(() => void requote(), REQUOTE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [enResumen, requote]);
+
   async function handlePay() {
     if (!vehicle || !lookup?.ticketId || busy) return;
     setBusy(true);
@@ -199,12 +238,20 @@ export function PosFlow({
           // Una clave por intento: si el operador toca dos veces o la red
           // reintenta, el servidor devuelve el MISMO cobro, no crea otro.
           idempotencyKey: crypto.randomUUID(),
+          // El total que el cliente esta viendo: si ya cambio, el servidor no cobra.
+          expectedAmount: lookup.amount ?? undefined,
         }),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.error?.message ?? 'No fue posible iniciar el cobro.');
+        const mensaje = data?.error?.message ?? 'No fue posible iniciar el cobro.';
+        // Lo mas comun es que la tarifa subio: se trae el total nuevo y se deja el aviso.
+        if (data?.error?.code === 'CONFLICT') {
+          montoVisto.current = null;
+          await requote();
+        }
+        setError(mensaje);
         return;
       }
       setPayment(data as PaymentDTO);
@@ -433,7 +480,6 @@ export function PosFlow({
             payment={payment}
             error={error}
             onDone={reset}
-            hasPrinter={hasPrinter}
             impresoraUsb={impresoraUsb}
             issuer={issuer}
           />
@@ -990,22 +1036,22 @@ function Result({
   payment,
   error,
   onDone,
-  hasPrinter,
   impresoraUsb,
   issuer,
 }: {
   payment: PaymentDTO;
   error: string | null;
   onDone: () => void;
-  /** La administracion marco impresora: sin USB, se imprime por el navegador. */
-  hasPrinter: boolean;
-  /** Hay una impresora USB autorizada y conectada: se imprime por ahi, este marcado o no. */
+  /** Hay una impresora USB autorizada y conectada: el papel sale por ahi. */
   impresoraUsb: boolean;
   issuer: ReceiptIssuer;
 }) {
   const approved = payment.status === 'APPROVED';
   // Se decide al mostrar el resultado: desconectar el cable a mitad no cambia el plan.
-  const [imprimir] = useState(() => approved && (hasPrinter || impresoraUsb));
+  const [imprimir] = useState(() => approved && impresoraUsb);
+  /** La impresora no respondio: el comprobante queda en pantalla, como sin impresora. */
+  const [sinPapel, setSinPapel] = useState(false);
+  const mostrarComprobante = approved && (!imprimir || sinPapel);
   const [seconds, setSeconds] = useState(RESULT_TIMEOUT_S);
   const [impresion, setImpresion] = useState<Impresion>('factura-en-camino');
   const [factura, setFactura] = useState<InvoiceDocumentDTO | null>(null);
@@ -1069,37 +1115,15 @@ function Result({
   }, [listo, impresion]);
 
   /*
-    Se imprime UNA vez, cuando el papel ya tiene su QR dibujado.
+    Se imprime UNA vez, por USB directo (`usb-printer.ts`). La referencia evita dos
+    papeles: en modo estricto React monta los efectos dos veces. No hay boton de
+    "imprimir de nuevo" a proposito — en un kiosco sin nadie vigilando, alguien lo
+    pulsaria hasta acabar el rollo.
 
-    La referencia evita dos impresiones: en modo estricto React monta los
-    efectos dos veces, y un cliente no deberia llevarse dos papeles ni gastar el
-    rollo. No hay boton de "imprimir de nuevo" a proposito — en un kiosco sin
-    nadie vigilando, alguien lo pulsaria hasta acabar el papel.
-
-    Para que no salga el cuadro de impresion, el navegador del kiosco tiene que
-    abrirse con `--kiosk --kiosk-printing`; si no, lo muestra y alguien tendria
-    que aceptarlo.
+    Sin impresora, o si no responde, NO se imprime por el navegador: el comprobante
+    queda en pantalla y el servidor lo envia al correo del cliente (`receipt-email.ts`).
   */
   const yaImprimio = useRef(false);
-  const alListo = useCallback(() => {
-    if (yaImprimio.current) return;
-    yaImprimio.current = true;
-    // Un cuadro de margen para que el navegador termine de pintar el SVG.
-    requestAnimationFrame(() => {
-      window.print();
-      setListo(true);
-    });
-  }, []);
-
-  /*
-    Por donde sale el papel.
-
-    Si este navegador tiene una impresora USB emparejada (tablet, ver
-    `usb-printer.ts`), se le mandan los comandos ESC/POS directo: no hay controlador ni
-    cuadro de impresion. Si no, se imprime por el navegador como antes (PC con la
-    impresora instalada y Chrome con --kiosk-printing).
-  */
-  const [porNavegador, setPorNavegador] = useState(false);
 
   useEffect(() => {
     if (!imprimir || impresion === 'factura-en-camino' || yaImprimio.current) return;
@@ -1109,9 +1133,8 @@ function Result({
       const impresora = await impresoraEmparejada().catch(() => null);
       if (!vigente) return;
       if (!impresora) {
-        // Sin USB, por el navegador solo si la administracion marco impresora.
-        if (hasPrinter) setPorNavegador(true);
-        else setListo(true);
+        setSinPapel(true);
+        setListo(true);
         return;
       }
 
@@ -1124,20 +1147,18 @@ function Result({
         await imprimirPorUsb(impresora, datos);
         if (vigente) setListo(true);
       } catch (error) {
-        // Autorizada pero no abre (cable suelto, Windows con su controlador de impresion):
-        // se intenta por el navegador para que el cliente no se quede sin papel.
+        // Autorizada pero no abre (cable suelto, sin papel): el comprobante queda en pantalla.
         console.error('[kiosco] no se pudo imprimir por USB', error);
-        yaImprimio.current = false;
         if (!vigente) return;
-        if (hasPrinter) setPorNavegador(true);
-        else setListo(true);
+        setSinPapel(true);
+        setListo(true);
       }
     })();
 
     return () => {
       vigente = false;
     };
-  }, [imprimir, impresion, factura, payment, issuer, hasPrinter]);
+  }, [imprimir, impresion, factura, payment, issuer]);
 
   /*
     La pantalla vuelve sola: nadie del parqueadero esta ahi para dejarla lista
@@ -1155,7 +1176,9 @@ function Result({
     // Mientras se espera o se imprime el papel, la pantalla no vuelve al inicio.
     if (!listo) return;
 
-    const volverAlInicio = setTimeout(onDone, RESULT_TIMEOUT_S * 1000);
+    const total = mostrarComprobante ? RECEIPT_TIMEOUT_S : RESULT_TIMEOUT_S;
+    setSeconds(total);
+    const volverAlInicio = setTimeout(onDone, total * 1000);
     const cuentaAtras = setInterval(() => {
       setSeconds((value) => (value > 0 ? value - 1 : 0));
     }, 1000);
@@ -1164,12 +1187,12 @@ function Result({
       clearTimeout(volverAlInicio);
       clearInterval(cuentaAtras);
     };
-  }, [onDone, listo]);
+  }, [onDone, listo, mostrarComprobante]);
 
   const mensaje = !approved
     ? (error ?? payment.failureReason ?? 'La transaccion no se completo.')
-    : !imprimir
-      ? 'Puedes retirar el vehiculo. Tu factura electronica llegara a tu correo.'
+    : mostrarComprobante
+      ? 'Puedes retirar el vehiculo. Este comprobante tambien te llega al correo, y alli recibiras tu factura electronica.'
       : impresion === 'factura-en-camino'
         ? 'Estamos generando tu factura. Espera un momento para recogerla.'
         : impresion === 'factura'
@@ -1177,7 +1200,7 @@ function Result({
           : 'Puedes retirar el vehiculo. Recoge tu comprobante: la factura electronica llegara a tu correo.';
 
   return (
-    <div className="step-in w-full max-w-lg text-center">
+    <div className="step-in w-full max-w-xl text-center">
       <div
         className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ring-1 kland:h-16 kland:w-16 ${
           approved
@@ -1210,7 +1233,9 @@ function Result({
         {mensaje}
       </p>
 
-      {approved ? (
+      {mostrarComprobante ? (
+        <ReceiptScreen doc={comprobante(payment, issuer)} />
+      ) : approved ? (
         <dl className="mt-7 space-y-3 rounded-2xl bg-[var(--surface-raised)] p-6 text-left text-sm ring-1 ring-[var(--line-subtle)] kland:mt-5 kland:grid kland:grid-cols-2 kland:gap-x-8 kland:space-y-0">
           <Row label="Valor pagado" value={formatCOP(payment.amount)} />
           {payment.authorizationCode ? (
@@ -1250,13 +1275,6 @@ function Result({
         </div>
       )}
 
-      {imprimir && porNavegador && factura ? (
-        <InvoiceTicket invoice={factura} payment={payment} onReady={alListo} />
-      ) : null}
-
-      {imprimir && porNavegador && impresion === 'comprobante' ? (
-        <Receipt payment={payment} issuer={issuer} onReady={alListo} />
-      ) : null}
     </div>
   );
 }

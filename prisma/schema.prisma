@@ -402,6 +402,9 @@ model Payment {
   entryAt     DateTime?
   /// Permanencia liquidada, en minutos, segun el sistema del parqueadero.
   stayMinutes Int?
+  /// Cuando se envio el comprobante al correo del cliente. Se marca antes de enviar
+  /// (de forma atomica) para que dos consultas del estado no manden dos correos.
+  receiptEmailedAt DateTime?
 
   /// Cliente que pago, identificado en el kiosco por su numero de documento.
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)

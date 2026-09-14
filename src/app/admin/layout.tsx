@@ -26,7 +26,6 @@ export default async function AdminLayout({
           matchPrefix: true,
         },
         { href: '/admin/usuarios', label: 'Usuarios', icon: 'users' },
-        { href: '/admin/integraciones', label: 'Integraciones', icon: 'plug' },
       ]}
       userName={user.name}
       role="SUPERADMIN"

@@ -23,7 +23,7 @@ const ROLE_LABEL = {
  * y no tiene un boton de salida a la vista.
  */
 export default async function UsersPage() {
-  await requireRole('SUPERADMIN');
+  const actor = await requireRole('SUPERADMIN');
 
   const [users, lots, requests] = await Promise.all([
     db.user.findMany({
@@ -121,6 +121,7 @@ export default async function UsersPage() {
                       userId={user.id}
                       active={user.active}
                       hasSession={user._count.sessions > 0}
+                      isSelf={user.id === actor.id}
                     />
                   </div>
                 </li>
@@ -133,7 +134,7 @@ export default async function UsersPage() {
           <Card className="h-fit">
             <CardHeader
               title="Nuevo usuario"
-              description="La contrasena inicial debera cambiarse en el primer ingreso."
+              description="Entregale su correo y su contrasena por tu canal habitual."
             />
             <div className="p-5">
               <UserForm

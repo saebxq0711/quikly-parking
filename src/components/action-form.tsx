@@ -48,7 +48,13 @@ export function ActionForm({
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} aria-busy={pending}>
+      {pending ? (
+        <span
+          className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-[-3px]"
+          aria-hidden="true"
+        />
+      ) : null}
       {pending ? 'Guardando...' : label}
     </Button>
   );

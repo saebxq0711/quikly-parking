@@ -1,5 +1,12 @@
 import { panelAccess, NO_SOURCE } from '@/lib/parking/panel-access';
 import { getTickets, type TicketFilters } from '@/integrations/nova-parking/panel';
+import {
+  parseUpstreamDate,
+  paymentMethodLabel,
+  stayMinutes,
+  ticketPaid,
+} from '@/lib/parking/tickets-view';
+import { permanencia } from '@/lib/printing/receipt-data';
 import { PageHeader } from '@/components/app-shell';
 import { Card, EmptyState, formatCOP } from '@/components/ui';
 import { Pager } from '@/components/pager';
@@ -12,12 +19,13 @@ import {
   TicketStatus,
   formatUpstreamDate,
 } from '@/components/panel/pieces';
-import { DownloadButton } from '@/components/panel/download-button';
+import { AutoRefresh } from '@/components/panel/auto-refresh';
+import { LiveDuration } from '@/components/panel/live-duration';
 import { HistoryFilters } from './filters';
 
 export const metadata = { title: 'Historial' };
 
-/** Nova Parking pagina de a 10 y hoy no acepta otro tamano (ver seccion 4.1). */
+/** Nova Parking pagina de a 10 y hoy no acepta otro tamano. */
 const PAGE_SIZE = 10;
 
 interface SearchParams extends Record<string, string | undefined> {
@@ -29,11 +37,9 @@ interface SearchParams extends Record<string, string | undefined> {
 }
 
 /**
- * Historial de tiquetes del parqueadero.
- *
- * Aqui esta lo que el administrador mas pregunta: quien entro, con que placa,
- * en que estado quedo, quien le cobro. Eso ultimo no viene en campos propios —
- * vive en los logs de cada tiquete, que es de donde `panel.ts` lo deriva.
+ * Historial de tiquetes del parqueadero: codigo, placa, entrada y salida, cuanto
+ * tiempo estuvo (o lleva, si sigue adentro), si pago, con que y cuanto. Los filtros los
+ * aplica Nova Parking. Para descargar un periodo completo esta Reportes (Excel).
  */
 export default async function HistoryPage({
   params,
@@ -62,52 +68,23 @@ export default async function HistoryPage({
     <>
       <PageHeader
         title="Historial"
-        description="Cada vehiculo que entro, como se cobro y quien lo atendio."
-        action={
-          result.ok && result.data.rows.length > 0 ? (
-            <DownloadButton
-              filename={`historial-${slug}`}
-              label="Descargar pagina"
-              columns={[
-                { key: 'code', label: 'Codigo' },
-                { key: 'plate', label: 'Placa' },
-                { key: 'vehicleType', label: 'Tipo' },
-                { key: 'status', label: 'Estado' },
-                { key: 'checkedInAt', label: 'Ingreso' },
-                { key: 'checkedOutAt', label: 'Salida' },
-                { key: 'amount', label: 'Valor' },
-                { key: 'paymentMethod', label: 'Medio de pago' },
-                { key: 'enteredBy', label: 'Registro la entrada' },
-                { key: 'chargedBy', label: 'Cobro' },
-              ]}
-              rows={result.data.rows as unknown as Record<string, unknown>[]}
-            />
-          ) : null
-        }
+        description="Cada vehiculo que entro, cuanto tiempo estuvo y como pago."
+        action={<AutoRefresh />}
       />
 
       <HistoryFilters
         basePath={`/p/${slug}/historial`}
-        current={{
-          q: query.q,
-          estado: query.estado,
-          desde: query.desde,
-          hasta: query.hasta,
-        }}
+        current={{ q: query.q, estado: query.estado, desde: query.desde, hasta: query.hasta }}
       />
 
       <div className="mt-4">
         {!result.ok ? (
           <SourceNotice result={result} what="Historial de tiquetes" />
         ) : (
-          <Card>
+          <Card className="overflow-hidden">
             {result.data.rows.length === 0 ? (
               <EmptyState
-                title={
-                  hasFilters
-                    ? 'Ningun tiquete coincide'
-                    : 'Todavia no hay tiquetes'
-                }
+                title={hasFilters ? 'Ningun tiquete coincide' : 'Todavia no hay tiquetes'}
                 description={
                   hasFilters
                     ? 'Prueba con un rango de fechas mas amplio o limpia los filtros.'
@@ -117,67 +94,79 @@ export default async function HistoryPage({
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[62rem] text-sm">
+                  <table className="w-full min-w-[64rem] text-sm">
                     <TableHead>
                       <Th first>Codigo</Th>
                       <Th>Placa</Th>
                       <Th>Tipo</Th>
-                      <Th>Ingreso</Th>
+                      <Th>Entrada</Th>
                       <Th>Salida</Th>
+                      <Th>Permanencia</Th>
+                      <Th>Pago</Th>
+                      <Th>Medio</Th>
                       <Th align="right">Valor</Th>
-                      <Th>Entrada por</Th>
-                      <Th>Cobro</Th>
                       <Th last>Estado</Th>
                     </TableHead>
                     <TableBody>
-                      {result.data.rows.map((ticket) => (
-                        <Row key={ticket.id}>
-                          {/*
-                            El CODIGO, no el id. El id es el autoincremental de
-                            Nova Parking y es secuencial: mostrarlo permitiria
-                            deducir el de otro vehiculo. El codigo es ademas lo
-                            unico que el cliente puede citar si reclama.
-                          */}
-                          <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
-                            {ticket.code ?? (
-                              <span className="font-normal text-[var(--text-muted)]">
-                                —
+                      {result.data.rows.map((ticket) => {
+                        const entrada = parseUpstreamDate(ticket.checkedInAt);
+                        const salida = parseUpstreamDate(ticket.checkedOutAt);
+                        const adentro = ticket.status === 'IN' && !ticket.cancelled;
+                        const minutos = stayMinutes(entrada, salida);
+                        const pago = ticketPaid(ticket);
+                        return (
+                          <Row key={ticket.id}>
+                            {/* El CODIGO, nunca el id: el id es secuencial y dejaria deducir otros. */}
+                            <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                              {ticket.code ?? <span className="text-[var(--text-muted)]">—</span>}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-ink-100">
+                              {ticket.plate ?? (
+                                <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--text-secondary)]">
+                              {ticket.vehicleType ?? '—'}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                              {formatUpstreamDate(ticket.checkedInAt)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                              {adentro ? '—' : formatUpstreamDate(ticket.checkedOutAt)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-ink-100">
+                              {adentro ? (
+                                <LiveDuration since={entrada?.toISOString() ?? null} />
+                              ) : minutos !== null ? (
+                                <span className="tnum">{permanencia(minutos)}</span>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${
+                                  pago
+                                    ? 'bg-ok-500/12 text-ok-300 ring-ok-400/25'
+                                    : 'bg-white/[0.05] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
+                                }`}
+                              >
+                                {pago ? 'Si' : 'No'}
                               </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 font-medium text-ink-100">
-                            {ticket.plate ?? (
-                              <span className="font-normal text-[var(--text-muted)]">
-                                Sin placa
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">
-                            {ticket.vehicleType ?? '—'}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
-                            {formatUpstreamDate(ticket.checkedInAt)}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
-                            {formatUpstreamDate(ticket.checkedOutAt)}
-                          </td>
-                          <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
-                            {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">
-                            {ticket.enteredBy ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">
-                            {ticket.chargedBy ?? '—'}
-                          </td>
-                          <td className="py-3 pl-4 pr-5">
-                            <TicketStatus
-                              status={ticket.status}
-                              cancelled={ticket.cancelled}
-                            />
-                          </td>
-                        </Row>
-                      ))}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--text-secondary)]">
+                              {/* Nova Parking deja "CASH" por defecto aun sin cobrar. */}
+                              {pago ? (paymentMethodLabel(ticket.paymentMethod) ?? '—') : '—'}
+                            </td>
+                            <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                              {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
+                            </td>
+                            <td className="py-3 pl-4 pr-5">
+                              <TicketStatus status={ticket.status} cancelled={ticket.cancelled} />
+                            </td>
+                          </Row>
+                        );
+                      })}
                     </TableBody>
                   </table>
                 </div>

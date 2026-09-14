@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -728,6 +727,9 @@ export async function createUser(
 
   const weak = validatePasswordStrength(parsed.data.password);
   if (weak) return fail(weak);
+  if (parsed.data.password !== String(formData.get('confirmPassword') ?? '')) {
+    return fail('Las dos contrasenas no coinciden.');
+  }
 
   // Sin parqueadero no hay forma de aislar los datos de este usuario.
   if (parsed.data.role !== 'SUPERADMIN' && !parsed.data.parkingLotId) {
@@ -758,7 +760,8 @@ export async function createUser(
         parkingLotId:
           parsed.data.role === 'SUPERADMIN' ? null : parsed.data.parkingLotId!,
         paymentPointId,
-        mustChangePassword: true,
+        // La escogio el SuperAdmin con confirmacion y la entrega el: no es temporal.
+        mustChangePassword: false,
       },
     });
 
@@ -865,6 +868,22 @@ export async function resetUserPassword(
 ): Promise<ActionResult> {
   const actor = await requireRole('SUPERADMIN');
   const userId = String(formData.get('userId') ?? '');
+  const password = String(formData.get('password') ?? '');
+  const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+  /*
+    La contrasena la escribe el SuperAdmin, dos veces, y la entrega el. Antes se
+    generaba una al azar que se mostraba una sola vez: si se cerraba la pantalla, nadie
+    la conocia. La propia no se cambia aqui (se hace pidiendo la actual en /cuenta):
+    restablecerse a si mismo lo sacaba de la sesion sin saber con que volver a entrar.
+  */
+  if (userId === actor.id) {
+    return fail('Tu propia contrasena se cambia desde "Cambiar contrasena", en el menu.');
+  }
+  if (!password || !confirmPassword) return fail('Escribe la nueva contrasena dos veces.');
+  if (password !== confirmPassword) return fail('Las dos contrasenas no coinciden.');
+  const weak = validatePasswordStrength(password);
+  if (weak) return fail(weak);
 
   const target = await db.user.findUnique({
     where: { id: userId },
@@ -872,14 +891,11 @@ export async function resetUserPassword(
   });
   if (!target) return fail('Usuario no encontrado.');
 
-  // Base64url sin caracteres ambiguos y con la forma que exige la politica.
-  const temporary = `Pp${randomBytes(9).toString('base64url').replace(/[-_]/g, 'x')}9`;
-
   await db.user.update({
     where: { id: userId },
     data: {
-      passwordHash: await hashPassword(temporary),
-      mustChangePassword: true,
+      passwordHash: await hashPassword(password),
+      mustChangePassword: false,
       failedLoginCount: 0,
       lockedUntil: null,
     },
@@ -903,8 +919,7 @@ export async function resetUserPassword(
 
   revalidatePath('/admin/usuarios');
   return ok(
-    `Contrasena temporal de ${target.email}. Se muestra una sola vez.`,
-    temporary,
+    `Contrasena de ${target.email} cambiada. Entregasela por tu canal habitual; sus sesiones abiertas se cerraron.`,
   );
 }
 

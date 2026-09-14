@@ -42,10 +42,26 @@ export function UserForm({ parkingLots }: { parkingLots: LotOption[] }) {
       </Field>
 
       <Field
-        label="Contrasena inicial"
-        hint="Minimo 10 caracteres, con mayusculas, minusculas y numeros. Debera cambiarla al entrar."
+        label="Contrasena"
+        hint="Minimo 10 caracteres, con mayusculas, minusculas y numeros."
       >
-        <Input name="password" type="text" required autoComplete="off" />
+        <Input
+          name="password"
+          type="password"
+          required
+          minLength={10}
+          autoComplete="new-password"
+        />
+      </Field>
+
+      <Field label="Confirma la contrasena">
+        <Input
+          name="confirmPassword"
+          type="password"
+          required
+          minLength={10}
+          autoComplete="new-password"
+        />
       </Field>
 
       <Field label="Rol">

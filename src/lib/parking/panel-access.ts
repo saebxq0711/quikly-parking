@@ -28,8 +28,8 @@ export async function panelAccess(slug: string): Promise<{
   });
   if (!lot) notFound();
 
-  const allowed = user.role === 'SUPERADMIN' || user.parkingLotId === lot.id;
-  if (!allowed) notFound();
+  // Solo el administrador de ESTE parqueadero; el SuperAdmin tiene su propia area.
+  if (user.role !== 'ADMIN_PARQUEADERO' || user.parkingLotId !== lot.id) notFound();
 
   // En modo de pruebas no hace falta URL: el sistema esta simulado.
   if (!lot.novaBaseUrl && !lot.testMode) return { lot, client: null };

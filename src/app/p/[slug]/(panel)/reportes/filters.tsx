@@ -1,94 +1,50 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Button, Input, Select } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 
-/**
- * Selector de reporte y periodo.
- *
- * Cada reporte de Nova Parking espera parametros distintos (el diario una fecha,
- * el mensual un mes, los otros un rango), asi que el campo "hasta" solo tiene
- * sentido en dos de los cuatro. En vez de mostrarlo siempre y que a veces no
- * haga nada, se oculta cuando no aplica.
- */
-
-const OPTIONS = [
-  { value: 'daily', label: 'Diario' },
-  { value: 'monthly', label: 'Mensual' },
-  { value: 'consolidated', label: 'Consolidado' },
-  { value: 'detailed-transactions', label: 'Transacciones detalladas' },
-] as const;
-
+/** Periodo del reporte. El maximo de dias lo vuelve a validar el servidor. */
 export function ReportFilters({
   basePath,
   current,
+  hoy,
+  maxDias,
 }: {
   basePath: string;
-  current: { tipo: string; desde: string; hasta: string };
+  current: { desde: string; hasta: string };
+  hoy: string;
+  maxDias: number;
 }) {
   const router = useRouter();
-  const usaRango =
-    current.tipo === 'consolidated' || current.tipo === 'detailed-transactions';
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const query = new URLSearchParams();
-    for (const [key, value] of data.entries()) {
-      const text = String(value).trim();
-      if (text) query.set(key, text);
-    }
+    const query = new URLSearchParams({
+      desde: String(data.get('desde') ?? ''),
+      hasta: String(data.get('hasta') ?? ''),
+    });
     router.push(`${basePath}?${query}`);
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"
-    >
+    <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
       <div>
         <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
-          Reporte
+          Desde
         </label>
-        {/* Cambiar el tipo recarga sola: el formulario de abajo depende de cual sea. */}
-        <Select
-          name="tipo"
-          defaultValue={current.tipo}
-          onChange={(event) =>
-            router.push(
-              `${basePath}?tipo=${event.currentTarget.value}&desde=${current.desde}&hasta=${current.hasta}`,
-            )
-          }
-        >
-          {OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <Input type="date" name="desde" defaultValue={current.desde} max={hoy} required />
       </div>
-
       <div>
         <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
-          {current.tipo === 'monthly' ? 'Mes' : 'Desde'}
+          Hasta
         </label>
-        <Input type="date" name="desde" defaultValue={current.desde} />
+        <Input type="date" name="hasta" defaultValue={current.hasta} max={hoy} required />
       </div>
-
-      {usaRango ? (
-        <div>
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
-            Hasta
-          </label>
-          <Input type="date" name="hasta" defaultValue={current.hasta} />
-        </div>
-      ) : (
-        <input type="hidden" name="hasta" value={current.hasta} readOnly />
-      )}
-
-      <div>
-        <Button type="submit">Consultar</Button>
-      </div>
+      <Button type="submit">Consultar</Button>
+      <p className="text-xs text-[var(--text-muted)] sm:col-span-3">
+        Maximo {maxDias} dias por consulta.
+      </p>
     </form>
   );
 }

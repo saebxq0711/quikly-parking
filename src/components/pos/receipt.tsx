@@ -2,152 +2,89 @@
 
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import type { PaymentDTO } from '@/lib/payments/serialize';
-import {
-  comprobante,
-  type ReceiptDocument,
-  type ReceiptIssuer,
-} from '@/lib/printing/receipt-data';
+import type { ReceiptDocument } from '@/lib/printing/receipt-data';
 
 /**
- * Papel del kiosco impreso por el navegador, en termico de 80 mm y blanco y negro.
+ * Comprobante de pago en la pantalla del kiosco.
  *
- * Pinta el mismo documento que sale por USB (`receipt-data.ts`). En pantalla no se ve:
- * solo aparece al imprimir (reglas `print-receipt` en `globals.css`).
+ * Es lo que ve el cliente cuando el kiosco no tiene impresora (o no respondio): el
+ * mismo documento del papel (`receipt-data.ts`), con un QR que abre su factura en el
+ * celular. No se imprime por el navegador; el servidor le envia este comprobante al
+ * correo en cuanto se aprueba el pago.
  */
-export function PaperReceipt({
-  doc,
-  onReady,
-}: {
-  doc: ReceiptDocument;
-  /** Avisa cuando el QR ya esta dibujado: imprimir antes lo dejaria en blanco. */
-  onReady: () => void;
-}) {
+export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
   const [qr, setQr] = useState<string | null>(null);
   const qrUrl = doc.qrUrl;
 
   useEffect(() => {
+    if (!qrUrl) return;
     let vigente = true;
-
-    if (!qrUrl) {
-      onReady();
-      return;
-    }
-
-    // El SVG lo genera la libreria a partir de un enlace nuestro: no hay HTML
-    // ajeno que inyectar.
+    // El SVG sale de un enlace nuestro: no hay HTML ajeno que inyectar.
     QRCode.toString(qrUrl, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' })
       .then((svg) => {
         if (vigente) setQr(svg);
       })
-      .catch(() => {
-        // Sin QR el papel sigue siendo util: se imprime igual.
-        if (vigente) onReady();
-      });
-
+      .catch(() => undefined);
     return () => {
       vigente = false;
     };
-  }, [qrUrl, onReady]);
-
-  // Se avisa despues de que el QR quedo en el DOM, no al generarlo.
-  useEffect(() => {
-    if (qr) onReady();
-  }, [qr, onReady]);
+  }, [qrUrl]);
 
   return (
-    <div className="print-receipt" aria-hidden="true">
-      <p className="receipt-title">{doc.title}</p>
-      {doc.headerLines.map((linea, index) => (
-        <p key={`${index}-${linea}`} className="receipt-center">
-          {linea}
-        </p>
-      ))}
+    <section
+      aria-label="Comprobante de pago"
+      className="receipt-in mt-6 max-h-[50dvh] overflow-y-auto rounded-2xl bg-[var(--surface-raised)] text-left ring-1 ring-[var(--line-subtle)] kland:mt-4 kland:max-h-[58dvh]"
+    >
+      <header className="border-b border-dashed border-white/12 px-5 py-4 text-center">
+        <p className="text-[15px] font-semibold text-ink-50">{doc.title}</p>
+        {doc.headerLines.map((linea, index) => (
+          <p key={`${index}-${linea}`} className="text-xs leading-relaxed text-[var(--text-muted)]">
+            {linea}
+          </p>
+        ))}
+      </header>
 
-      <div className="receipt-rule" />
-
-      <p className="receipt-heading">{doc.heading}</p>
-      {doc.number ? <p className="receipt-center receipt-strong">{doc.number}</p> : null}
-      <p className="receipt-center">{doc.issuedAt}</p>
-
-      {doc.sections.map((seccion) => (
-        <div key={seccion.title}>
-          <div className="receipt-rule" />
-          <p className="receipt-section">{seccion.title}</p>
-          {seccion.rows.map((fila) => (
-            <div key={fila.label} className="receipt-row">
-              <span>{fila.label}</span>
-              <span>{fila.value}</span>
-            </div>
-          ))}
+      <div className="flex items-end justify-between gap-4 px-5 py-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            {doc.heading}
+          </p>
+          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{doc.issuedAt}</p>
         </div>
-      ))}
-
-      {doc.items.length > 0 ? (
-        <>
-          <div className="receipt-rule" />
-          {doc.items.map((item, index) => (
-            <div key={index} className="receipt-item">
-              <p>{item.description}</p>
-              <div className="receipt-row">
-                <span>{item.detail}</span>
-                <span>{item.total}</span>
-              </div>
-            </div>
-          ))}
-        </>
-      ) : null}
-
-      <div className="receipt-rule" />
-
-      {doc.totals.map((fila) => (
-        <div key={fila.label} className="receipt-row">
-          <span>{fila.label}</span>
-          <span>{fila.value}</span>
-        </div>
-      ))}
-      <div className="receipt-total">
-        <span>TOTAL</span>
-        <span>{doc.total}</span>
+        <p className="tnum text-3xl font-bold tracking-tight text-ink-50">{doc.total}</p>
       </div>
 
-      {doc.cufe ? (
-        <>
-          <p className="receipt-fine-label">CUFE</p>
-          <p className="receipt-fine">{doc.cufe}</p>
-        </>
-      ) : null}
+      <div className="grid gap-5 border-t border-[var(--line-subtle)] px-5 py-4 sm:grid-cols-2 kland:grid-cols-3">
+        {doc.sections.map((seccion) => (
+          <div key={seccion.title} className="min-w-0">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              {seccion.title}
+            </p>
+            <dl className="space-y-1 text-sm">
+              {seccion.rows.map((fila) => (
+                <div key={fila.label} className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-[var(--text-muted)]">{fila.label}</dt>
+                  <dd className="min-w-0 break-words text-right font-medium text-ink-100">
+                    {fila.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
 
       {qr ? (
-        <>
-          <div className="receipt-qr" dangerouslySetInnerHTML={{ __html: qr }} />
-          {doc.qrCaption ? <p className="receipt-note">{doc.qrCaption}</p> : null}
-        </>
+        <div className="flex items-center gap-4 border-t border-[var(--line-subtle)] px-5 py-4">
+          <div
+            className="h-24 w-24 shrink-0 rounded-lg bg-white p-2 [&_svg]:h-full [&_svg]:w-full"
+            dangerouslySetInnerHTML={{ __html: qr }}
+          />
+          <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+            Escanea con la camara de tu celular para ver tu factura electronica.
+          </p>
+        </div>
       ) : null}
-
-      {doc.notes.map((nota) => (
-        <p key={nota} className="receipt-note">
-          {nota}
-        </p>
-      ))}
-    </div>
+    </section>
   );
-}
-
-/**
- * Comprobante de pago.
- *
- * NO es la factura electronica: sale cuando SIIGO no la emite a tiempo, con lo que el
- * cliente necesita para reclamar y un QR que abre su factura en cuanto este lista.
- */
-export function Receipt({
-  payment,
-  issuer,
-  onReady,
-}: {
-  payment: PaymentDTO;
-  issuer: ReceiptIssuer;
-  onReady: () => void;
-}) {
-  return <PaperReceipt doc={comprobante(payment, issuer)} onReady={onReady} />;
 }

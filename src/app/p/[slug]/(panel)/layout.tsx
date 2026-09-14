@@ -36,8 +36,13 @@ export default async function ParkingLotLayout({
   });
   if (!lot) notFound();
 
-  const allowed = user.role === 'SUPERADMIN' || user.parkingLotId === lot.id;
-  if (!allowed) notFound();
+  /*
+    El panel es del administrador de ESTE parqueadero. El SuperAdmin configura desde
+    su propia area y no entra aqui: antes podia, y quedaba metido en un panel ajeno
+    sin camino de vuelta a su vista.
+  */
+  if (user.role === 'SUPERADMIN') redirect('/admin/parqueaderos');
+  if (user.role !== 'ADMIN_PARQUEADERO' || user.parkingLotId !== lot.id) notFound();
 
   /*
     El orden sigue lo que el administrador pregunta primero: que hay adentro
@@ -55,9 +60,6 @@ export default async function ParkingLotLayout({
     { href: `/p/${slug}/cajas`, label: 'Cajas', icon: 'cash', matchPrefix: true },
     { href: `/p/${slug}/reportes`, label: 'Reportes', icon: 'reports' },
     { href: `/p/${slug}/pagos`, label: 'Pagos del kiosco', icon: 'payments' },
-    ...(user.role === 'SUPERADMIN'
-      ? [{ href: `/p/${slug}/auditoria`, label: 'Auditoria', icon: 'audit' } as NavItem]
-      : []),
   ];
 
   return (

@@ -12,6 +12,8 @@ import {
   formatDateTime,
 } from '@/components/ui';
 import { PaymentFilters } from './filters';
+import { AutoRefresh } from '@/components/panel/auto-refresh';
+import { permanencia } from '@/lib/printing/receipt-data';
 import { Pager } from '@/components/pager';
 
 export const metadata = { title: 'Pagos' };
@@ -119,8 +121,9 @@ export default async function PaymentsPage({
   return (
     <>
       <PageHeader
-        title="Pagos"
-        description="Historial de cobros de este parqueadero, con su estado y su facturacion."
+        title="Pagos del kiosco"
+        description="Los cobros con tarjeta del kiosco, con su estado y su factura."
+        action={<AutoRefresh />}
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
@@ -164,7 +167,7 @@ export default async function PaymentsPage({
                   <th className="px-4 py-3 font-medium">Vehiculo</th>
                   <th className="px-4 py-3 font-medium">Placa / Tiquete</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
-                  <th className="px-4 py-3 font-medium">Punto</th>
+                  <th className="px-4 py-3 font-medium">Permanencia</th>
                   <th className="px-4 py-3 text-right font-medium">Valor</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-5 py-3 font-medium">Factura</th>
@@ -188,13 +191,13 @@ export default async function PaymentsPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-ink-100">
-                      {payment.plate ?? payment.vehicleIdentifier}
+                      {payment.plate ?? payment.ticketCode ?? payment.vehicleIdentifier}
                     </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">
                       {payment.customerName ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
-                      {payment.paymentPoint?.name ?? '—'}
+                    <td className="tnum whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                      {payment.stayMinutes !== null ? permanencia(payment.stayMinutes) : '—'}
                     </td>
                     <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
                       {formatCOP(payment.amount)}

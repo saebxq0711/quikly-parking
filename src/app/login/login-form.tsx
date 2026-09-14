@@ -34,7 +34,8 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
 
       // El destino lo decide el servidor segun el rol: el cliente no elige
       // a que area entra.
-      router.replace(nextPath ?? data.redirectTo);
+      // Con una contrasena temporal, lo primero es elegir una propia.
+      router.replace(data.mustChangePassword ? '/cuenta' : (nextPath ?? data.redirectTo));
       router.refresh();
     } catch {
       setError('No fue posible conectar. Verifica tu conexion e intenta de nuevo.');

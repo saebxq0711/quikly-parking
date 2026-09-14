@@ -1,17 +1,16 @@
 'use client';
 
 import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
 import { ActionForm } from '@/components/action-form';
 import { Alert, Card, CardHeader, Checkbox, Field, Input } from '@/components/ui';
 import { setParkingTestMode, testNovaConnection, updateParkingConnection } from '../../actions';
+import { StatusPill, TestButton } from './redeban-card';
 
 /**
- * Conexion con el sistema de ESTE parqueadero.
+ * Conexion con el sistema de ESTE parqueadero: su dominio y su token.
  *
- * De ahi salen el vehiculo y el valor a cobrar. Cada parqueadero es un
- * despliegue distinto, con su propio dominio y su propia llave, asi que se
- * configura por sitio: agregar uno nuevo no puede exigir un despliegue.
+ * De ahi salen el vehiculo y el valor a cobrar, y ahi se confirma el pago. El modo de
+ * pruebas cambia ese sistema por uno simulado sin borrar la conexion real.
  */
 export function ConnectionCard({
   parkingLotId,
@@ -24,77 +23,34 @@ export function ConnectionCard({
   hasOwnToken: boolean;
   testMode: boolean;
 }) {
+  const listo = Boolean(baseUrl && hasOwnToken);
+
   return (
     <Card>
       <CardHeader
         title="Sistema del parqueadero"
-        description="De aqui se obtienen el vehiculo y el valor a cobrar, y aqui se confirma el pago."
+        description="El servidor del parqueadero: de ahi salen el vehiculo y el valor a cobrar."
+        action={<StatusPill ok={listo} />}
       />
 
       <div className="space-y-5 p-5">
         {testMode ? (
           <Alert tone="warning" title="Modo de pruebas activo">
-            El kiosco NO consulta el sistema real: usa un parqueadero simulado. Los cobros y
-            las facturas si son reales en los ambientes de prueba de Redeban y SIIGO.
+            El kiosco usa un parqueadero simulado. Redeban y SIIGO siguen siendo reales, en
+            sus ambientes de prueba.
           </Alert>
         ) : null}
 
-        <div className="rounded-lg bg-white/[0.03] px-4 py-4">
-          <ActionForm action={setParkingTestMode} submitLabel="Guardar modo" onSuccessReset={false}>
-            <input type="hidden" name="parkingLotId" value={parkingLotId} />
-            <Checkbox
-              name="testMode"
-              defaultChecked={testMode}
-              label="Modo de pruebas (sistema del parqueadero simulado)"
-            />
-            <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
-              Para probar escaner, impresora y datafono sin el tunel. Cualquier placa valida
-              (ABC123) es un carro por $2.000; cualquier codigo valido (A7B48) es una moto
-              por $1.500 o una bici/patineta por $1.000. ZZZ999 y Z9Z99 no existen. La
-              conexion real de abajo no se borra.
-            </p>
-          </ActionForm>
-        </div>
+        {listo && !testMode ? <TestConnection parkingLotId={parkingLotId} /> : null}
 
-        {baseUrl ? (
-          <>
-            <div className="rounded-lg bg-white/[0.03] px-4 py-3">
-              <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
-                Apuntando a
-              </p>
-              <p className="mt-1 break-all font-mono text-[13px] text-ink-100">
-                {baseUrl}
-              </p>
-              <p
-                className={`mt-2 text-xs ${hasOwnToken ? 'text-ok-300' : 'text-warn-300'}`}
-              >
-                {hasOwnToken
-                  ? 'Token configurado'
-                  : 'Sin token: el sistema rechazara las consultas'}
-              </p>
-            </div>
-
-            <TestConnection parkingLotId={parkingLotId} />
-          </>
-        ) : (
-          <Alert tone="warning" title="Sin conexion configurada">
-            Este parqueadero no puede consultar vehiculos todavia. Pide a quien
-            opera ese sistema el dominio publico y el token de acceso.
-          </Alert>
-        )}
-
-        <div className="border-t border-[var(--line-subtle)] pt-5">
-          <ActionForm
-            action={updateParkingConnection}
-            submitLabel="Guardar conexion"
-            onSuccessReset={false}
-          >
-            <input type="hidden" name="parkingLotId" value={parkingLotId} />
-
-            <Field
-              label="Dominio del sistema"
-              hint="La direccion publica por la que se llega a ese parqueadero, con https://"
-            >
+        <ActionForm
+          action={updateParkingConnection}
+          submitLabel="Guardar conexion"
+          onSuccessReset={false}
+        >
+          <input type="hidden" name="parkingLotId" value={parkingLotId} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Direccion del sistema" hint="Con https://">
               <Input
                 name="novaBaseUrl"
                 defaultValue={baseUrl ?? ''}
@@ -103,22 +59,32 @@ export function ConnectionCard({
                 spellCheck={false}
               />
             </Field>
-
             <Field
               label="Token de acceso"
-              hint={
-                hasOwnToken
-                  ? 'Ya hay uno guardado. Dejalo vacio para conservarlo.'
-                  : 'Lo entrega quien opera ese sistema. Se guarda cifrado y no vuelve a mostrarse.'
-              }
+              hint={hasOwnToken ? 'Guardado. Dejalo vacio para conservarlo.' : 'Lo entrega quien opera ese sistema.'}
             >
               <Input
                 name="platformToken"
                 type="password"
-                placeholder={hasOwnToken ? 'Sin cambios' : 'Pega aqui el token'}
+                placeholder={hasOwnToken ? '••••••••' : 'Pega aqui el token'}
                 autoComplete="new-password"
               />
             </Field>
+          </div>
+        </ActionForm>
+
+        <div className="border-t border-[var(--line-subtle)] pt-5">
+          <ActionForm action={setParkingTestMode} submitLabel="Guardar modo" onSuccessReset={false}>
+            <input type="hidden" name="parkingLotId" value={parkingLotId} />
+            <Checkbox
+              name="testMode"
+              defaultChecked={testMode}
+              label="Modo de pruebas"
+            />
+            <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
+              Placa valida: carro por $2.000. Codigo valido (A7B48): moto por $1.500 o
+              bicicleta/patineta por $1.000.
+            </p>
           </ActionForm>
         </div>
       </div>
@@ -132,23 +98,8 @@ function TestConnection({ parkingLotId }: { parkingLotId: string }) {
   return (
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="parkingLotId" value={parkingLotId} />
-      <TestButton />
-      {state ? (
-        <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert>
-      ) : null}
+      <TestButton label="Probar conexion" />
+      {state ? <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert> : null}
     </form>
-  );
-}
-
-function TestButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex h-10 items-center gap-2 rounded-lg bg-white/[0.04] px-4 text-[13px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:ring-white/20 disabled:opacity-50"
-    >
-      {pending ? 'Probando...' : 'Probar conexion'}
-    </button>
   );
 }

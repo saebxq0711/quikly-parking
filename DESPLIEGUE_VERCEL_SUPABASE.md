@@ -109,13 +109,13 @@ Windows toma la impresora USB con su controlador de impresión (`usbprint`), y a
    - El mismo script **autoriza la impresora para la web en Chrome y Edge** (política `WebUsbAllowDevicesForUrls`). Al cerrar y reabrir el navegador, el kiosco la detecta sola: no hay que entrar a `/impresora` ni tocar nada. Se comprueba en `chrome://policy`. Si la web tiene otro dominio: `impresora-winusb.ps1 -Url https://<tu dominio>`.
    - Para probarla: `https://<tu dominio>/p/122/pos/impresora` → **Imprimir prueba**. Desde ahí la web imprime sola la factura o el comprobante: sin cuadro de impresión, con QR y corte de papel.
    - Con WinUSB la impresora ya no aparece como impresora de Windows (solo la usa la web). Para devolverla: `impresora-winusb.ps1 -Revertir`.
-2. **Alternativa, por el navegador:** instalar el controlador del fabricante (Gainscha/DigitalPos), dejarla **predeterminada** con papel de 80 mm y abrir Chrome con `--kiosk-printing` (paso 4). Si solo aparecen "Microsoft Print to PDF" o "XPS", falta el controlador.
+2. **Sin impresora:** el kiosco no imprime por el navegador. Muestra el comprobante en pantalla y se lo envía al correo al cliente.
 3. **Escáner QR USB:** funciona como un teclado; no se configura nada.
 4. **Chrome en modo kiosco,** con un acceso directo que se abra al iniciar Windows:
    ```
    "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --kiosk-printing https://<tu dominio>/p/122/pos
    ```
-   `--kiosk-printing` solo hace falta en la alternativa del paso 2; no estorba en la del paso 1.
+   `--kiosk-printing` ya no hace falta (la impresora va por USB directo); dejarlo no estorba.
 5. Iniciar sesión una vez con el usuario del punto de pago. La sesión y la impresora autorizada quedan guardadas en ese navegador.
 
 ---

@@ -19,6 +19,12 @@ const schema = z.object({
   idempotencyKey: z.string().uuid(),
 
   /**
+   * Total que el cliente vio en pantalla. No decide cuanto se cobra —eso lo dice el
+   * sistema del parqueadero—, solo evita cobrar un valor distinto del que acepto.
+   */
+  expectedAmount: z.number().int().positive().optional(),
+
+  /**
    * Cliente que paga, identificado en el kiosco por su documento.
    * Es lo que permite emitir la factura a su nombre en vez de a consumidor
    * final.
@@ -85,6 +91,7 @@ export async function POST(request: Request) {
       identifier: parsed.data.identifier,
       ticketId: parsed.data.ticketId,
       idempotencyKey: parsed.data.idempotencyKey,
+      expectedAmount: parsed.data.expectedAmount,
     });
 
     return NextResponse.json(serializePayment(payment), { status: 201 });

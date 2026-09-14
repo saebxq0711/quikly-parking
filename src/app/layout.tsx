@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { NavigationProgress } from '@/components/navigation-progress';
 import './globals.css';
 
 const inter = Inter({
@@ -32,7 +33,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es-CO" className={inter.variable}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <NavigationProgress />
+        {children}
+      </body>
     </html>
   );
 }

@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ActionForm } from '@/components/action-form';
+import { Advanced } from '@/components/advanced';
 import { Alert, Card, CardHeader, Field, Input, Select } from '@/components/ui';
 import { SIP_NETWORKS } from '@/integrations/sipconnector/codes';
 import { saveRedebanConfig, testRedeban } from '../../actions';
@@ -10,19 +11,16 @@ import { saveRedebanConfig, testRedeban } from '../../actions';
 /**
  * Credenciales del datafono de ESTE parqueadero.
  *
- * Cada parqueadero es un comercio distinto ante la red: su propio codigo unico,
- * su propio usuario y su propio datafono. Por eso se configura por sitio y no
- * en una variable global.
- *
- * Los campos van con su nombre real del manual entre parentesis. No es adorno:
- * quien recibe las credenciales del integrador las recibe con esos nombres, y
- * tener que adivinar cual va donde es como se configura mal un cobro.
+ * Cada parqueadero es un comercio distinto ante la red: su propio codigo unico, su
+ * propio usuario y su propio datafono. A la vista quedan las cuatro que entrega
+ * Redeban; el ambiente y la red, que casi nunca cambian, van plegados.
  */
 export function RedebanCard({
   parkingLotId,
   baseUrl,
   codigoUnico,
   codigoTerminal,
+  usuario,
   red,
   hasPassword,
   missing,
@@ -31,6 +29,7 @@ export function RedebanCard({
   baseUrl: string | null;
   codigoUnico: string | null;
   codigoTerminal: string | null;
+  usuario: string | null;
   red: string;
   hasPassword: boolean;
   missing: string[];
@@ -38,19 +37,15 @@ export function RedebanCard({
   return (
     <Card>
       <CardHeader
-        title="Datafono (Redeban / SIPConnector)"
-        description="Con estas credenciales la plataforma envia el cobro al datafono de este parqueadero."
+        title="Datafono Redeban"
+        description="Las credenciales que Redeban entrega para cobrar con tarjeta en este parqueadero."
+        action={<StatusPill ok={missing.length === 0} />}
       />
 
       <div className="space-y-5 p-5">
         {missing.length > 0 ? (
-          <Alert tone="warning" title="Configuracion incompleta">
-            <p>Sin estos datos no se puede cobrar con tarjeta:</p>
-            <ul className="mt-2 list-disc space-y-0.5 pl-5">
-              {missing.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+          <Alert tone="warning" title="Falta configurar">
+            {missing.join(', ')}.
           </Alert>
         ) : (
           <TestConnection parkingLotId={parkingLotId} />
@@ -58,29 +53,13 @@ export function RedebanCard({
 
         <ActionForm
           action={saveRedebanConfig}
-          submitLabel="Guardar credenciales"
+          submitLabel="Guardar datafono"
           onSuccessReset={false}
         >
           <input type="hidden" name="parkingLotId" value={parkingLotId} />
 
-          <Field
-            label="URL del servicio (ambiente)"
-            hint="Pruebas y produccion tienen dominios distintos."
-          >
-            <Input
-              name="baseUrl"
-              required
-              defaultValue={baseUrl ?? 'https://sipconnectortest.azurewebsites.net'}
-              spellCheck={false}
-              autoComplete="off"
-            />
-          </Field>
-
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Codigo unico (CodigoUnico)"
-              hint="Con todos sus ceros a la izquierda: quitarlos lo invalida."
-            >
+            <Field label="Codigo unico" hint="Con sus ceros a la izquierda.">
               <Input
                 name="codigoUnico"
                 required
@@ -91,11 +70,7 @@ export function RedebanCard({
                 autoComplete="off"
               />
             </Field>
-
-            <Field
-              label="Codigo del datafono (CodigoTerminal)"
-              hint="Identifica el aparato que recibe la operacion."
-            >
+            <Field label="Codigo del datafono">
               <Input
                 name="codigoTerminal"
                 required
@@ -105,80 +80,101 @@ export function RedebanCard({
                 autoComplete="off"
               />
             </Field>
-
-            <Field label="Usuario (Usuario)">
+            <Field label="Usuario">
               <Input
                 name="usuario"
                 required
+                defaultValue={usuario ?? ''}
                 placeholder="usuario@comercio.com"
                 spellCheck={false}
                 autoComplete="off"
               />
             </Field>
-
             <Field
-              label="Clave (Clave)"
-              hint={
-                hasPassword
-                  ? 'Ya hay una guardada. Dejala vacia para conservarla.'
-                  : 'Se guarda cifrada y no vuelve a mostrarse.'
-              }
+              label="Clave"
+              hint={hasPassword ? 'Guardada. Dejala vacia para conservarla.' : undefined}
             >
               <Input
                 name="clave"
                 type="password"
-                placeholder={hasPassword ? 'Sin cambios' : ''}
+                placeholder={hasPassword ? '••••••••' : ''}
                 autoComplete="new-password"
               />
             </Field>
           </div>
 
-          <Field
-            label="Red que procesa el pago (Red)"
-            hint="Segun el Anexo 5 del manual del servicio."
-          >
-            <Select name="red" defaultValue={red}>
-              {SIP_NETWORKS.map((network) => (
-                <option key={network.value} value={network.value}>
-                  {network.value} · {network.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <Advanced>
+            <Field
+              label="Ambiente del servicio"
+              hint="Pruebas y produccion tienen direcciones distintas."
+            >
+              <Input
+                name="baseUrl"
+                required
+                defaultValue={baseUrl ?? 'https://sipconnectortest.azurewebsites.net'}
+                spellCheck={false}
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="Red que procesa el pago">
+              <Select name="red" defaultValue={red}>
+                {SIP_NETWORKS.map((network) => (
+                  <option key={network.value} value={network.value}>
+                    {network.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Advanced>
         </ActionForm>
       </div>
     </Card>
   );
 }
 
-/**
- * Prueba real contra el servicio: pide la version y luego un token, con lo que
- * queda comprobado el ambiente, el codigo unico, el usuario y la clave. No
- * mueve dinero ni ocupa el datafono.
- */
+export function StatusPill({ ok }: { ok: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${
+        ok
+          ? 'bg-ok-500/12 text-ok-300 ring-ok-400/30'
+          : 'bg-warn-500/12 text-warn-300 ring-warn-400/30'
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-ok-400' : 'bg-warn-400'}`} />
+      {ok ? 'Listo' : 'Pendiente'}
+    </span>
+  );
+}
+
+/** Pide la version y un token al servicio: comprueba credenciales sin mover dinero. */
 function TestConnection({ parkingLotId }: { parkingLotId: string }) {
   const [state, formAction] = useActionState(testRedeban, null);
 
   return (
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="parkingLotId" value={parkingLotId} />
-      <TestButton />
-      {state ? (
-        <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert>
-      ) : null}
+      <TestButton label="Probar datafono" />
+      {state ? <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert> : null}
     </form>
   );
 }
 
-function TestButton() {
+export function TestButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 items-center gap-2 rounded-lg bg-white/[0.04] px-4 text-[13px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:ring-white/20 disabled:opacity-50"
+      className="inline-flex h-10 items-center gap-2 rounded-lg bg-white/[0.04] px-4 text-[13px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:ring-white/20 disabled:opacity-60"
     >
-      {pending ? 'Probando...' : 'Probar credenciales'}
+      {pending ? (
+        <span
+          className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+          aria-hidden="true"
+        />
+      ) : null}
+      {pending ? 'Probando...' : label}
     </button>
   );
 }

@@ -1,8 +1,10 @@
 import { panelAccess, NO_SOURCE } from '@/lib/parking/panel-access';
-import { getVehiclesInside } from '@/integrations/nova-parking/panel';
+import { getTicketsExport, getVehiclesInside } from '@/integrations/nova-parking/panel';
+import { parseUpstreamDate } from '@/lib/parking/tickets-view';
 import { PageHeader } from '@/components/app-shell';
 import { Card, EmptyState } from '@/components/ui';
 import {
+  CardTitle,
   Row,
   SourceNotice,
   Stat,
@@ -11,19 +13,18 @@ import {
   Th,
   formatUpstreamDate,
 } from '@/components/panel/pieces';
-import { DownloadButton } from '@/components/panel/download-button';
+import { AutoRefresh } from '@/components/panel/auto-refresh';
+import { LiveDuration } from '@/components/panel/live-duration';
 
 export const metadata = { title: 'Adentro ahora' };
 
 /**
- * Quien esta adentro en este momento.
+ * Quien esta adentro en este momento, con el tiempo corriendo.
  *
- * Es una foto del presente, no un historial: lo que Nova Parking considera
- * "dentro" son los tiquetes en estado IN sin anular. Para lo demas esta la
- * pantalla de historial.
- *
- * No se muestra el numero interno del tiquete: es el autoincremental de Nova
- * Parking y no le dice nada al administrador (ni al cliente).
+ * Lo que Nova Parking considera "adentro" son los tiquetes en IN sin anular, y como
+ * marca OUT al cobrar, todo vehiculo de esta lista esta pendiente de pago (salvo
+ * mensualidades). El codigo del tiquete sale del volcado de tiquetes abiertos, porque
+ * el reporte de presentes no lo trae.
  */
 export default async function InsidePage({
   params,
@@ -32,27 +33,37 @@ export default async function InsidePage({
 }) {
   const { slug } = await params;
   const { client } = await panelAccess(slug);
-  const inside = client ? await getVehiclesInside(client) : NO_SOURCE;
+
+  const [inside, abiertos] = client
+    ? await Promise.all([getVehiclesInside(client), getTicketsExport(client, { status: 'IN' })])
+    : ([NO_SOURCE, NO_SOURCE] as const);
+
+  const porId = new Map(abiertos.ok ? abiertos.data.map((ticket) => [ticket.id, ticket]) : []);
+
+  const vehiculos = inside.ok
+    ? inside.data.vehicles
+        .map((vehiculo) => {
+          const entrada = parseUpstreamDate(vehiculo.checkedInAt);
+          return {
+            ...vehiculo,
+            code: porId.get(vehiculo.ticketId)?.code ?? null,
+            entradaIso: entrada?.toISOString() ?? null,
+            entradaMs: entrada?.getTime() ?? Number.MAX_SAFE_INTEGER,
+            mensualidad: /mensual/i.test(vehiculo.clientKind ?? ''),
+          };
+        })
+        // Los que llevan mas tiempo, arriba.
+        .sort((a, b) => a.entradaMs - b.entradaMs)
+    : [];
+
+  const numero = (value: number | null) => value?.toLocaleString('es-CO') ?? '—';
 
   return (
     <>
       <PageHeader
         title="Adentro ahora"
-        description="Los vehiculos que estan dentro del parqueadero en este momento."
-        action={
-          inside.ok && inside.data.vehicles.length > 0 ? (
-            <DownloadButton
-              filename={`adentro-${slug}`}
-              columns={[
-                { key: 'plate', label: 'Placa' },
-                { key: 'vehicleType', label: 'Tipo' },
-                { key: 'checkedInAt', label: 'Ingreso' },
-                { key: 'clientKind', label: 'Cliente' },
-              ]}
-              rows={inside.data.vehicles as unknown as Record<string, unknown>[]}
-            />
-          ) : null
-        }
+        description="Los vehiculos dentro del parqueadero y cuanto tiempo llevan."
+        action={<AutoRefresh />}
       />
 
       {!inside.ok ? (
@@ -60,81 +71,63 @@ export default async function InsidePage({
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-5">
-            <Stat
-              label="Total adentro"
-              value={inside.data.total.toLocaleString('es-CO')}
-              tone="accent"
-            />
-            <Stat
-              label="Carros"
-              value={inside.data.cars?.toLocaleString('es-CO') ?? '—'}
-            />
-            <Stat
-              label="Motos"
-              value={inside.data.motorcycles?.toLocaleString('es-CO') ?? '—'}
-            />
-            <Stat
-              label="Bicicletas"
-              value={inside.data.bicycles?.toLocaleString('es-CO') ?? '—'}
-            />
-            <Stat
-              label="Patinetas"
-              value={inside.data.scooters?.toLocaleString('es-CO') ?? '—'}
-            />
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <Stat
-              label="Con mensualidad"
-              value={inside.data.monthly?.toLocaleString('es-CO') ?? '—'}
-            />
-            <Stat
-              label="Ocasionales"
-              value={inside.data.regular?.toLocaleString('es-CO') ?? '—'}
-            />
-            {inside.data.undefinedType ? (
-              <Stat
-                label="Sin placa, por definir"
-                value={inside.data.undefinedType.toLocaleString('es-CO')}
-                hint="Motos, bicicletas o patinetas: el tipo se elige al pagar"
-              />
-            ) : null}
+            <Stat label="Total adentro" value={numero(inside.data.total)} tone="accent" />
+            <Stat label="Carros" value={numero(inside.data.cars)} />
+            <Stat label="Motos" value={numero(inside.data.motorcycles)} />
+            <Stat label="Bicicletas" value={numero(inside.data.bicycles)} />
+            <Stat label="Patinetas" value={numero(inside.data.scooters)} />
           </div>
 
           <div className="mt-4">
-            <Card>
-              {inside.data.vehicles.length === 0 ? (
+            <Card className="overflow-hidden">
+              <CardTitle
+                title="Vehiculos"
+                description={`${numero(inside.data.monthly)} con mensualidad · ${numero(inside.data.regular)} ocasionales${
+                  inside.data.undefinedType ? ` · ${inside.data.undefinedType} sin placa por definir` : ''
+                }`}
+              />
+              {vehiculos.length === 0 ? (
                 <EmptyState
                   title="El parqueadero esta vacio"
                   description="No hay ningun vehiculo adentro en este momento."
                 />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[36rem] text-sm">
+                  <table className="w-full min-w-[48rem] text-sm">
                     <TableHead>
-                      <Th first>Placa</Th>
+                      <Th first>Codigo</Th>
+                      <Th>Placa</Th>
                       <Th>Tipo</Th>
-                      <Th>Ingreso</Th>
-                      <Th last>Cliente</Th>
+                      <Th>Entrada</Th>
+                      <Th>Tiempo adentro</Th>
+                      <Th last>Pago</Th>
                     </TableHead>
                     <TableBody>
-                      {inside.data.vehicles.map((vehicle) => (
-                        <Row key={vehicle.ticketId}>
-                          <td className="py-3 pl-5 pr-4 font-medium text-ink-100">
-                            {vehicle.plate ?? (
-                              <span className="font-normal text-[var(--text-muted)]">
-                                Sin placa
-                              </span>
+                      {vehiculos.map((vehiculo) => (
+                        <Row key={vehiculo.ticketId}>
+                          <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                            {vehiculo.code ?? <span className="text-[var(--text-muted)]">—</span>}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-ink-100">
+                            {vehiculo.plate ?? (
+                              <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-[var(--text-secondary)]">
-                            {vehicle.vehicleType ?? '—'}
+                            {vehiculo.vehicleType ?? '—'}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
-                            {formatUpstreamDate(vehicle.checkedInAt)}
+                            {formatUpstreamDate(vehiculo.checkedInAt)}
                           </td>
-                          <td className="py-3 pl-4 pr-5 text-[var(--text-secondary)]">
-                            {vehicle.clientKind ?? '—'}
+                          <td className="whitespace-nowrap px-4 py-3 font-medium text-ink-100">
+                            <LiveDuration since={vehiculo.entradaIso} />
+                          </td>
+                          <td className="py-3 pl-4 pr-5">
+                            {vehiculo.mensualidad ? (
+                              <Badge tone="ok">Mensualidad</Badge>
+                            ) : (
+                              <Badge tone="warn">Pendiente</Badge>
+                            )}
                           </td>
                         </Row>
                       ))}
@@ -147,5 +140,19 @@ export default async function InsidePage({
         </>
       )}
     </>
+  );
+}
+
+function Badge({ tone, children }: { tone: 'ok' | 'warn'; children: React.ReactNode }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${
+        tone === 'ok'
+          ? 'bg-ok-500/12 text-ok-300 ring-ok-400/25'
+          : 'bg-warn-500/12 text-warn-300 ring-warn-400/25'
+      }`}
+    >
+      {children}
+    </span>
   );
 }

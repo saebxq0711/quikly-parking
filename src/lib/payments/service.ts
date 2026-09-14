@@ -246,6 +246,11 @@ export interface StartPaymentInput {
   identifier: string;
   ticketId: string;
   idempotencyKey: string;
+  /**
+   * Valor que el cliente vio y acepto en pantalla. Si el del parqueadero ya es otro
+   * (la tarifa siguio corriendo), no se cobra: se le muestra el nuevo total.
+   */
+  expectedAmount?: number;
 }
 
 /**
@@ -303,6 +308,23 @@ export async function startCardPayment(
     if (checkout.amount <= 0) {
       throw new AppError('VALIDATION', {
         publicMessage: 'Este tiquete no tiene un valor pendiente por cobrar.',
+      });
+    }
+
+    /*
+      La tarifa sigue corriendo mientras el cliente lee la pantalla o llena sus datos.
+      Se cobra lo que dice el sistema del parqueadero AHORA, pero nunca un valor
+      distinto del que el cliente acaba de aceptar: si cambio, no se toca el datafono
+      y la pantalla le muestra el nuevo total para que confirme otra vez.
+
+      Una vez enviado al datafono el valor queda fijo. Si la tarifa sube mientras pasa
+      la tarjeta, al parqueadero se le confirma el valor cobrado: su
+      `confirmar-externo` registra el monto que recibe (solo exige que sea mayor a 0).
+    */
+    if (input.expectedAmount !== undefined && checkout.amount !== input.expectedAmount) {
+      throw new AppError('CONFLICT', {
+        publicMessage: `El valor se actualizo a $ ${checkout.amount.toLocaleString('es-CO')} porque paso mas tiempo. Revisa el nuevo total y toca Pagar de nuevo.`,
+        detail: { expectedAmount: input.expectedAmount, amount: checkout.amount },
       });
     }
 
@@ -648,6 +670,15 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
       queueInvoice(updated.id).catch((error) =>
         console.error('[payments] fallo al encolar la factura', { paymentId, error }),
       ),
+    );
+    // El comprobante al correo del cliente: es su soporte cuando el kiosco no imprime.
+    // Import dinamico: `receipt-email` usa `serialize`, que importa este archivo.
+    enSegundoPlano(() =>
+      import('./receipt-email')
+        .then(({ sendReceiptEmail }) => sendReceiptEmail(updated.id))
+        .catch((error) =>
+          console.error('[payments] no se pudo enviar el comprobante', { paymentId, error }),
+        ),
     );
   }
 
