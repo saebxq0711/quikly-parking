@@ -169,10 +169,15 @@ export function PosFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vehicleType: vehicle.vehicleType, identifier }),
       });
-      const data = await response.json();
+      // Una respuesta que no es JSON (corte de red, bloqueo del proveedor, pagina de
+      // error) no debe romper la pantalla: se explica como problema de conexion.
+      const data = await response.json().catch(() => null);
 
-      if (!response.ok) {
-        setError(data?.error?.message ?? 'No fue posible consultar.');
+      if (!response.ok || !data) {
+        setError(
+          data?.error?.message ??
+            'No hay conexion con el servidor en este momento. Intenta de nuevo en unos segundos.',
+        );
         return;
       }
       const result = data as LookupResult;
@@ -760,6 +765,12 @@ function Summary({
   onRetry: () => void;
 }) {
   const canPay = lookup.found && !lookup.alreadyPaid && (lookup.amount ?? 0) > 0;
+  /*
+    Encontrado pero en $0: el sistema del parqueadero no tiene tarifa para ese tipo (o
+    el vehiculo acaba de entrar). Antes caia en "No encontramos tu vehiculo", que es
+    falso y hacia creer que la busqueda fallo.
+  */
+  const sinValor = lookup.found && !lookup.alreadyPaid && (lookup.amount ?? 0) <= 0;
 
   if (!canPay) {
     return (
@@ -773,10 +784,16 @@ function Summary({
         </div>
 
         <h1 className="mt-5 text-2xl font-semibold tracking-tight kland:text-xl">
-          {lookup.alreadyPaid ? 'Este tiquete ya fue pagado' : 'No encontramos tu vehiculo'}
+          {lookup.alreadyPaid
+            ? 'Este tiquete ya fue pagado'
+            : sinValor
+              ? 'No hay valor por cobrar'
+              : 'No encontramos tu vehiculo'}
         </h1>
         <p className="mx-auto mt-3 max-w-md text-[17px] leading-relaxed text-[var(--text-secondary)] kland:text-base">
-          {lookup.notice ?? 'Verifica el dato ingresado e intenta nuevamente.'}
+          {sinValor
+            ? 'Encontramos tu vehiculo, pero el parqueadero no tiene un valor para cobrar en este momento. Acercate a la oficina del parqueadero.'
+            : (lookup.notice ?? 'Verifica el dato ingresado e intenta nuevamente.')}
         </p>
 
         {/* Ayuda concreta en vez de dejar al operador adivinando. */}

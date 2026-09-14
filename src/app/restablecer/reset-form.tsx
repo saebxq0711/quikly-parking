@@ -4,7 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MdCheckCircle } from 'react-icons/md';
-import { Alert, Button, Field, Input } from '@/components/ui';
+import { Alert, Button, Field } from '@/components/ui';
+import { PasswordInput } from '@/components/password-input';
 
 /**
  * Formulario de la nueva contrasena.
@@ -93,8 +94,7 @@ export function ResetForm({ token }: { token: string }) {
       {error ? <Alert tone="error">{error}</Alert> : null}
 
       <Field label="Nueva contrasena" hint="Minimo 10 caracteres.">
-        <Input
-          type="password"
+        <PasswordInput
           name="password"
           autoComplete="new-password"
           required
@@ -103,8 +103,7 @@ export function ResetForm({ token }: { token: string }) {
       </Field>
 
       <Field label="Escribela de nuevo">
-        <Input
-          type="password"
+        <PasswordInput
           name="confirmacion"
           autoComplete="new-password"
           required

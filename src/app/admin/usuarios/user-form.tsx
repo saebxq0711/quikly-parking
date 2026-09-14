@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { Field, Input, Select } from '@/components/ui';
+import { PasswordInput } from '@/components/password-input';
 import { createUser } from '../actions';
 
 interface LotOption {
@@ -30,11 +31,11 @@ export function UserForm({ parkingLots }: { parkingLots: LotOption[] }) {
       </Field>
 
       <Field label="Contrasena" hint="Minimo 10 caracteres, con mayusculas, minusculas y numeros.">
-        <Input name="password" type="password" required minLength={10} autoComplete="new-password" />
+        <PasswordInput name="password" required minLength={10} autoComplete="new-password" />
       </Field>
 
       <Field label="Confirma la contrasena">
-        <Input name="confirmPassword" type="password" required minLength={10} autoComplete="new-password" />
+        <PasswordInput name="confirmPassword" required minLength={10} autoComplete="new-password" />
       </Field>
 
       <Field label="Rol" hint="Los usuarios de kiosco se crean en la ficha del parqueadero.">

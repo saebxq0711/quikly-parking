@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Field, Input } from '@/components/ui';
+import { PasswordInput } from '@/components/password-input';
 
 export function LoginForm({ nextPath }: { nextPath?: string }) {
   const router = useRouter();
@@ -77,8 +78,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       </Field>
 
       <Field label="Contrasena">
-        <Input
-          type="password"
+        <PasswordInput
           name="password"
           autoComplete="current-password"
           required

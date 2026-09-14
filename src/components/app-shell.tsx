@@ -36,7 +36,11 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-dvh">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--line-subtle)] bg-[var(--surface-chrome)] lg:flex">
+      {/*
+        Fija a la altura de la pantalla: el contenido se desplaza y la barra no, asi
+        "Cambiar contrasena" y "Cerrar sesion" quedan siempre a la vista.
+      */}
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--line-subtle)] bg-[var(--surface-chrome)] lg:sticky lg:top-0 lg:flex lg:h-dvh">
         <div className="border-b border-[var(--line-subtle)] px-5 py-5">
           {/*
             El logo de Nova Parking, no una marca propia: el administrador entra

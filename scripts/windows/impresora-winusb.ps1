@@ -18,7 +18,7 @@
   Pide permiso de administrador. Solo toca impresoras USB (clase 07) conectadas.
   Con WinUSB la impresora deja de verse como impresora de Windows: solo la usa la web.
 #>
-param([switch]$Revertir, [string]$Url = 'https://quikly-parking.vercel.app')
+param([switch]$Revertir, [string]$Url = 'https://parking.quiklygo.com')
 
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {

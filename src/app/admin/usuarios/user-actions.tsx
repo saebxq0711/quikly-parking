@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { Alert, Input } from '@/components/ui';
+import { Alert } from '@/components/ui';
+import { PasswordInput } from '@/components/password-input';
 import {
   forceLogout,
   resetUserPassword,
@@ -81,18 +82,16 @@ export function UserActions({
           className="page-in mt-3 grid gap-2 rounded-xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/10 sm:ml-auto sm:w-80"
         >
           <input type="hidden" name="userId" value={userId} />
-          <Input
+          <PasswordInput
             name="password"
-            type="password"
             required
             minLength={10}
             placeholder="Nueva contrasena"
             autoComplete="new-password"
             aria-label="Nueva contrasena"
           />
-          <Input
+          <PasswordInput
             name="confirmPassword"
-            type="password"
             required
             minLength={10}
             placeholder="Repite la contrasena"

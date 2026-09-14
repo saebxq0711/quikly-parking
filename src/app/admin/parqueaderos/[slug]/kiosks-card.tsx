@@ -3,6 +3,7 @@
 import { MdAdd, MdExpandMore, MdPointOfSale } from 'react-icons/md';
 import { ActionForm } from '@/components/action-form';
 import { Card, CardHeader, Checkbox, EmptyState, Field, Input } from '@/components/ui';
+import { PasswordInput } from '@/components/password-input';
 import { UserActions } from '@/app/admin/usuarios/user-actions';
 import { createKiosk, updateKiosk } from '../../actions';
 import { RedebanForm, StatusPill } from './redeban-card';
@@ -84,10 +85,10 @@ export function KiosksCard({
                   <Input name="email" type="email" required placeholder="kiosco1@parqueadero.co" autoComplete="off" />
                 </Field>
                 <Field label="Contrasena" hint="Minimo 10 caracteres, con mayusculas, minusculas y numeros.">
-                  <Input name="password" type="password" required minLength={10} autoComplete="new-password" />
+                  <PasswordInput name="password" required minLength={10} autoComplete="new-password" />
                 </Field>
                 <Field label="Confirma la contrasena">
-                  <Input name="confirmPassword" type="password" required minLength={10} autoComplete="new-password" />
+                  <PasswordInput name="confirmPassword" required minLength={10} autoComplete="new-password" />
                 </Field>
               </div>
               <Checkbox name="hasPrinter" label="Este kiosco imprime el comprobante" />
