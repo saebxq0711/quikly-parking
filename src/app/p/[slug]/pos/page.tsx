@@ -6,6 +6,7 @@ import { getPaymentPoint } from '@/lib/parking/payment-point';
 import { findLivePayment } from '@/lib/payments/service';
 import { serializePayment } from '@/lib/payments/serialize';
 import { PosFlow } from '@/components/pos/pos-flow';
+import { emisorDe } from '@/lib/printing/receipt-data';
 
 export const metadata = { title: 'Punto de pago' };
 
@@ -34,7 +35,20 @@ export default async function PosPage({
 
   const lot = await db.parkingLot.findUnique({
     where: { slug },
-    select: { id: true, name: true, active: true, testMode: true },
+    select: {
+      id: true,
+      name: true,
+      active: true,
+      testMode: true,
+      legalName: true,
+      nit: true,
+      taxRegime: true,
+      address: true,
+      city: true,
+      department: true,
+      phone: true,
+      email: true,
+    },
   });
   if (!lot) notFound();
 
@@ -89,6 +103,7 @@ export default async function PosPage({
         inputPlaceholder: rule.inputPlaceholder,
       }))}
       parkingLotName={lot.name}
+      issuer={emisorDe(lot)}
       testMode={lot.testMode}
       paymentPointName={point.name}
       hasPrinter={point.hasPrinter}

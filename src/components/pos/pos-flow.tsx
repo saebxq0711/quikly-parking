@@ -24,7 +24,8 @@ import { ExitGate } from './exit-gate';
 import { CustomerStep, type CustomerData } from './customer-step';
 import { Receipt } from './receipt';
 import { InvoiceTicket } from './invoice-ticket';
-import { impresoraEmparejada, imprimirPorUsb } from '@/lib/printing/usb-printer';
+import { impresoraEmparejada, imprimirPorUsb, vigilarImpresora } from '@/lib/printing/usb-printer';
+import type { ReceiptIssuer } from '@/lib/printing/receipt-data';
 import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
 
 /**
@@ -101,14 +102,20 @@ export function PosFlow({
   parkingLotName,
   paymentPointName,
   hasPrinter,
+  issuer,
   livePayment,
   testMode = false,
 }: {
   vehicles: PosVehicle[];
   parkingLotName: string;
+  /** Datos del parqueadero para el encabezado del papel impreso. */
+  issuer: ReceiptIssuer;
   /** Solo para soporte: no se muestra al cliente. */
   paymentPointName: string;
-  /** Si este punto de pago tiene impresora: decide si se imprime el comprobante. */
+  /**
+   * La administracion marco impresora. Una impresora USB autorizada se detecta sola
+   * (`vigilarImpresora`); esta marca decide si, sin USB, se imprime por el navegador.
+   */
   hasPrinter: boolean;
   /**
    * Cobro en curso al abrir la pantalla, si lo hay. Permite retomar una
@@ -124,6 +131,14 @@ export function PosFlow({
   const [lookup, setLookup] = useState<LookupResult | null>(null);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [payment, setPayment] = useState<PaymentDTO | null>(livePayment);
+
+  /*
+    Impresora USB detectada sola: si este navegador tiene una autorizada y esta
+    conectada, el kiosco imprime aunque la administracion no haya marcado impresora.
+    Se vuelve a revisar cada vez que se conecta o desconecta algo por USB.
+  */
+  const [impresoraUsb, setImpresoraUsb] = useState(false);
+  useEffect(() => vigilarImpresora(setImpresoraUsb), []);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -419,7 +434,8 @@ export function PosFlow({
             error={error}
             onDone={reset}
             hasPrinter={hasPrinter}
-            parkingLotName={parkingLotName}
+            impresoraUsb={impresoraUsb}
+            issuer={issuer}
           />
         ) : null}
       </div>
@@ -975,16 +991,21 @@ function Result({
   error,
   onDone,
   hasPrinter,
-  parkingLotName,
+  impresoraUsb,
+  issuer,
 }: {
   payment: PaymentDTO;
   error: string | null;
   onDone: () => void;
+  /** La administracion marco impresora: sin USB, se imprime por el navegador. */
   hasPrinter: boolean;
-  parkingLotName: string;
+  /** Hay una impresora USB autorizada y conectada: se imprime por ahi, este marcado o no. */
+  impresoraUsb: boolean;
+  issuer: ReceiptIssuer;
 }) {
   const approved = payment.status === 'APPROVED';
-  const imprimir = approved && hasPrinter;
+  // Se decide al mostrar el resultado: desconectar el cable a mitad no cambia el plan.
+  const [imprimir] = useState(() => approved && (hasPrinter || impresoraUsb));
   const [seconds, setSeconds] = useState(RESULT_TIMEOUT_S);
   const [impresion, setImpresion] = useState<Impresion>('factura-en-camino');
   const [factura, setFactura] = useState<InvoiceDocumentDTO | null>(null);
@@ -1088,7 +1109,9 @@ function Result({
       const impresora = await impresoraEmparejada().catch(() => null);
       if (!vigente) return;
       if (!impresora) {
-        setPorNavegador(true);
+        // Sin USB, por el navegador solo si la administracion marco impresora.
+        if (hasPrinter) setPorNavegador(true);
+        else setListo(true);
         return;
       }
 
@@ -1097,7 +1120,7 @@ function Result({
         const datos =
           impresion === 'factura' && factura
             ? facturaEscPos(factura, payment)
-            : comprobanteEscPos(payment, parkingLotName);
+            : comprobanteEscPos(payment, issuer);
         await imprimirPorUsb(impresora, datos);
         if (vigente) setListo(true);
       } catch (error) {
@@ -1105,14 +1128,16 @@ function Result({
         // se intenta por el navegador para que el cliente no se quede sin papel.
         console.error('[kiosco] no se pudo imprimir por USB', error);
         yaImprimio.current = false;
-        if (vigente) setPorNavegador(true);
+        if (!vigente) return;
+        if (hasPrinter) setPorNavegador(true);
+        else setListo(true);
       }
     })();
 
     return () => {
       vigente = false;
     };
-  }, [imprimir, impresion, factura, payment, parkingLotName]);
+  }, [imprimir, impresion, factura, payment, issuer, hasPrinter]);
 
   /*
     La pantalla vuelve sola: nadie del parqueadero esta ahi para dejarla lista
@@ -1230,11 +1255,7 @@ function Result({
       ) : null}
 
       {imprimir && porNavegador && impresion === 'comprobante' ? (
-        <Receipt
-          payment={payment}
-          parkingLotName={parkingLotName}
-          onReady={alListo}
-        />
+        <Receipt payment={payment} issuer={issuer} onReady={alListo} />
       ) : null}
     </div>
   );

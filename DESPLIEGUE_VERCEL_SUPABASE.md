@@ -106,8 +106,8 @@ Windows toma la impresora USB con su controlador de impresión (`usbprint`), y a
 1. **Impresora térmica de 80 mm, por USB directo (recomendado):**
    - Conectarla y encenderla.
    - Correr `scripts\windows\impresora-winusb.ps1` (clic derecho → *Ejecutar con PowerShell*; pide permiso de administrador). Le pone el controlador **WinUSB** que ya trae Windows; no se descarga nada.
-   - En Chrome o Edge, entrar con el usuario del punto de pago a `https://<tu dominio>/p/122/pos/impresora`, tocar **Conectar impresora**, elegirla y **Imprimir prueba**.
-   - Desde ahí la web imprime sola la factura o el comprobante: sin cuadro de impresión, con QR y corte de papel.
+   - El mismo script **autoriza la impresora para la web en Chrome y Edge** (política `WebUsbAllowDevicesForUrls`). Al cerrar y reabrir el navegador, el kiosco la detecta sola: no hay que entrar a `/impresora` ni tocar nada. Se comprueba en `chrome://policy`. Si la web tiene otro dominio: `impresora-winusb.ps1 -Url https://<tu dominio>`.
+   - Para probarla: `https://<tu dominio>/p/122/pos/impresora` → **Imprimir prueba**. Desde ahí la web imprime sola la factura o el comprobante: sin cuadro de impresión, con QR y corte de papel.
    - Con WinUSB la impresora ya no aparece como impresora de Windows (solo la usa la web). Para devolverla: `impresora-winusb.ps1 -Revertir`.
 2. **Alternativa, por el navegador:** instalar el controlador del fabricante (Gainscha/DigitalPos), dejarla **predeterminada** con papel de 80 mm y abrir Chrome con `--kiosk-printing` (paso 4). Si solo aparecen "Microsoft Print to PDF" o "XPS", falta el controlador.
 3. **Escáner QR USB:** funciona como un teclado; no se configura nada.

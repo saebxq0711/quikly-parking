@@ -116,9 +116,21 @@ model ParkingLot {
   /// Identificador legible usado en URLs (/p/<slug>/...)
   slug     String  @unique
   name     String
-  nit      String?
-  address  String?
-  city     String?
+
+  /// Datos del emisor: encabezan el comprobante y la factura impresos en el kiosco.
+  /// Se piden al crear el parqueadero (`createParkingLot`).
+  /// Razon social, tal como aparece en el RUT.
+  legalName  String?
+  /// Con digito de verificacion: 900123456-7.
+  nit        String?
+  /// "Responsable de IVA" o "No responsable de IVA".
+  taxRegime  String?
+  address    String?
+  city       String?
+  department String?
+  phone      String?
+  email      String?
+
   timezone String  @default("America/Bogota")
   active   Boolean @default(true)
 
@@ -383,6 +395,13 @@ model Payment {
   /// Id del ParkingTicket en el sistema existente. Es la llave de union entre
   /// los dos sistemas: NO es una FK, el tiquete vive en la base de Nova Parking.
   externalTicketId String
+
+  /// Codigo del tiquete (`A7B48`) e ingreso, copiados del sistema del parqueadero al
+  /// iniciar el cobro: salen en el comprobante. Los carros van por placa y no traen codigo.
+  ticketCode  String?
+  entryAt     DateTime?
+  /// Permanencia liquidada, en minutos, segun el sistema del parqueadero.
+  stayMinutes Int?
 
   /// Cliente que pago, identificado en el kiosco por su numero de documento.
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)

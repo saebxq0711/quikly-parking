@@ -63,7 +63,8 @@ interface USBDevice {
   transferOut(endpointNumber: number, data: BufferSource): Promise<USBOutTransferResult>;
 }
 
-interface USB {
+/** Emite `connect` y `disconnect` al conectar o quitar un dispositivo. */
+interface USB extends EventTarget {
   getDevices(): Promise<USBDevice[]>;
   requestDevice(options: { filters: USBDeviceFilter[] }): Promise<USBDevice>;
 }

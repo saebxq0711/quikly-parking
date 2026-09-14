@@ -328,6 +328,15 @@ button:disabled,
     margin: 0;
   }
 
+  /* Titulo de cada bloque del papel: cliente, vehiculo, pago. */
+  .receipt-section {
+    margin: 0 0 1mm;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
   .receipt-fine-label {
     margin: 2.5mm 0 0;
     font-size: 9px;

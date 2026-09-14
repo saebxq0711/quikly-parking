@@ -51,6 +51,39 @@ export async function impresoraEmparejada(): Promise<USBDevice | null> {
   return dispositivos.find(esImpresora) ?? null;
 }
 
+/**
+ * Detecta la impresora sola: avisa si hay una autorizada conectada al empezar y cada vez
+ * que se conecta o se quita algo por USB. Devuelve la funcion para dejar de escuchar.
+ *
+ * "Autorizada" es por navegador: la da el toque en Conectar impresora
+ * (`emparejarImpresora`) o, en un PC preparado con `scripts/windows/impresora-winusb.ps1`,
+ * la politica de Chrome/Edge, sin ningun toque.
+ */
+export function vigilarImpresora(alCambiar: (conectada: boolean) => void): () => void {
+  const usb = typeof navigator !== 'undefined' ? navigator.usb : undefined;
+  if (!usb) return () => undefined;
+
+  let vigente = true;
+  const revisar = () => {
+    impresoraEmparejada()
+      .then((dispositivo) => {
+        if (vigente) alCambiar(Boolean(dispositivo));
+      })
+      .catch(() => {
+        if (vigente) alCambiar(false);
+      });
+  };
+
+  revisar();
+  usb.addEventListener('connect', revisar);
+  usb.addEventListener('disconnect', revisar);
+  return () => {
+    vigente = false;
+    usb.removeEventListener('connect', revisar);
+    usb.removeEventListener('disconnect', revisar);
+  };
+}
+
 /** Abre el selector de Chrome para autorizar la impresora. Tiene que venir de un toque. */
 export async function emparejarImpresora(): Promise<USBDevice> {
   if (!navigator.usb) {

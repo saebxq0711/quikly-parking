@@ -39,7 +39,7 @@ El modo de pruebas **no borra nada**. Esto es lo que había en Supabase justo an
 | Parqueadero | `122` — Parqueadero 122, activo |
 | Sistema del parqueadero (túnel) | `https://api.parqueadero122.com` |
 | Token de Nova Parking | Guardado **cifrado** en la base (el mismo de Moyano) |
-| NIT, dirección, ciudad | Sin cargar |
+| Datos del emisor (razón social, NIT, régimen, dirección, ciudad, departamento, teléfono) | **Sin cargar.** El proyecto de Moyano solo trae los de su base de pruebas ("PARQUEADERO GOMEZ GOMEZ", marcados "confirmar con el cliente"). Hay que pedirlos al cliente |
 | Punto de pago | `PP1` — Punto de pago, activo, **sin impresora** (se marcó *con impresora* para las pruebas) |
 | Reglas de búsqueda | Las de fábrica: carro por placa; moto, bici y patineta por código |
 | Redeban | Ambiente de **pruebas** (`sipconnectortest.azurewebsites.net`), red 0. Usuario y clave cifrados |
@@ -51,11 +51,11 @@ Las claves (token, Redeban, SIIGO, Resend, base de datos) están cifradas en Sup
 
 ## 3. Cómo volver a producción
 
-1. **Moyano:** el túnel tiene que responder. Hoy `https://api.parqueadero122.com` da **502** (el backend del servidor Linux no está alcanzable). Se comprueba con `npm run nova:check`: debe decir `Enlace OK`.
+1. **Moyano:** el túnel tiene que responder. Desde el 14/09/2026 `https://api.parqueadero122.com` ya responde desde el servidor Linux (`health` da 403 sin token y 200 con el token guardado, que es el mismo del `.env` de Moyano). Se comprueba con `npm run nova:check`: debe decir `Enlace OK`.
 2. **SuperAdmin → Parqueaderos → 122 → Sistema del parqueadero:** desmarcar **Modo de pruebas** y *Guardar modo*. Desde ese momento el kiosco vuelve a usar el túnel con el token guardado. Pulsar **Probar conexión**.
 3. **Redeban:** reemplazar las credenciales de pruebas por las de producción del comercio (código único, usuario, clave y código del datáfono real).
 4. **SIIGO:** credenciales de la empresa real, comprobante **electrónico** con su resolución DIAN, vendedor y forma de pago reales. Activar *Enviar la factura a la DIAN* y *Enviar la factura electrónica al correo del cliente*.
-5. **Datos del parqueadero:** cargar NIT, dirección y ciudad; salen en la factura impresa.
+5. **Datos del parqueadero:** cargar razón social, NIT, régimen, dirección, ciudad, departamento y teléfono reales (el formulario ya no deja guardar sin ellos); encabezan el comprobante y la factura impresos.
 6. **Punto de pago:** dejar *con impresora* solo si el kiosco de producción la tiene.
 7. **Vercel:** poner `APP_URL` con el dominio definitivo (va en los QR impresos).
 8. **Servidor del parqueadero:** que Moyano ponga `url_publica_tiquete = https://<dominio>/t` en `deploy/sitios/parqueadero_122.json` y corra `configurar_sitio`.

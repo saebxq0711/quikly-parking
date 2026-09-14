@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/app-shell';
 import { ActionForm } from '@/components/action-form';
 import { Card, CardHeader, EmptyState, Field, Input } from '@/components/ui';
 import { createParkingLot } from '../actions';
+import { ParkingLotDataFields } from './lot-fields';
 
 export const metadata = { title: 'Parqueaderos' };
 
@@ -139,12 +140,7 @@ export default async function ParkingLotsPage() {
               >
                 <Input name="slug" required placeholder="122" spellCheck={false} />
               </Field>
-              <Field label="Ciudad">
-                <Input name="city" />
-              </Field>
-              <Field label="NIT">
-                <Input name="nit" placeholder="900123456-7" />
-              </Field>
+              <ParkingLotDataFields compacto />
             </ActionForm>
           </div>
         </Card>

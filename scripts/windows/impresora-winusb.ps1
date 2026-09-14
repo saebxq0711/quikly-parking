@@ -1,23 +1,28 @@
 <#
   Impresora de recibos USB para el kiosco en un PC con Windows.
 
-  Windows toma las impresoras USB con su controlador de impresion (usbprint) y asi
-  Chrome/Edge no las pueden abrir por WebUSB. Este script les pone el controlador
-  "WinUsb Device" que ya trae Windows (no se descarga nada). Despues, en la web:
-  /p/<sitio>/pos/impresora -> Conectar impresora -> Imprimir prueba.
+  Se corre UNA vez por PC de kiosco, con la impresora conectada. Hace dos cosas:
+
+  1. Windows toma las impresoras USB con su controlador de impresion (usbprint) y asi
+     Chrome/Edge no las pueden abrir por WebUSB. Les pone el controlador "WinUsb Device"
+     que ya trae Windows (no se descarga nada).
+  2. Autoriza esas impresoras para la web del kiosco en Chrome y Edge (politica
+     WebUsbAllowDevicesForUrls). Asi no hay que entrar a /impresora a conectarla: al
+     reabrir el navegador el kiosco la detecta sola. Se comprueba en chrome://policy.
 
   Uso (clic derecho -> Ejecutar con PowerShell, o desde una consola):
-    powershell -ExecutionPolicy Bypass -File impresora-winusb.ps1            # cambiar a WinUSB
-    powershell -ExecutionPolicy Bypass -File impresora-winusb.ps1 -Revertir  # volver al de Windows
+    powershell -ExecutionPolicy Bypass -File impresora-winusb.ps1                     # preparar
+    powershell -ExecutionPolicy Bypass -File impresora-winusb.ps1 -Url https://otro.dominio
+    powershell -ExecutionPolicy Bypass -File impresora-winusb.ps1 -Revertir           # deshacer
 
   Pide permiso de administrador. Solo toca impresoras USB (clase 07) conectadas.
   Con WinUSB la impresora deja de verse como impresora de Windows: solo la usa la web.
 #>
-param([switch]$Revertir)
+param([switch]$Revertir, [string]$Url = 'https://quikly-parking.vercel.app')
 
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-  $argumentos = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+  $argumentos = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Url `"$Url`""
   if ($Revertir) { $argumentos += ' -Revertir' }
   Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList $argumentos
   exit
@@ -37,7 +42,55 @@ function Get-Servicio($id) {
   (Get-PnpDeviceProperty -InstanceId $id -KeyName DEVPKEY_Device_Service -ErrorAction SilentlyContinue).Data
 }
 
+$politicas = @('HKLM:\SOFTWARE\Policies\Google\Chrome', 'HKLM:\SOFTWARE\Policies\Microsoft\Edge')
+$origen = ([Uri]$Url).GetLeftPart([UriPartial]::Authority)
+
+# Entradas de WebUsbAllowDevicesForUrls que no son de este origen: se conservan.
+function Get-PermisosAjenos($ruta) {
+  $lista = New-Object System.Collections.ArrayList
+  $previo = (Get-ItemProperty -Path $ruta -Name WebUsbAllowDevicesForUrls -ErrorAction SilentlyContinue).WebUsbAllowDevicesForUrls
+  if ($previo) {
+    try {
+      foreach ($entrada in @($previo | ConvertFrom-Json)) {
+        if (@($entrada.urls) -notcontains $origen) { [void]$lista.Add($entrada) }
+      }
+    } catch { }
+  }
+  return ,$lista
+}
+
+function Set-PermisoWebUsb($impresoras) {
+  $dispositivos = @(foreach ($d in $impresoras) {
+    if ($d.InstanceId -match 'VID_([0-9A-F]{4})&PID_([0-9A-F]{4})') {
+      [pscustomobject]@{ vendor_id = [Convert]::ToInt32($Matches[1], 16); product_id = [Convert]::ToInt32($Matches[2], 16) }
+    }
+  })
+  if ($dispositivos.Count -eq 0) { return }
+  foreach ($ruta in $politicas) {
+    if (-not (Test-Path $ruta)) { New-Item -Path $ruta -Force | Out-Null }
+    $lista = Get-PermisosAjenos $ruta
+    [void]$lista.Add([pscustomobject]@{ devices = $dispositivos; urls = @($origen) })
+    $json = ConvertTo-Json -InputObject $lista.ToArray() -Depth 5 -Compress
+    Set-ItemProperty -Path $ruta -Name WebUsbAllowDevicesForUrls -Value $json -Type String
+  }
+  Write-Host "Chrome y Edge: impresora autorizada para $origen (reabre el navegador)."
+}
+
+function Remove-PermisoWebUsb {
+  foreach ($ruta in $politicas) {
+    if (-not (Test-Path $ruta)) { continue }
+    $lista = Get-PermisosAjenos $ruta
+    if ($lista.Count -eq 0) {
+      Remove-ItemProperty -Path $ruta -Name WebUsbAllowDevicesForUrls -ErrorAction SilentlyContinue
+    } else {
+      Set-ItemProperty -Path $ruta -Name WebUsbAllowDevicesForUrls -Value (ConvertTo-Json -InputObject $lista.ToArray() -Depth 5 -Compress) -Type String
+    }
+  }
+  Write-Host "Chrome y Edge: permiso de impresora para $origen retirado."
+}
+
 if ($Revertir) {
+  Remove-PermisoWebUsb
   foreach ($d in Get-ImpresorasUsb | Where-Object { (Get-Servicio $_.InstanceId) -eq 'WINUSB' }) {
     Write-Host "Devolviendo $($d.FriendlyName) al controlador de Windows..."
     pnputil /remove-device "$($d.InstanceId)" | Out-Null
@@ -144,6 +197,8 @@ foreach ($d in $impresoras) {
     if ((Get-Servicio $id) -ne 'WINUSB') { [WinUsbKiosco]::CambiarClase($id, $claseUsb) }
   }
 }
+Set-PermisoWebUsb @(Get-ImpresorasUsb | Where-Object { (Get-Servicio $_.InstanceId) -eq 'WINUSB' })
 Write-Host ''
-Write-Host 'Siguiente paso: en Chrome o Edge abre /p/<sitio>/pos/impresora, toca Conectar impresora e Imprimir prueba.'
+Write-Host "Listo. Cierra y vuelve a abrir Chrome o Edge en $origen/p/<sitio>/pos: la impresora se usa sola."
+Write-Host "Para probarla: $origen/p/<sitio>/pos/impresora -> Imprimir prueba."
 Read-Host 'Enter para cerrar'

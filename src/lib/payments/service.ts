@@ -337,6 +337,14 @@ export async function startCardPayment(
         identifierKind: config.identifierKind,
         plate: checkout.ticket.plate,
         externalTicketId: input.ticketId,
+        // Para el comprobante: el cliente se lleva su codigo, entrada y permanencia.
+        ticketCode: checkout.ticket.code,
+        entryAt:
+          checkout.ticket.entryAt && !Number.isNaN(Date.parse(checkout.ticket.entryAt))
+            ? new Date(checkout.ticket.entryAt)
+            : null,
+        stayMinutes:
+          checkout.ticket.minutes !== null ? Math.round(checkout.ticket.minutes) : null,
         /*
           Los datos del cliente los da el propio cliente en el kiosco; el
           sistema del parqueadero solo se usa como respaldo si no se identifico.

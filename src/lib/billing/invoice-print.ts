@@ -1,4 +1,5 @@
 import type { Customer, Invoice, ParkingLot, Payment } from '@prisma/client';
+import { emisorDe, type ReceiptIssuer } from '@/lib/printing/receipt-data';
 
 /**
  * La factura, lista para imprimirse en el kiosco.
@@ -33,10 +34,8 @@ export interface InvoiceTaxDTO {
 }
 
 export interface InvoiceDocumentDTO {
-  issuerName: string;
-  issuerNit: string | null;
-  issuerAddress: string | null;
-  issuerCity: string | null;
+  /** El parqueadero que emite, con los datos de nuestra base. */
+  issuer: ReceiptIssuer;
   /** "Factura electronica de venta" solo si la DIAN la valido (hay CUFE). */
   electronic: boolean;
   number: string;
@@ -166,10 +165,7 @@ export function buildInvoicePrint(
   return {
     status: 'READY',
     document: {
-      issuerName: lot.name,
-      issuerNit: lot.nit,
-      issuerAddress: lot.address,
-      issuerCity: lot.city,
+      issuer: emisorDe(lot),
       electronic: Boolean(invoice.cufe),
       number,
       issuedAt: (payment.resolvedAt ?? payment.createdAt).toISOString(),

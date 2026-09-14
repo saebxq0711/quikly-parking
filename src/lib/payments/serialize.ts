@@ -21,7 +21,15 @@ export interface PaymentDTO {
   plate: string | null;
   vehicleIdentifier: string;
   vehicleType: string;
+  /** Codigo del tiquete (`A7B48`). Los carros van por placa y no lo tienen. */
+  ticketCode: string | null;
+  /** Ingreso y permanencia liquidada, segun el sistema del parqueadero. */
+  entryAt: string | null;
+  stayMinutes: number | null;
   customerName: string | null;
+  customerDocument: string | null;
+  /** Referencia del cobro: el IdTransaccion que se envio al datafono. */
+  reference: string | null;
   /** Datos del voucher del cliente. Nada de la terminal. */
   authorizationCode: string | null;
   receiptNumber: string | null;
@@ -77,7 +85,12 @@ export function serializePayment(payment: Payment): PaymentDTO {
     plate: payment.plate,
     vehicleIdentifier: payment.vehicleIdentifier,
     vehicleType: payment.vehicleType,
+    ticketCode: payment.ticketCode,
+    entryAt: payment.entryAt?.toISOString() ?? null,
+    stayMinutes: payment.stayMinutes,
     customerName: payment.customerName,
+    customerDocument: payment.customerDocument,
+    reference: payment.providerTransactionId,
     authorizationCode: payment.authorizationCode,
     receiptNumber: payment.receiptNumber,
     cardBrand: payment.cardBrand,

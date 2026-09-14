@@ -52,10 +52,66 @@ const parkingLotSchema = z.object({
       /^[a-z0-9-]+$/,
       'El identificador solo admite minusculas, numeros y guiones.',
     ),
-  city: z.string().max(80).optional(),
-  nit: z.string().max(40).optional(),
-  address: z.string().max(160).optional(),
+  /*
+    Datos del emisor. Son obligatorios porque encabezan el comprobante y la factura
+    que se imprimen en el kiosco: un papel sin NIT ni direccion no sirve de soporte.
+  */
+  legalName: z
+    .string()
+    .min(3, 'Escribe la razon social tal como aparece en el RUT.')
+    .max(160),
+  nit: z
+    .string()
+    .regex(/^\d{6,10}-\d$/, 'El NIT va con su digito de verificacion, asi: 900123456-7.'),
+  taxRegime: z.enum(['Responsable de IVA', 'No responsable de IVA'], {
+    message: 'Elige el regimen de IVA.',
+  }),
+  address: z.string().min(5, 'Escribe la direccion del parqueadero.').max(160),
+  city: z.string().min(2, 'Escribe la ciudad.').max(80),
+  department: z.string().min(2, 'Escribe el departamento.').max(80),
+  phone: z
+    .string()
+    .regex(/^[0-9+()\s-]{7,20}$/, 'Escribe un telefono de contacto valido.'),
+  email: z
+    .string()
+    .max(160)
+    .refine(
+      (valor) => valor === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor),
+      'El correo del parqueadero no es valido.',
+    ),
 });
+
+function parkingLotFields(formData: FormData) {
+  const texto = (campo: string) => String(formData.get(campo) ?? '').trim();
+  return {
+    name: texto('name'),
+    slug: texto('slug').toLowerCase(),
+    legalName: texto('legalName'),
+    // Se acepta con puntos o espacios (900.123.456-7); se guarda limpio.
+    nit: texto('nit').replace(/[.\s]/g, ''),
+    taxRegime: texto('taxRegime'),
+    address: texto('address'),
+    city: texto('city'),
+    department: texto('department'),
+    phone: texto('phone'),
+    email: texto('email').toLowerCase(),
+  };
+}
+
+function parkingLotData(datos: z.infer<typeof parkingLotSchema>) {
+  return {
+    name: datos.name,
+    slug: datos.slug,
+    legalName: datos.legalName,
+    nit: datos.nit,
+    taxRegime: datos.taxRegime,
+    address: datos.address,
+    city: datos.city,
+    department: datos.department,
+    phone: datos.phone,
+    email: datos.email || null,
+  };
+}
 
 export async function createParkingLot(
   _prev: ActionResult | null,
@@ -63,25 +119,11 @@ export async function createParkingLot(
 ): Promise<ActionResult> {
   const user = await requireRole('SUPERADMIN');
 
-  const parsed = parkingLotSchema.safeParse({
-    name: formData.get('name'),
-    slug: String(formData.get('slug') ?? '').toLowerCase().trim(),
-    city: formData.get('city') || undefined,
-    nit: formData.get('nit') || undefined,
-    address: formData.get('address') || undefined,
-  });
+  const parsed = parkingLotSchema.safeParse(parkingLotFields(formData));
   if (!parsed.success) return fail(parsed.error.issues[0].message);
 
   try {
-    const lot = await db.parkingLot.create({
-      data: {
-        name: parsed.data.name,
-        slug: parsed.data.slug,
-        city: parsed.data.city ?? null,
-        nit: parsed.data.nit ?? null,
-        address: parsed.data.address ?? null,
-      },
-    });
+    const lot = await db.parkingLot.create({ data: parkingLotData(parsed.data) });
 
     // Cada parqueadero tiene exactamente un punto de pago: se crea con el
     // sitio para que no quede a medias y sin poder cobrar.
@@ -130,24 +172,14 @@ export async function updateParkingLot(
 
   const parsed = parkingLotUpdateSchema.safeParse({
     parkingLotId: formData.get('parkingLotId'),
-    name: formData.get('name'),
-    slug: String(formData.get('slug') ?? '').toLowerCase().trim(),
-    city: formData.get('city') || undefined,
-    nit: formData.get('nit') || undefined,
-    address: formData.get('address') || undefined,
+    ...parkingLotFields(formData),
   });
   if (!parsed.success) return fail(parsed.error.issues[0].message);
 
   try {
     const lot = await db.parkingLot.update({
       where: { id: parsed.data.parkingLotId },
-      data: {
-        name: parsed.data.name,
-        slug: parsed.data.slug,
-        city: parsed.data.city ?? null,
-        nit: parsed.data.nit ?? null,
-        address: parsed.data.address ?? null,
-      },
+      data: parkingLotData(parsed.data),
     });
 
     await recordAudit({

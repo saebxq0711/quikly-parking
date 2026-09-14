@@ -98,8 +98,10 @@ export function PrinterSetup({
 
         <h1 className="mt-6 text-3xl font-semibold tracking-tight">Impresora del kiosco</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          Conecta la impresora de recibos por USB y autorizala una sola vez. Despues el
-          kiosco imprime las facturas solo, sin controladores ni ventanas de impresion.
+          Conecta la impresora de recibos por USB y autorizala una sola vez en este
+          navegador. Desde ahi el kiosco la detecta sola cada vez que esta conectada e
+          imprime sin ventanas de impresion. En un PC con Windows preparado con el script
+          del kiosco ya aparece autorizada.
         </p>
 
         <div className="mt-6 rounded-2xl bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)]">

@@ -14,6 +14,7 @@ import { ConnectionCard } from './connection-card';
 import { RedebanCard } from './redeban-card';
 import { SiigoCard } from './siigo-card';
 import { VehicleRules } from './vehicle-rules';
+import { ParkingLotDataFields } from '../lot-fields';
 
 /**
  * Configuracion completa de UN parqueadero.
@@ -131,7 +132,7 @@ export default async function ParkingLotDetailPage({
         <Card>
           <CardHeader
             title="Datos del parqueadero"
-            description="Aparecen en la interfaz y en el soporte de las facturas."
+            description="Encabezan el comprobante y la factura que imprime el kiosco."
           />
           <div className="p-5">
             <ActionForm
@@ -155,16 +156,8 @@ export default async function ParkingLotDetailPage({
                     spellCheck={false}
                   />
                 </Field>
-                <Field label="Ciudad">
-                  <Input name="city" defaultValue={lot.city ?? ''} />
-                </Field>
-                <Field label="NIT">
-                  <Input name="nit" defaultValue={lot.nit ?? ''} />
-                </Field>
               </div>
-              <Field label="Direccion">
-                <Input name="address" defaultValue={lot.address ?? ''} />
-              </Field>
+              <ParkingLotDataFields lot={lot} />
             </ActionForm>
           </div>
         </Card>
@@ -223,19 +216,20 @@ export default async function ParkingLotDetailPage({
                 </Field>
               </div>
               {/*
-                Lo marca una persona porque la pagina no puede saberlo: un
-                navegador no deja ver que impresoras hay conectadas.
+                Una impresora USB autorizada la detecta el kiosco solo. Esta marca es
+                para la que imprime por el navegador (controlador instalado en
+                Windows): esa la pagina no la puede ver.
               */}
               <div className="space-y-1.5 border-t border-[var(--line-subtle)] pt-4">
                 <Checkbox
                   name="hasPrinter"
                   defaultChecked={lot.paymentPoint?.hasPrinter ?? false}
-                  label="Este kiosco tiene impresora de recibos"
+                  label="Imprimir por el navegador si no hay impresora USB"
                 />
                 <p className="pl-6.5 text-xs text-[var(--text-muted)]">
-                  Al aprobarse un pago imprime un comprobante con un QR hacia la
-                  factura. Para que no aparezca el cuadro de impresion, abre el
-                  navegador del kiosco con --kiosk --kiosk-printing.
+                  Una impresora USB autorizada en el kiosco se detecta sola y no necesita
+                  esta marca. Marcala solo si la impresora esta instalada en Windows con
+                  su controlador; abre entonces el navegador con --kiosk --kiosk-printing.
                 </p>
               </div>
             </ActionForm>
