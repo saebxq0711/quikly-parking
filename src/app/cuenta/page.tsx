@@ -32,12 +32,12 @@ export default async function AccountPage() {
 
         <div className="mb-8 mt-6 text-center">
           <Image
-            src="/nova-parking-vertical.png"
-            alt="Nova Parking"
-            width={1387}
-            height={1729}
+            src="/quikly-parking.png"
+            alt="Quikly Parking"
+            width={783}
+            height={269}
             priority
-            className="mx-auto h-16 w-auto"
+            className="mx-auto h-12 w-auto"
           />
           <h1 className="mt-5 text-xl font-semibold text-white">Cambiar contrasena</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{user.email}</p>

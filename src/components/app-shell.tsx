@@ -45,12 +45,12 @@ export function AppShell({
             oscura — que es la unica que tiene esta aplicacion.
           */}
           <Image
-            src="/nova-parking-horizontal.png"
-            alt="Nova Parking"
-            width={1433}
-            height={360}
+            src="/quikly-parking.png"
+            alt="Quikly Parking"
+            width={783}
+            height={269}
             priority
-            className="h-7 w-auto"
+            className="h-9 w-auto"
           />
           <p className="mt-4 truncate text-[13px] font-medium text-ink-200">
             {contextName}
@@ -86,11 +86,11 @@ export function AppShell({
         {/* Navegacion compacta bajo lg: el mismo destino, sin barra lateral. */}
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--line-subtle)] bg-[var(--surface-chrome)]/95 px-4 py-2.5 backdrop-blur lg:hidden">
           <Image
-            src="/nova-parking-horizontal.png"
-            alt="Nova Parking"
-            width={1433}
-            height={360}
-            className="hidden h-5 w-auto shrink-0 sm:block"
+            src="/quikly-parking.png"
+            alt="Quikly Parking"
+            width={783}
+            height={269}
+            className="hidden h-7 w-auto shrink-0 sm:block"
           />
           <SideNav items={navItems} compact />
           <Link

@@ -36,14 +36,18 @@ const schema = z.object({
       lastName: z.string().max(80).optional().default(''),
       phone: z.string().max(30).optional(),
       /**
-       * Obligatorio: es a donde SIIGO envia la factura electronica. Sin correo la
-       * factura se emite, pero el cliente nunca la recibe.
+       * A donde van el comprobante y la factura electronica. No se exige: hay clientes
+       * sin correo. Sin el, la factura se emite igual y el comprobante queda en pantalla.
        */
       email: z
         .string()
         .trim()
         .max(120)
-        .email('Escribe un correo valido: ahi te enviamos la factura electronica.'),
+        .refine(
+          (valor) => valor === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor),
+          'Escribe un correo valido: ahi te enviamos la factura electronica.',
+        )
+        .optional(),
     })
     .optional(),
 });

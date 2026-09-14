@@ -87,7 +87,7 @@ export function resetPasswordEmail(options: {
     <tr>
       <td style="padding:32px 32px 8px;text-align:center;">
         <div style="display:inline-block;background-color:#0b0e14;border-radius:12px;padding:14px 22px;">
-          <img src="${options.logoUrl}" alt="Nova Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
+          <img src="${options.logoUrl}" alt="Quikly Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
         </div>
       </td>
     </tr>
@@ -135,7 +135,7 @@ export function resetPasswordEmail(options: {
       <td style="padding:0 32px 28px;">
         <div style="height:1px;background:#232838;margin-bottom:16px;"></div>
         <p style="margin:0;font-size:11px;color:#5a6377;text-align:center;">
-          Nova Parking &middot; Gesti&oacute;n y cobro de parqueaderos
+          Quikly Parking &middot; Gesti&oacute;n y cobro de parqueaderos
         </p>
       </td>
     </tr>
@@ -202,7 +202,7 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
     <tr>
       <td style="padding:32px 32px 8px;text-align:center;">
         <div style="display:inline-block;background-color:#0b0e14;border-radius:12px;padding:14px 22px;">
-          <img src="${options.logoUrl}" alt="Nova Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
+          <img src="${options.logoUrl}" alt="Quikly Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
         </div>
       </td>
     </tr>
@@ -230,7 +230,7 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
           La factura electr&oacute;nica te llega en un correo aparte cuando se emite.
         </p>
         <p style="margin:0;font-size:11px;color:#5a6377;text-align:center;">
-          Nova Parking &middot; Gesti&oacute;n y cobro de parqueaderos
+          Quikly Parking &middot; Gesti&oacute;n y cobro de parqueaderos
         </p>
       </td>
     </tr>

@@ -409,7 +409,7 @@ export async function startCardPayment(
     });
 
     try {
-      const redeban = await redebanClientFor(lot.id);
+      const redeban = await redebanClientFor(lot.id, input.paymentPoint.id);
 
       const orden = {
         amount: checkout.amount,
@@ -525,7 +525,7 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
 
   let state;
   try {
-    const redeban = await redebanClientFor(payment.parkingLotId);
+    const redeban = await redebanClientFor(payment.parkingLotId, payment.paymentPointId);
     state = await redeban.respuesta(transactionId);
   } catch (error) {
     // Un fallo de consulta NO resuelve el pago: sigue vivo y se reintenta.
@@ -735,7 +735,7 @@ async function expireIfStale(payment: Payment, age: number): Promise<Payment> {
 
   // Se libera la terminal antes de cerrar, para que la caja siga operando.
   if (payment.providerTransactionId) {
-    await redebanClientFor(payment.parkingLotId)
+    await redebanClientFor(payment.parkingLotId, payment.paymentPointId)
       .then((client) => client.borrar(payment.providerTransactionId!))
       .catch(() => undefined);
   }
@@ -837,7 +837,7 @@ export async function cancelPayment(
   if (isFinalStatus(latest.status)) return latest;
 
   if (payment.providerTransactionId) {
-    await redebanClientFor(payment.parkingLotId)
+    await redebanClientFor(payment.parkingLotId, payment.paymentPointId)
       .then((client) => client.borrar(payment.providerTransactionId!))
       .catch(() => undefined);
   }

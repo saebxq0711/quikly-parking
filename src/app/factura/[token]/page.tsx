@@ -61,10 +61,10 @@ export default async function FacturaPage({
     <main className="flex min-h-dvh items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm text-center">
         <Image
-          src="/nova-parking-vertical.png"
-          alt="Nova Parking"
-          width={1387}
-          height={1729}
+          src="/quikly-parking.png"
+          alt="Quikly Parking"
+          width={783}
+          height={269}
           priority
           className="mx-auto h-16 w-auto"
         />

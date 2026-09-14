@@ -2,29 +2,22 @@
 
 import { useState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { Alert, Field, Input, Select } from '@/components/ui';
+import { Field, Input, Select } from '@/components/ui';
 import { createUser } from '../actions';
 
 interface LotOption {
   id: string;
   name: string;
-  hasPaymentPoint: boolean;
 }
 
 /**
- * Alta de usuario.
+ * Alta de administradores.
  *
- * El punto de pago NO se pregunta: cada parqueadero tiene uno solo, asi que se
- * asigna solo. Pedirlo seria hacer elegir algo que no tiene alternativa.
+ * Los usuarios de kiosco no se crean aqui: nacen con su kiosco, en la ficha del
+ * parqueadero, porque cada uno opera un solo kiosco con su propio datafono.
  */
 export function UserForm({ parkingLots }: { parkingLots: LotOption[] }) {
-  const [role, setRole] = useState('PUNTO_PAGO');
-  const [lotId, setLotId] = useState(parkingLots[0]?.id ?? '');
-
-  const needsLot = role !== 'SUPERADMIN';
-  const lot = parkingLots.find((l) => l.id === lotId);
-  const blockedByPoint =
-    role === 'PUNTO_PAGO' && lot !== undefined && !lot.hasPaymentPoint;
+  const [role, setRole] = useState('ADMIN_PARQUEADERO');
 
   return (
     <ActionForm action={createUser} submitLabel="Crear usuario">
@@ -33,61 +26,30 @@ export function UserForm({ parkingLots }: { parkingLots: LotOption[] }) {
       </Field>
 
       <Field label="Correo electronico">
-        <Input
-          name="email"
-          type="email"
-          required
-          placeholder="usuario@parqueadero.com"
-        />
+        <Input name="email" type="email" required placeholder="usuario@parqueadero.com" />
       </Field>
 
-      <Field
-        label="Contrasena"
-        hint="Minimo 10 caracteres, con mayusculas, minusculas y numeros."
-      >
-        <Input
-          name="password"
-          type="password"
-          required
-          minLength={10}
-          autoComplete="new-password"
-        />
+      <Field label="Contrasena" hint="Minimo 10 caracteres, con mayusculas, minusculas y numeros.">
+        <Input name="password" type="password" required minLength={10} autoComplete="new-password" />
       </Field>
 
       <Field label="Confirma la contrasena">
-        <Input
-          name="confirmPassword"
-          type="password"
-          required
-          minLength={10}
-          autoComplete="new-password"
-        />
+        <Input name="confirmPassword" type="password" required minLength={10} autoComplete="new-password" />
       </Field>
 
-      <Field label="Rol">
+      <Field label="Rol" hint="Los usuarios de kiosco se crean en la ficha del parqueadero.">
         <Select name="role" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="PUNTO_PAGO">Punto de pago</option>
           <option value="ADMIN_PARQUEADERO">Administrador de parqueadero</option>
           <option value="SUPERADMIN">Super administrador</option>
         </Select>
       </Field>
 
-      {needsLot ? (
-        <Field
-          label="Parqueadero"
-          hint={
-            role === 'PUNTO_PAGO'
-              ? 'Se asigna solo al punto de pago de ese sitio.'
-              : undefined
-          }
-        >
-          <Select
-            name="parkingLotId"
-            value={lotId}
-            onChange={(e) => setLotId(e.target.value)}
-            required
-          >
-            <option value="">Selecciona un parqueadero</option>
+      {role !== 'SUPERADMIN' ? (
+        <Field label="Parqueadero">
+          <Select name="parkingLotId" required defaultValue="">
+            <option value="" disabled>
+              Elige un parqueadero
+            </option>
             {parkingLots.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.name}
@@ -95,13 +57,6 @@ export function UserForm({ parkingLots }: { parkingLots: LotOption[] }) {
             ))}
           </Select>
         </Field>
-      ) : null}
-
-      {blockedByPoint ? (
-        <Alert tone="warning">
-          Ese parqueadero no tiene punto de pago configurado, asi que todavia no
-          puede tener un usuario de caja.
-        </Alert>
       ) : null}
     </ActionForm>
   );

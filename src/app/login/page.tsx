@@ -25,10 +25,10 @@ export default async function LoginPage({
             panel se usa la horizontal, que cabe en la barra lateral.
           */}
           <Image
-            src="/nova-parking-vertical.png"
-            alt="Nova Parking"
-            width={1387}
-            height={1729}
+            src="/quikly-parking.png"
+            alt="Quikly Parking"
+            width={783}
+            height={269}
             priority
             className="mx-auto h-24 w-auto"
           />

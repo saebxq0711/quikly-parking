@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         html: resetPasswordEmail({
           link: `${env.APP_URL}/restablecer?token=${token}`,
           minutes: env.RESET_TOKEN_MINUTES,
-          logoUrl: `${env.APP_URL}/nova-parking-horizontal.png`,
+          logoUrl: `${env.APP_URL}/quikly-parking.png`,
         }),
       });
     }

@@ -3,15 +3,11 @@ import { AppError } from '../errors';
 import type { CurrentUser } from '../auth/guards';
 
 /**
- * El punto de pago de un parqueadero.
+ * El kiosco de pago desde el que opera un usuario.
  *
- * Cada parqueadero tiene UNO y solo uno. No es una simplificacion temporal: la
- * base de datos lo garantiza con un indice unico sobre `parkingLotId`, asi que
- * no depende de que ninguna pantalla se acuerde de comprobarlo.
- *
- * Aun asi el punto de pago es una entidad propia y no un campo del parqueadero,
- * porque lleva los datos que viajan al datafono (cajero y numero de caja) y es
- * a lo que se atribuye cada cobro en los reportes.
+ * Un parqueadero puede tener varios kioscos, cada uno con su datafono, su impresora y
+ * su propio usuario. El kiosco se toma SIEMPRE del usuario de la sesion, nunca de la
+ * peticion: asi nadie cobra con el datafono de otro kiosco.
  */
 
 export interface OperablePoint {
@@ -20,7 +16,7 @@ export interface OperablePoint {
   code: string;
   cashierCode: string | null;
   boxNumber: string | null;
-  /** Si hay impresora de recibos: decide si el kiosco imprime el comprobante. */
+  /** Si este kiosco usa impresora de recibos. */
   hasPrinter: boolean;
 }
 
@@ -33,37 +29,26 @@ const SELECT = {
   hasPrinter: true,
 } as const;
 
-/**
- * Punto de pago del parqueadero, comprobando que el usuario pueda operarlo.
- *
- * Un usuario de punto de pago solo puede cobrar desde el suyo: si tuviera
- * asignado otro, la auditoria y el arqueo dejarian de significar algo.
- */
 export async function getPaymentPoint(
   user: CurrentUser,
   parkingLotId: string,
 ): Promise<OperablePoint> {
+  if (user.role !== 'PUNTO_PAGO' || !user.paymentPointId) {
+    throw new AppError('FORBIDDEN', {
+      publicMessage: 'Este usuario no tiene un kiosco de pago asignado.',
+      detail: { userId: user.id },
+    });
+  }
+
   const point = await db.paymentPoint.findFirst({
-    where: { parkingLotId, active: true },
+    where: { id: user.paymentPointId, parkingLotId, active: true },
     select: SELECT,
   });
 
   if (!point) {
     throw new AppError('NOT_FOUND', {
-      publicMessage:
-        'Este parqueadero no tiene un punto de pago activo. Avisa al administrador.',
-      detail: { parkingLotId },
-    });
-  }
-
-  if (
-    user.role === 'PUNTO_PAGO' &&
-    user.paymentPointId &&
-    user.paymentPointId !== point.id
-  ) {
-    throw new AppError('FORBIDDEN', {
-      publicMessage: 'Solo puedes cobrar desde el punto de pago que tienes asignado.',
-      detail: { userId: user.id, asignado: user.paymentPointId, actual: point.id },
+      publicMessage: 'Este kiosco esta fuera de servicio. Avisa al administrador.',
+      detail: { parkingLotId, paymentPointId: user.paymentPointId },
     });
   }
 

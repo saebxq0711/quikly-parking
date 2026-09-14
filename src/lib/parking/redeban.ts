@@ -4,10 +4,10 @@ import { getCredentials } from '../credentials';
 import { SipConnectorClient } from '@/integrations/sipconnector/client';
 
 /**
- * Configuracion de SIPConnector POR PARQUEADERO.
+ * Configuracion de SIPConnector POR KIOSCO.
  *
- * Cada parqueadero es un comercio distinto ante la red: tiene su propio codigo
- * unico, su propio usuario y su propio datafono. Por eso todo esto se configura
+ * Cada parqueadero puede tener varios kioscos de pago y cada uno cobra con su
+ * propio datafono: su propio codigo unico, usuario, clave y codigo de terminal. Por eso todo esto se configura
  * desde la administracion y se guarda cifrado, no en variables de entorno: una
  * sola web atiende varios parqueaderos y no puede compartir credenciales entre
  * ellos.
@@ -54,10 +54,12 @@ export interface RedebanStatus {
 /** Estado de la configuracion, para la pantalla del SuperAdmin. */
 export async function getRedebanStatus(
   parkingLotId: string,
+  paymentPointId: string,
 ): Promise<RedebanStatus> {
   const values = await getCredentials({
     provider: 'REDEBAN',
     parkingLotId,
+    paymentPointId,
   });
 
   const missing = REQUIRED.filter((key) => !values[key]).map(
@@ -83,8 +85,17 @@ export async function getRedebanStatus(
  */
 export async function redebanClientFor(
   parkingLotId: string,
+  paymentPointId: string | null,
 ): Promise<SipConnectorClient> {
-  const values = await getCredentials({ provider: 'REDEBAN', parkingLotId });
+  // Cada kiosco cobra con SU datafono: un cobro sin kiosco no tiene a cual enviarse.
+  if (!paymentPointId) {
+    throw new AppError('VALIDATION', {
+      publicMessage:
+        'Este punto de pago aun no puede cobrar con tarjeta. Acercate a la oficina del parqueadero.',
+      detail: { parkingLotId, falta: 'kiosco' },
+    });
+  }
+  const values = await getCredentials({ provider: 'REDEBAN', parkingLotId, paymentPointId });
   const missing = REQUIRED.filter((key) => !values[key]);
 
   if (missing.length > 0) {
@@ -109,7 +120,10 @@ export async function redebanClientFor(
 }
 
 /** Prueba de vida del medio de pago, sin arriesgar una transaccion. */
-export async function testRedebanConnection(parkingLotId: string): Promise<{
+export async function testRedebanConnection(
+  parkingLotId: string,
+  paymentPointId: string,
+): Promise<{
   ok: boolean;
   message: string;
 }> {
@@ -120,7 +134,7 @@ export async function testRedebanConnection(parkingLotId: string): Promise<{
   if (!lot) return { ok: false, message: 'Parqueadero no encontrado.' };
 
   try {
-    const client = await redebanClientFor(parkingLotId);
+    const client = await redebanClientFor(parkingLotId, paymentPointId);
     // `Version` no necesita token: comprueba red y codigo unico.
     const version = await client.version();
     if (!version.ok) {

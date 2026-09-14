@@ -81,7 +81,8 @@ export function CustomerStep({
   if (lookup?.found) {
     const needsEmail = !lookup.email;
     const email = needsEmail ? missingEmail : (lookup.email ?? '');
-    const emailOk = EMAIL.test(email);
+    // El correo no se exige (hay quien no tiene): solo se valida si lo escriben.
+    const emailOk = email === '' || EMAIL.test(email);
 
     return (
       <div className="step-in w-full max-w-lg text-center">
@@ -238,7 +239,11 @@ function NewCustomerForm({
   }, []);
 
   const ready =
-    firstName.trim().length >= 2 && lastName.trim().length >= 2 && EMAIL.test(email);
+    firstName.trim().length >= 2 &&
+    lastName.trim().length >= 2 &&
+    // Sin marcarlo como opcional en pantalla (casi todos lo dan), pero sin exigirlo:
+    // hay personas, sobre todo mayores, que no tienen correo.
+    (email === '' || EMAIL.test(email));
 
   const field =
     'block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-ink-50 ring-2 ring-inset ring-white/12 transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base';

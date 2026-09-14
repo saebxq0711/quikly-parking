@@ -30,17 +30,17 @@ export default async function UsersPage() {
       orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
       include: {
         parkingLot: { select: { name: true } },
-        _count: { select: { sessions: true } },
+        paymentPoint: { select: { name: true } },
+        // Solo las sesiones vivas: las cerradas o vencidas no son "sesion abierta".
+        _count: {
+          select: { sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } } },
+        },
       },
     }),
     db.parkingLot.findMany({
       where: { active: true },
       orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        paymentPoint: { select: { id: true } },
-      },
+      select: { id: true, name: true },
     }),
     db.passwordResetRequest.findMany({
       where: { resolvedAt: null },
@@ -110,6 +110,7 @@ export default async function UsersPage() {
                       <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
                         {ROLE_LABEL[user.role]}
                         {user.parkingLot ? ` · ${user.parkingLot.name}` : ''}
+                        {user.paymentPoint ? ` · kiosco ${user.paymentPoint.name}` : ''}
                         {' · '}
                         {user.lastLoginAt
                           ? `ultimo ingreso ${formatDateTime(user.lastLoginAt)}`
@@ -138,20 +139,16 @@ export default async function UsersPage() {
             />
             <div className="p-5">
               <UserForm
-                parkingLots={lots.map((lot) => ({
-                  id: lot.id,
-                  name: lot.name,
-                  hasPaymentPoint: lot.paymentPoint !== null,
-                }))}
+                parkingLots={lots.map((lot) => ({ id: lot.id, name: lot.name }))}
               />
             </div>
           </Card>
 
-          <Alert tone="info" title="Sobre el punto de pago">
-            El operador del kiosco no tiene un boton de salida a la vista, para
-            que ningun cliente pueda dejar la caja fuera de servicio. Puede salir
-            escribiendo su contrasena, y desde aqui puedes cerrarle la sesion a
-            distancia.
+          <Alert tone="info" title="Sobre los kioscos">
+            Los usuarios de kiosco se crean en la ficha de cada parqueadero, junto con su
+            kiosco. La pantalla no tiene un boton de salida a la vista, para que ningun
+            cliente la deje fuera de servicio: su sesion se cierra a distancia desde aqui o
+            desde la ficha del parqueadero.
           </Alert>
         </div>
       </div>

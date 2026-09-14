@@ -156,23 +156,8 @@ export function Input({
   return <input className={cn(CONTROL, className)} {...props} />;
 }
 
-export function Select({
-  className,
-  ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      className={cn(
-        CONTROL,
-        // El menu nativo hereda el color del sistema; se fuerza para que las
-        // opciones no salgan en blanco sobre blanco en Windows.
-        '[&>option]:bg-[var(--surface-chrome)] [&>option]:text-ink-100',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+/** Lista desplegable con diseno propio, no la del navegador (ver `select.tsx`). */
+export { Select } from './select';
 
 export function Checkbox({
   label,

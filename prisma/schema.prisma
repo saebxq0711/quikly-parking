@@ -146,8 +146,8 @@ model ParkingLot {
   novaBaseUrl String?
 
   users        User[]
-  /// Uno solo por parqueadero (indice unico en `payment_points`).
-  paymentPoint PaymentPoint?
+  /// Kioscos de pago: cada uno con su usuario, su datafono y, si la usa, su impresora.
+  paymentPoints PaymentPoint[]
   searchRules  VehicleSearchRule[]
   payments     Payment[]
   credentials  IntegrationCredential[]
@@ -219,20 +219,19 @@ model PaymentPoint {
   cashierCode  String?
   boxNumber    String?
 
-  /// Si el kiosco tiene impresora de recibos. Lo marca el administrador: una
-  /// pagina web no tiene forma de saber si hay una impresora conectada.
+  /// Si este kiosco usa impresora de recibos. Sin ella (o si no responde) el
+  /// comprobante se muestra en pantalla y se envia al correo del cliente.
   hasPrinter Boolean @default(false)
 
-  users    User[]
-  payments Payment[]
+  users       User[]
+  payments    Payment[]
+  /// Credenciales de SU datafono (Redeban): cada kiosco cobra con el suyo.
+  credentials IntegrationCredential[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// UN solo punto de pago por parqueadero: es la regla del negocio, y al
-  /// dejarla como restriccion de base de datos no depende de que ninguna
-  /// pantalla se acuerde de comprobarla.
-  @@unique([parkingLotId])
+  @@index([parkingLotId])
   @@map("payment_points")
 }
 
@@ -531,6 +530,10 @@ model IntegrationCredential {
   parkingLot   ParkingLot? @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
   parkingLotId String?
 
+  /// Kiosco al que pertenecen (el datafono de cada kiosco). NULL = del parqueadero.
+  paymentPoint   PaymentPoint? @relation(fields: [paymentPointId], references: [id], onDelete: Cascade)
+  paymentPointId String?
+
   key    String
   /// Texto cifrado si `secret` es true; texto plano si es false.
   value  String
@@ -540,7 +543,7 @@ model IntegrationCredential {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([provider, parkingLotId, key])
+  @@unique([provider, parkingLotId, paymentPointId, key], map: "integration_credentials_scope_key")
   @@map("integration_credentials")
 }
 

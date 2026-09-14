@@ -77,7 +77,7 @@ Para activarlo, la web tiene que estar publicada con su dominio (`APP_URL`) y en
 **Impresoras (todas por USB al equipo de cada kiosco):**
 
 - **Kiosco de entrada:** la impresora va a la Raspberry; se activa con `"impresora"` en el JSON del sitio (`auto`, `si`, `no`). Sin impresora, todo queda en pantalla y celular.
-- **Kiosco de pago (esta web):** la impresora se detecta sola, y el papel sale de una de dos formas:
+- **Kioscos de pago (esta web):** un parqueadero puede tener varios. Cada uno se crea en Administración → parqueadero → *Kioscos de pago*, con su propio usuario (con él entra su pantalla, y su sesión se cierra a distancia desde ahí), su propio datáfono Redeban y la marca *Imprime el comprobante*. Un kiosco sin esa marca nunca imprime: muestra el comprobante en pantalla y lo envía al correo si el cliente lo dio. En los que imprimen, la impresora se detecta sola, y el papel sale de una de dos formas:
   - **Tablet Android con Chrome (sin controladores):** la impresora se conecta por USB (cable OTG) y se autoriza una sola vez en `/p/<sitio>/pos/impresora`, a la que se llega desde el menú oculto del kiosco. La web le manda los comandos ESC/POS directo (`src/lib/printing/`).
   - **PC con Windows:** se corre una vez `scripts/windows/impresora-winusb.ps1` con la impresora conectada. Le cambia el controlador de impresión de Windows por WinUSB (sin eso Chrome no la puede abrir) y la deja autorizada para la web en Chrome y Edge, así que no hay que tocar nada en la página.
   
@@ -87,7 +87,7 @@ Para activarlo, la web tiene que estar publicada con su dominio (`APP_URL`) y en
 
   **Qué dice el papel.** Encabezado con los datos del parqueadero de nuestra base: razón social, NIT, régimen de IVA, dirección, ciudad y departamento, teléfono (se piden obligatorios al crear el parqueadero, en *Datos del parqueadero*). Luego cliente (nombre y documento); vehículo (tipo, placa o código del tiquete, entrada, salida y permanencia, que el sistema del parqueadero entrega al cobrar); pago (forma de pago, tarjeta, autorización, recibo, referencia); total y QR a la factura. Al aprobarse el pago se espera la **factura de SIIGO** (hasta ~30 s) y se imprime la factura; si SIIGO no la emite a tiempo, se imprime el comprobante de pago con un QR que abre la factura cuando esté lista.
 
-**Correo:** a un cliente nuevo se le pide nombre, apellido y **correo, obligatorio**, con el texto "Aquí te enviaremos tu factura electrónica". Si un cliente conocido no tiene correo guardado, se le pide antes de continuar. El envío lo hace SIIGO: la opción *Enviar la factura electrónica al correo del cliente* tiene que estar activa en la configuración de facturación del parqueadero, y el comprobante debe ser electrónico.
+**Correo:** a un cliente nuevo se le pide nombre, apellido y correo, con el texto "Aquí te enviaremos tu factura electrónica". En pantalla no dice "opcional" (casi todos lo dan), pero **se puede dejar vacío**: hay personas, sobre todo mayores, que no tienen correo. Sin correo la factura se emite igual y el comprobante queda solo en la pantalla del kiosco. Si un cliente conocido no tiene correo guardado, se le ofrece escribirlo. El envío lo hace SIIGO: la opción *Enviar la factura electrónica al correo del cliente* tiene que estar activa en la configuración de facturación del parqueadero, y el comprobante debe ser electrónico.
 
 ## 3. El flujo completo, paso a paso
 

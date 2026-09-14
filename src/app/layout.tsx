@@ -11,8 +11,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Punto de Pago | Parqueaderos',
-    template: '%s | Punto de Pago',
+    default: 'Quikly Parking',
+    template: '%s | Quikly Parking',
   },
   description:
     'Plataforma de gestion y cobro de parqueaderos: consulta de vehiculos, pagos y facturacion.',

@@ -63,6 +63,8 @@ if (!baseLocal && sinContrasena.length > 0) {
 async function setCredential(params: {
   provider: 'NOVA_PARKING' | 'REDEBAN' | 'SIIGO';
   parkingLotId: string | null;
+  /** Kiosco dueno de la credencial (el datafono). Sin el, es del parqueadero. */
+  paymentPointId?: string | null;
   key: string;
   value: string;
   secret: boolean;
@@ -71,6 +73,7 @@ async function setCredential(params: {
     where: {
       provider: params.provider,
       parkingLotId: params.parkingLotId,
+      paymentPointId: params.paymentPointId ?? null,
       key: params.key,
     },
   });
@@ -87,6 +90,7 @@ async function setCredential(params: {
     data: {
       provider: params.provider,
       parkingLotId: params.parkingLotId,
+      paymentPointId: params.paymentPointId ?? null,
       key: params.key,
       value,
       secret: params.secret,
@@ -119,22 +123,20 @@ async function main() {
     },
   });
 
-  /* --------------------------------------------------- Punto de pago --- */
-  // Uno solo por parqueadero: la base de datos lo garantiza con un indice
-  // unico sobre `parkingLotId`.
-  const point = await db.paymentPoint.upsert({
-    where: { parkingLotId: lot.id },
-    update: { name: SEED.pointName },
-    create: {
-      parkingLotId: lot.id,
-      name: SEED.pointName,
-      code: SEED.pointCode,
-      // Estos valores viajan en la trama al datafono. El codigo de terminal
-      // real lo configura el SuperAdmin junto con las credenciales de Redeban.
-      cashierCode: SEED.pointCode,
-      boxNumber: SEED.pointCode,
-    },
-  });
+  /* -------------------------------------------------- Kiosco de pago --- */
+  // Un kiosco inicial. Se busca por codigo para no duplicarlo si el seed corre otra vez.
+  const point =
+    (await db.paymentPoint.findFirst({ where: { parkingLotId: lot.id, code: SEED.pointCode } })) ??
+    (await db.paymentPoint.create({
+      data: {
+        parkingLotId: lot.id,
+        name: SEED.pointName,
+        code: SEED.pointCode,
+        // Viajan en la trama al datafono. Sus credenciales se cargan por kiosco.
+        cashierCode: SEED.pointCode,
+        boxNumber: SEED.pointCode,
+      },
+    }));
 
   /* ---------------------------------------------------------- Usuarios --- */
   await db.user.upsert({
@@ -208,6 +210,8 @@ async function main() {
     await setCredential({
       provider: 'REDEBAN',
       parkingLotId: lot.id,
+      // El datafono es del kiosco, no del parqueadero.
+      paymentPointId: point.id,
       key,
       value: entry.value,
       secret: entry.secret,

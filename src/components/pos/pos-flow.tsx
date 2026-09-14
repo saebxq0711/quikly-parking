@@ -110,6 +110,7 @@ export function PosFlow({
   parkingLotName,
   paymentPointName,
   issuer,
+  hasPrinter,
   livePayment,
   testMode = false,
 }: {
@@ -117,6 +118,8 @@ export function PosFlow({
   parkingLotName: string;
   /** Datos del parqueadero para el encabezado del papel impreso. */
   issuer: ReceiptIssuer;
+  /** Si este kiosco imprime el comprobante. Sin impresora se muestra en pantalla. */
+  hasPrinter: boolean;
   /** Solo para soporte: no se muestra al cliente. */
   paymentPointName: string;
   /**
@@ -135,12 +138,12 @@ export function PosFlow({
   const [payment, setPayment] = useState<PaymentDTO | null>(livePayment);
 
   /*
-    Impresora USB detectada sola: si este navegador tiene una autorizada y esta
-    conectada, el kiosco imprime aunque la administracion no haya marcado impresora.
-    Se vuelve a revisar cada vez que se conecta o desconecta algo por USB.
+    Impresora USB detectada sola, solo en los kioscos que imprimen: si este navegador
+    tiene una autorizada y esta conectada, el comprobante sale por ahi. Se vuelve a
+    revisar cada vez que se conecta o desconecta algo por USB.
   */
   const [impresoraUsb, setImpresoraUsb] = useState(false);
-  useEffect(() => vigilarImpresora(setImpresoraUsb), []);
+  useEffect(() => (hasPrinter ? vigilarImpresora(setImpresoraUsb) : undefined), [hasPrinter]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -480,7 +483,8 @@ export function PosFlow({
             payment={payment}
             error={error}
             onDone={reset}
-            impresoraUsb={impresoraUsb}
+            impresoraUsb={hasPrinter && impresoraUsb}
+            conCorreo={Boolean(customer?.email)}
             issuer={issuer}
           />
         ) : null}
@@ -1037,6 +1041,7 @@ function Result({
   error,
   onDone,
   impresoraUsb,
+  conCorreo,
   issuer,
 }: {
   payment: PaymentDTO;
@@ -1044,6 +1049,8 @@ function Result({
   onDone: () => void;
   /** Hay una impresora USB autorizada y conectada: el papel sale por ahi. */
   impresoraUsb: boolean;
+  /** El cliente dio correo: el comprobante y la factura le llegan alli. */
+  conCorreo: boolean;
   issuer: ReceiptIssuer;
 }) {
   const approved = payment.status === 'APPROVED';
@@ -1192,7 +1199,9 @@ function Result({
   const mensaje = !approved
     ? (error ?? payment.failureReason ?? 'La transaccion no se completo.')
     : mostrarComprobante
-      ? 'Puedes retirar el vehiculo. Este comprobante tambien te llega al correo, y alli recibiras tu factura electronica.'
+      ? conCorreo
+        ? 'Puedes retirar el vehiculo. Este comprobante tambien te llega al correo, y alli recibiras tu factura electronica.'
+        : 'Puedes retirar el vehiculo. Si necesitas este comprobante, tomale una foto.'
       : impresion === 'factura-en-camino'
         ? 'Estamos generando tu factura. Espera un momento para recogerla.'
         : impresion === 'factura'

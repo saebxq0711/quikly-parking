@@ -168,6 +168,7 @@ export default async function PaymentsPage({
                   <th className="px-4 py-3 font-medium">Placa / Tiquete</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
                   <th className="px-4 py-3 font-medium">Permanencia</th>
+                  <th className="px-4 py-3 font-medium">Kiosco</th>
                   <th className="px-4 py-3 text-right font-medium">Valor</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-5 py-3 font-medium">Factura</th>
@@ -198,6 +199,9 @@ export default async function PaymentsPage({
                     </td>
                     <td className="tnum whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
                       {payment.stayMinutes !== null ? permanencia(payment.stayMinutes) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                      {payment.paymentPoint?.name ?? '—'}
                     </td>
                     <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
                       {formatCOP(payment.amount)}

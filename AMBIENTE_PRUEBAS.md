@@ -1,5 +1,7 @@
 # Modo de pruebas y regreso a producción — Parqueadero 122
 
+> **Actualización 14/09/2026: el modo de pruebas del 122 está APAGADO.** El kiosco ya consulta el sistema real por `https://api.parqueadero122.com` (el servidor Linux de Moyano). Redeban y SIIGO siguen con credenciales de pruebas hasta tener las de producción. El 122 tiene un kiosco, *Kiosco principal*, **sin impresora**: muestra el comprobante en pantalla y lo envía al correo del cliente si lo dio. Lo de abajo queda como referencia de cómo se usó el modo de pruebas.
+
 ## 1. Qué está activo hoy (13/09/2026)
 
 El parqueadero **122** está en **modo de pruebas**. El kiosco no consulta el sistema de Moyano: usa un **parqueadero simulado** dentro de la web (`src/integrations/nova-parking/simulator.ts`). Sirve para probar el escáner QR, la impresora y el datáfono sin depender del túnel ni del servidor Linux.

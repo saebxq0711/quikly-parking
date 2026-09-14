@@ -104,6 +104,7 @@ export default async function PosPage({
       }))}
       parkingLotName={lot.name}
       issuer={emisorDe(lot)}
+      hasPrinter={point.hasPrinter}
       testMode={lot.testMode}
       paymentPointName={point.name}
       livePayment={live ? serializePayment(live) : null}

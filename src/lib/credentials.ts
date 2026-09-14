@@ -16,6 +16,11 @@ export interface CredentialScope {
   provider: CredentialProvider;
   /** null = configuracion global de la plataforma. */
   parkingLotId: string | null;
+  /**
+   * Kiosco al que pertenecen (el datafono de cada kiosco). Sin el, son las del
+   * parqueadero (SIIGO, sistema del parqueadero).
+   */
+  paymentPointId?: string | null;
 }
 
 /** Devuelve las credenciales descifradas de un proveedor. Solo servidor. */
@@ -23,7 +28,11 @@ export async function getCredentials(
   scope: CredentialScope,
 ): Promise<Record<string, string>> {
   const rows = await db.integrationCredential.findMany({
-    where: { provider: scope.provider, parkingLotId: scope.parkingLotId },
+    where: {
+      provider: scope.provider,
+      parkingLotId: scope.parkingLotId,
+      paymentPointId: scope.paymentPointId ?? null,
+    },
   });
 
   const result: Record<string, string> = {};
@@ -79,6 +88,7 @@ export async function setCredential(params: {
       where: {
         provider: params.scope.provider,
         parkingLotId: params.scope.parkingLotId,
+        paymentPointId: params.scope.paymentPointId ?? null,
         key: params.key,
       },
       select: { id: true },
@@ -96,6 +106,7 @@ export async function setCredential(params: {
       data: {
         provider: params.scope.provider,
         parkingLotId: params.scope.parkingLotId,
+        paymentPointId: params.scope.paymentPointId ?? null,
         key: params.key,
         value: stored,
         secret,
@@ -110,7 +121,12 @@ export async function deleteCredential(
   key: string,
 ): Promise<void> {
   await db.integrationCredential.deleteMany({
-    where: { provider: scope.provider, parkingLotId: scope.parkingLotId, key },
+    where: {
+      provider: scope.provider,
+      parkingLotId: scope.parkingLotId,
+      paymentPointId: scope.paymentPointId ?? null,
+      key,
+    },
   });
 }
 
@@ -127,7 +143,11 @@ export async function listCredentialsForDisplay(
   scope: CredentialScope,
 ): Promise<CredentialDisplay[]> {
   const rows = await db.integrationCredential.findMany({
-    where: { provider: scope.provider, parkingLotId: scope.parkingLotId },
+    where: {
+      provider: scope.provider,
+      parkingLotId: scope.parkingLotId,
+      paymentPointId: scope.paymentPointId ?? null,
+    },
     orderBy: { key: 'asc' },
   });
 

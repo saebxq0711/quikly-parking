@@ -105,7 +105,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     db.payment.findMany({
       where: { parkingLotId: lot.id, createdAt: { gte: inicio, lte: fin } },
       orderBy: { createdAt: 'asc' },
-      include: { invoice: { select: { number: true, status: true } } },
+      include: {
+        invoice: { select: { number: true, status: true } },
+        paymentPoint: { select: { name: true } },
+      },
     }),
   ]);
 
@@ -115,7 +118,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   );
 
   const libro = new ExcelJS.Workbook();
-  libro.creator = 'Nova Parking';
+  libro.creator = 'Quikly Parking';
   libro.created = ahora;
 
   const resumen = libro.addWorksheet('Resumen');
@@ -193,6 +196,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   /* ----------------------------------------------------- Pagos del kiosco */
   kiosco.columns = [
     { header: 'Fecha', key: 'fecha', width: 17, style: { numFmt: FECHA } },
+    { header: 'Kiosco', key: 'kiosco', width: 18 },
     { header: 'Codigo', key: 'codigo', width: 10 },
     { header: 'Placa', key: 'placa', width: 11 },
     { header: 'Tipo', key: 'tipo', width: 12 },
@@ -219,6 +223,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     }
     kiosco.addRow({
       fecha: enBogota(pago.resolvedAt ?? pago.createdAt),
+      kiosco: pago.paymentPoint?.name ?? '',
       codigo: pago.ticketCode ?? (pago.plate ? '' : pago.vehicleIdentifier),
       placa: pago.plate ?? '',
       tipo: VEHICULO[pago.vehicleType] ?? pago.vehicleType,

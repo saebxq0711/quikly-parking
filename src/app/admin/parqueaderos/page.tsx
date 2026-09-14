@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth/guards';
-import { getRedebanStatus } from '@/lib/parking/redeban';
 import { PageHeader } from '@/components/app-shell';
 import { ActionForm } from '@/components/action-form';
 import { Card, CardHeader, EmptyState, Field, Input } from '@/components/ui';
@@ -24,26 +23,25 @@ export default async function ParkingLotsPage() {
   const lots = await db.parkingLot.findMany({
     orderBy: { createdAt: 'asc' },
     include: {
-      paymentPoint: { select: { id: true } },
-      _count: { select: { users: true, payments: true } },
+      _count: { select: { users: true, payments: true, paymentPoints: true } },
     },
   });
 
   // Estado de cada sitio: sin esto habria que entrar uno por uno para saber
   // cual quedo a medio configurar.
-  const status = await Promise.all(
-    lots.map(async (lot) => ({
-      id: lot.id,
-      redeban: await getRedebanStatus(lot.id),
-    })),
-  );
-  const redebanById = new Map(status.map((s) => [s.id, s.redeban]));
+  // Kioscos con datafono configurado, por parqueadero (la clave es lo ultimo que se carga).
+  const conDatafono = await db.integrationCredential.groupBy({
+    by: ['parkingLotId'],
+    where: { provider: 'REDEBAN', key: 'clave', paymentPointId: { not: null } },
+    _count: { _all: true },
+  });
+  const datafonosPorLote = new Map(conDatafono.map((fila) => [fila.parkingLotId, fila._count._all]));
 
   return (
     <>
       <PageHeader
         title="Parqueaderos"
-        description="Cada parqueadero tiene su propio sistema, su propio datafono y su propio punto de pago. Sus usuarios solo ven la informacion de su sitio."
+        description="Cada parqueadero tiene su propio sistema, sus kioscos de pago y su facturacion. Sus usuarios solo ven la informacion de su sitio."
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
@@ -51,16 +49,15 @@ export default async function ParkingLotsPage() {
           {lots.length === 0 ? (
             <EmptyState
               title="Todavia no hay parqueaderos"
-              description="Crea el primero con el formulario de la derecha. Se creara con su punto de pago listo para configurar."
+              description="Crea el primero con el formulario de la derecha. Despues le agregas sus kioscos de pago."
             />
           ) : (
             <ul className="divide-y divide-[var(--line-subtle)]">
               {lots.map((lot) => {
-                const redeban = redebanById.get(lot.id);
                 const pending: string[] = [];
                 if (!lot.novaBaseUrl) pending.push('sistema');
-                if (!redeban?.configured) pending.push('datafono');
-                if (!lot.paymentPoint) pending.push('punto de pago');
+                if (lot._count.paymentPoints === 0) pending.push('kioscos');
+                else if ((datafonosPorLote.get(lot.id) ?? 0) === 0) pending.push('datafono');
                 if (lot._count.users === 0) pending.push('usuarios');
 
                 return (
@@ -98,6 +95,7 @@ export default async function ParkingLotsPage() {
                       </div>
 
                       <dl className="hidden shrink-0 gap-6 text-right sm:flex">
+                        <Stat label="Kioscos" value={lot._count.paymentPoints} />
                         <Stat label="Usuarios" value={lot._count.users} />
                         <Stat label="Pagos" value={lot._count.payments} />
                       </dl>
@@ -127,7 +125,7 @@ export default async function ParkingLotsPage() {
         <Card className="h-fit">
           <CardHeader
             title="Nuevo parqueadero"
-            description="Su conexion y su datafono se configuran despues, en la ficha del sitio."
+            description="Su conexion, sus kioscos y su facturacion se configuran despues, en la ficha del sitio."
           />
           <div className="p-5">
             <ActionForm action={createParkingLot} submitLabel="Crear parqueadero">

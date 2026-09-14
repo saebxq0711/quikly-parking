@@ -124,17 +124,6 @@ export async function createParkingLot(
   try {
     const lot = await db.parkingLot.create({ data: parkingLotData(parsed.data) });
 
-    // Cada parqueadero tiene exactamente un punto de pago: se crea con el
-    // sitio para que no quede a medias y sin poder cobrar.
-    await db.paymentPoint.create({
-      data: {
-        parkingLotId: lot.id,
-        name: 'Punto de pago',
-        code: 'PP1',
-        cashierCode: 'PP1',
-        boxNumber: 'PP1',
-      },
-    });
 
     await recordAudit({
       action: AuditAction.PARKING_LOT_CREATED,
@@ -146,7 +135,7 @@ export async function createParkingLot(
     });
 
     revalidatePath('/admin/parqueaderos');
-    return ok(`Parqueadero "${lot.name}" creado con su punto de pago.`);
+    return ok(`Parqueadero "${lot.name}" creado. Entra a su ficha para agregar sus kioscos de pago.`);
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -326,6 +315,7 @@ export async function setParkingTestMode(
 
 const redebanSchema = z.object({
   parkingLotId: z.string().min(1),
+  paymentPointId: z.string().min(1, 'Falta el kiosco.'),
   baseUrl: z.string().url('La URL del servicio no es valida.'),
   codigoUnico: z
     .string()
@@ -359,6 +349,7 @@ export async function saveRedebanConfig(
 
   const parsed = redebanSchema.safeParse({
     parkingLotId: formData.get('parkingLotId'),
+    paymentPointId: formData.get('paymentPointId'),
     baseUrl: String(formData.get('baseUrl') ?? '').trim(),
     codigoUnico: String(formData.get('codigoUnico') ?? '').trim(),
     usuario: String(formData.get('usuario') ?? '').trim(),
@@ -368,9 +359,17 @@ export async function saveRedebanConfig(
   });
   if (!parsed.success) return fail(parsed.error.issues[0].message);
 
+  // El kiosco tiene que ser de ese parqueadero: el id viaja en el formulario.
+  const point = await db.paymentPoint.findFirst({
+    where: { id: parsed.data.paymentPointId, parkingLotId: parsed.data.parkingLotId },
+    select: { id: true },
+  });
+  if (!point) return fail('Kiosco no encontrado.');
+
   const scope = {
     provider: 'REDEBAN' as const,
     parkingLotId: parsed.data.parkingLotId,
+    paymentPointId: point.id,
   };
 
   const values: { key: string; value: string; secret: boolean }[] = [
@@ -403,7 +402,7 @@ export async function saveRedebanConfig(
   });
 
   revalidatePath('/admin/parqueaderos');
-  return ok('Medio de pago configurado.');
+  return ok('Datafono del kiosco guardado.');
 }
 
 export async function testRedeban(
@@ -413,6 +412,7 @@ export async function testRedeban(
   await requireRole('SUPERADMIN');
   const result = await testRedebanConnection(
     String(formData.get('parkingLotId') ?? ''),
+    String(formData.get('paymentPointId') ?? ''),
   );
   return result.ok ? ok(result.message) : fail(result.message);
 }
@@ -558,62 +558,137 @@ export async function testSiigo(
 
 /* ---------------------------------------------------- Punto de pago */
 
-const pointSchema = z.object({
-  parkingLotId: z.string().min(1),
-  name: z.string().min(2, 'El nombre es obligatorio').max(80),
-  code: z.string().min(1, 'El codigo es obligatorio').max(10),
-  cashierCode: z.string().max(10).optional(),
-  boxNumber: z.string().max(10).optional(),
-  hasPrinter: z.string().optional(),
-});
+/* ------------------------------------------------------ Kioscos de pago */
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Datos del punto de pago del parqueadero.
+ * Crea un kiosco de pago junto con su usuario de acceso.
  *
- * Hay uno solo por sitio, asi que esto siempre actualiza el existente. El
- * codigo de cajero y el numero de caja viajan en la trama al datafono.
+ * Cada kiosco es una pantalla distinta, con su datafono y, si la usa, su impresora, y
+ * entra con su propio usuario: asi cada cobro queda atribuido al kiosco que lo hizo y
+ * su sesion se puede cerrar a distancia sin tocar los demas.
  */
-export async function savePaymentPoint(
+export async function createKiosk(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireRole('SUPERADMIN');
 
-  const parsed = pointSchema.safeParse({
-    parkingLotId: formData.get('parkingLotId'),
-    name: formData.get('name'),
-    code: String(formData.get('code') ?? '').toUpperCase().trim(),
-    cashierCode: String(formData.get('cashierCode') ?? '').trim() || undefined,
-    boxNumber: String(formData.get('boxNumber') ?? '').trim() || undefined,
-    hasPrinter: formData.get('hasPrinter') ? String(formData.get('hasPrinter')) : undefined,
-  });
-  if (!parsed.success) return fail(parsed.error.issues[0].message);
+  const parkingLotId = String(formData.get('parkingLotId') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const password = String(formData.get('password') ?? '');
+  const confirmPassword = String(formData.get('confirmPassword') ?? '');
 
+  if (name.length < 2 || name.length > 60) {
+    return fail('Ponle un nombre al kiosco, por ejemplo "Salida principal".');
+  }
+  if (!EMAIL.test(email)) return fail('Escribe el correo con el que entrara este kiosco.');
+  if (password !== confirmPassword) return fail('Las dos contrasenas no coinciden.');
+  const weak = validatePasswordStrength(password);
+  if (weak) return fail(weak);
+
+  const lot = await db.parkingLot.findUnique({
+    where: { id: parkingLotId },
+    select: { id: true, _count: { select: { paymentPoints: true } } },
+  });
+  if (!lot) return fail('Parqueadero no encontrado.');
+
+  // Codigo corto que viaja al datafono como cajero y numero de caja (maximo 10).
+  const code = `K${lot._count.paymentPoints + 1}`;
+  const passwordHash = await hashPassword(password);
+
+  try {
+    const point = await db.$transaction(async (tx) => {
+      const creado = await tx.paymentPoint.create({
+        data: {
+          parkingLotId: lot.id,
+          name,
+          code,
+          cashierCode: code,
+          boxNumber: code,
+          hasPrinter: formData.get('hasPrinter') === 'on',
+        },
+      });
+      await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          role: 'PUNTO_PAGO',
+          parkingLotId: lot.id,
+          paymentPointId: creado.id,
+          mustChangePassword: false,
+        },
+      });
+      return creado;
+    });
+
+    await recordAudit({
+      action: AuditAction.PAYMENT_POINT_UPDATED,
+      actorId: actor.id,
+      parkingLotId: lot.id,
+      entity: 'PaymentPoint',
+      entityId: point.id,
+      metadata: { creado: true, name, email },
+    });
+
+    revalidatePath('/admin/parqueaderos');
+    return ok(`Kiosco "${name}" creado. Su pantalla entra con ${email}. Falta configurar su datafono.`);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return fail('Ya existe un usuario con ese correo.');
+    }
+    console.error('[admin] error creando kiosco', error);
+    return fail('No fue posible crear el kiosco.');
+  }
+}
+
+/** Nombre, impresora y si esta en servicio. Fuera de servicio, se cierra su sesion. */
+export async function updateKiosk(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const actor = await requireRole('SUPERADMIN');
+
+  const paymentPointId = String(formData.get('paymentPointId') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+  if (name.length < 2 || name.length > 60) return fail('El nombre del kiosco es obligatorio.');
+
+  const point = await db.paymentPoint.findUnique({
+    where: { id: paymentPointId },
+    select: { id: true, parkingLotId: true },
+  });
+  if (!point) return fail('Kiosco no encontrado.');
+
+  // Una casilla sin marcar no viaja en el formulario: ausente es "no".
   const data = {
-    name: parsed.data.name,
-    code: parsed.data.code,
-    cashierCode: parsed.data.cashierCode ?? parsed.data.code,
-    boxNumber: parsed.data.boxNumber ?? parsed.data.code,
-    // Una casilla sin marcar no viaja en el formulario: ausente es "no".
-    hasPrinter: parsed.data.hasPrinter === 'on',
+    name,
+    hasPrinter: formData.get('hasPrinter') === 'on',
+    active: formData.get('active') === 'on',
   };
+  await db.paymentPoint.update({ where: { id: point.id }, data });
 
-  await db.paymentPoint.upsert({
-    where: { parkingLotId: parsed.data.parkingLotId },
-    update: data,
-    create: { parkingLotId: parsed.data.parkingLotId, ...data },
-  });
+  if (!data.active) {
+    const usuarios = await db.user.findMany({
+      where: { paymentPointId: point.id },
+      select: { id: true },
+    });
+    for (const usuario of usuarios) await revokeAllSessions(usuario.id);
+  }
 
   await recordAudit({
     action: AuditAction.PAYMENT_POINT_UPDATED,
     actorId: actor.id,
-    parkingLotId: parsed.data.parkingLotId,
+    parkingLotId: point.parkingLotId,
     entity: 'PaymentPoint',
+    entityId: point.id,
     metadata: data,
   });
 
   revalidatePath('/admin/parqueaderos');
-  return ok('Punto de pago actualizado.');
+  return ok(data.active ? 'Kiosco actualizado.' : 'Kiosco fuera de servicio y su sesion cerrada.');
 }
 
 /* ----------------------------------------------- Reglas de identificacion */
@@ -736,18 +811,9 @@ export async function createUser(
     return fail('Selecciona el parqueadero al que pertenece el usuario.');
   }
 
-  // El punto de pago del sitio es unico, asi que se asigna solo: no hay nada
-  // que elegir y pedirlo seria una decision inventada.
-  let paymentPointId: string | null = null;
+  // Los usuarios de kiosco nacen con su kiosco (`createKiosk`): cada uno opera uno solo.
   if (parsed.data.role === 'PUNTO_PAGO') {
-    const point = await db.paymentPoint.findUnique({
-      where: { parkingLotId: parsed.data.parkingLotId! },
-      select: { id: true },
-    });
-    if (!point) {
-      return fail('Ese parqueadero no tiene un punto de pago configurado.');
-    }
-    paymentPointId = point.id;
+    return fail('Los usuarios de kiosco se crean en la ficha del parqueadero, en Kioscos de pago.');
   }
 
   try {
@@ -759,7 +825,6 @@ export async function createUser(
         role: parsed.data.role,
         parkingLotId:
           parsed.data.role === 'SUPERADMIN' ? null : parsed.data.parkingLotId!,
-        paymentPointId,
         // La escogio el SuperAdmin con confirmacion y la entrega el: no es temporal.
         mustChangePassword: false,
       },
@@ -853,6 +918,7 @@ export async function forceLogout(
   });
 
   revalidatePath('/admin/usuarios');
+  revalidatePath('/admin/parqueaderos');
   return ok(`Sesion de ${target.email} cerrada.`);
 }
 

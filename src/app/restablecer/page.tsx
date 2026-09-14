@@ -24,12 +24,12 @@ export default async function ResetPage({
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Image
-            src="/nova-parking-vertical.png"
-            alt="Nova Parking"
-            width={1387}
-            height={1729}
+            src="/quikly-parking.png"
+            alt="Quikly Parking"
+            width={783}
+            height={269}
             priority
-            className="mx-auto h-20 w-auto"
+            className="mx-auto h-14 w-auto"
           />
           <h1 className="mt-5 text-xl font-semibold text-white">
             Elige tu nueva contrasena

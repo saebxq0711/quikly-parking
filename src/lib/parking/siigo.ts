@@ -125,3 +125,104 @@ export async function isSiigoEnabled(parkingLotId: string): Promise<boolean> {
   const values = await getCredentials({ provider: 'SIIGO', parkingLotId });
   return values.enabled === 'true';
 }
+
+/* ------------------------------------------------------------- Catalogos */
+
+export interface SiigoOption {
+  value: string;
+  label: string;
+}
+
+export type SiigoCatalogs =
+  | {
+      ok: true;
+      documents: SiigoOption[];
+      sellers: SiigoOption[];
+      paymentTypes: SiigoOption[];
+      products: SiigoOption[];
+    }
+  | { ok: false; message: string };
+
+type Dict = Record<string, unknown>;
+
+function filas(respuesta: unknown): Dict[] {
+  const lista = Array.isArray(respuesta)
+    ? respuesta
+    : ((respuesta as { results?: unknown[] } | null)?.results ?? []);
+  return lista.filter((item): item is Dict => typeof item === 'object' && item !== null);
+}
+
+const activo = (item: Dict) => item.active !== false;
+
+async function conLimite<T>(promesa: Promise<T>, ms: number): Promise<T> {
+  let reloj: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promesa,
+      new Promise<never>((_, reject) => {
+        reloj = setTimeout(() => reject(new Error('SIIGO no respondio a tiempo.')), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(reloj);
+  }
+}
+
+/**
+ * Comprobantes de factura, vendedores, formas de pago y productos de la empresa en
+ * SIIGO, para elegirlos de una lista en vez de escribir ids a mano. Si SIIGO rechaza
+ * las credenciales o no responde, la pantalla vuelve a los campos de texto.
+ */
+export async function getSiigoCatalogs(parkingLotId: string): Promise<SiigoCatalogs> {
+  const values = await getCredentials({ provider: 'SIIGO', parkingLotId });
+  if (!values.username || !values.accessKey) {
+    return { ok: false, message: 'Guarda primero el usuario y la clave de acceso de SIIGO.' };
+  }
+
+  try {
+    const client = await siigoClientFor(parkingLotId);
+    const [documentos, usuarios, pagos, productos] = await conLimite(
+      Promise.all([
+        client.get<unknown>('/v1/document-types?type=FV'),
+        client.get<unknown>('/v1/users?page_size=100'),
+        client.get<unknown>('/v1/payment-types?document_type=FV'),
+        client.get<unknown>('/v1/products?page_size=100'),
+      ]),
+      12_000,
+    );
+
+    return {
+      ok: true,
+      documents: filas(documentos)
+        .filter(activo)
+        .map((doc) => ({
+          value: String(doc.id),
+          label: `${String(doc.name ?? 'Factura de venta')}${doc.code !== undefined ? ` (codigo ${String(doc.code)})` : ''}${
+            String(doc.electronic_type ?? '').toLowerCase().startsWith('electronic') ? ' · electronica' : ''
+          }`,
+        })),
+      sellers: filas(usuarios)
+        .filter(activo)
+        .map((usuario) => ({
+          value: String(usuario.id),
+          label:
+            [usuario.first_name, usuario.last_name].filter(Boolean).join(' ') ||
+            String(usuario.username ?? usuario.id),
+        })),
+      paymentTypes: filas(pagos)
+        .filter(activo)
+        .map((pago) => ({ value: String(pago.id), label: String(pago.name ?? pago.id) })),
+      products: filas(productos)
+        .filter((producto) => activo(producto) && producto.code !== undefined)
+        .map((producto) => ({
+          value: String(producto.code),
+          label: `${String(producto.code)} · ${String(producto.name ?? '')}`,
+        })),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof AppError ? error.publicMessage : 'SIIGO no respondio a tiempo.',
+    };
+  }
+}

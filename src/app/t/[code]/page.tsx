@@ -47,10 +47,10 @@ export default async function TicketPage({
     <main className="flex min-h-dvh items-center justify-center bg-[var(--surface-base)] px-5 py-10">
       <div className="w-full max-w-sm text-center">
         <Image
-          src="/nova-parking-horizontal.png"
-          alt="Nova Parking"
-          width={1433}
-          height={360}
+          src="/quikly-parking.png"
+          alt="Quikly Parking"
+          width={783}
+          height={269}
           priority
           className="mx-auto h-8 w-auto"
         />

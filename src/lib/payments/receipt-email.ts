@@ -35,7 +35,7 @@ export async function sendReceiptEmail(paymentId: string): Promise<void> {
   const sent = await sendMail({
     to,
     subject: `Comprobante de pago - ${payment.parkingLot.name}`,
-    html: receiptEmail({ doc, logoUrl: `${env.APP_URL}/nova-parking-horizontal.png` }),
+    html: receiptEmail({ doc, logoUrl: `${env.APP_URL}/quikly-parking.png` }),
   });
 
   if (!sent) {
