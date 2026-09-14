@@ -208,6 +208,13 @@ export default async function PaymentsPage({
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={payment.status} />
+                      {payment.status === 'APPROVED' &&
+                      payment.parkingConfirmStatus &&
+                      payment.parkingConfirmStatus !== 'CONFIRMED' ? (
+                        <span className="mt-1 block text-[11px] font-medium text-warn-300">
+                          Sin registrar en el parqueadero
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-5 py-3 text-[var(--text-secondary)]">
                       {payment.invoice

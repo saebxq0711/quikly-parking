@@ -36,6 +36,8 @@ export interface PaymentDTO {
   cardBrand: string | null;
   cardMask: string | null;
   failureReason: string | null;
+  /** Aprobado pero el parqueadero no lo registro: la barrera no abrira sola. */
+  parkingPending: boolean;
   /** true cuando el estado ya es definitivo y el sondeo debe detenerse. */
   isFinal: boolean;
   /**
@@ -96,6 +98,10 @@ export function serializePayment(payment: Payment): PaymentDTO {
     cardBrand: payment.cardBrand,
     cardMask: payment.cardMask,
     failureReason: payment.failureReason,
+    parkingPending:
+      payment.status === 'APPROVED' &&
+      payment.parkingConfirmStatus !== null &&
+      payment.parkingConfirmStatus !== 'CONFIRMED',
     isFinal: isFinalStatus(payment.status),
     receiptUrl: payment.receiptToken
       ? `${env.APP_URL.replace(/\/+$/, '')}/factura/${payment.receiptToken}`

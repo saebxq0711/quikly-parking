@@ -405,6 +405,13 @@ model Payment {
   /// (de forma atomica) para que dos consultas del estado no manden dos correos.
   receiptEmailedAt DateTime?
 
+  /// Si el sistema del parqueadero registro el cobro (lo que libera el vehiculo):
+  /// CONFIRMED | PENDING (fallo transitorio, se reintenta) | REJECTED (lo rechazo, revisar).
+  /// Mientras no quede CONFIRMED, el tiquete no se puede volver a cobrar en el kiosco.
+  parkingConfirmStatus   String?
+  parkingConfirmAttempts Int       @default(0)
+  parkingConfirmedAt     DateTime?
+
   /// Cliente que pago, identificado en el kiosco por su numero de documento.
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   customerId String?

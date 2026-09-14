@@ -188,6 +188,31 @@ export async function lookupVehicle(params: {
     };
   }
 
+  /*
+    Ya se cobro en este kiosco y el parqueadero no lo registro: se muestra como pagado
+    (no se puede volver a cobrar) y se reintenta el aviso en segundo plano.
+  */
+  const sinRegistrar = await unregisteredApprovedPayment(params.parkingLotId, ticket.id);
+  if (sinRegistrar) {
+    if (sinRegistrar.parkingConfirmStatus === 'PENDING') {
+      enSegundoPlano(() => confirmToParkingSystem(sinRegistrar).catch(() => undefined));
+    }
+    return {
+      found: true,
+      ticketId: ticket.id,
+      code: ticket.code,
+      plate: ticket.plate,
+      vehicleTypeLabel: ticket.vehicleTypeLabel,
+      entryAt: ticket.entryAt,
+      minutes: ticket.minutes,
+      customerName: ticket.customerName,
+      amount: null,
+      alreadyPaid: true,
+      notice:
+        'Este tiquete ya se pago en el kiosco. Si la barrera no abre, acercate a la oficina del parqueadero con tu comprobante.',
+    };
+  }
+
   // El tipo que eligio el cliente. Solo los que no van por placa: un carro ya
   // entro tipado por la camara y no hace falta decirselo.
   const vehicleTypeId =
@@ -325,6 +350,14 @@ export async function startCardPayment(
       throw new AppError('CONFLICT', {
         publicMessage: `El valor se actualizo a $ ${checkout.amount.toLocaleString('es-CO')} porque paso mas tiempo. Revisa el nuevo total y toca Pagar de nuevo.`,
         detail: { expectedAmount: input.expectedAmount, amount: checkout.amount },
+      });
+    }
+
+    // Ya cobrado aqui y sin registrar en el parqueadero: nunca se cobra dos veces.
+    if (await unregisteredApprovedPayment(lot.id, input.ticketId)) {
+      throw new AppError('CONFLICT', {
+        publicMessage:
+          'Este tiquete ya se pago en el kiosco. Si la barrera no abre, acercate a la oficina del parqueadero.',
       });
     }
 
@@ -682,7 +715,10 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
     );
   }
 
-  return updated;
+  // Tras avisar al parqueadero se relee: la pantalla necesita saber si quedo registrado.
+  return status === 'APPROVED'
+    ? db.payment.findUniqueOrThrow({ where: { id: updated.id } })
+    : updated;
 }
 
 /** Campos que entrega el datafono mientras lee la tarjeta (Cod:02). */
@@ -791,13 +827,30 @@ async function confirmToParkingSystem(payment: Payment): Promise<void> {
     result = await attempt();
   }
 
+  /*
+    Un rechazo explicito (4xx: datos invalidos, tiquete inexistente o ya pagado por otro
+    canal) no se arregla reintentando: queda REJECTED para revision. Un error del
+    servidor o la falta de respuesta queda PENDING y se reintenta solo.
+  */
+  const rechazado =
+    !result.confirmed &&
+    !result.retryable &&
+    typeof result.status === 'number' &&
+    result.status >= 400 &&
+    result.status < 500;
+  const estado = result.confirmed ? 'CONFIRMED' : rechazado ? 'REJECTED' : 'PENDING';
+
   await db.payment.update({
     where: { id: payment.id },
     data: {
+      parkingConfirmStatus: estado,
+      parkingConfirmAttempts: { increment: 1 },
+      parkingConfirmedAt: result.confirmed ? new Date() : null,
       failureReason: result.confirmed
         ? null
-        : (result.detail ??
-          'El cobro se aprobo, pero el sistema del parqueadero no confirmo la salida. Verificalo manualmente.'),
+        : `El cobro se aprobo, pero el parqueadero no lo registro: ${
+            result.detail ?? 'sin detalle'
+          } El vehiculo no se libera solo.`,
     },
   });
 
@@ -808,9 +861,47 @@ async function confirmToParkingSystem(payment: Payment): Promise<void> {
       parkingLotId: payment.parkingLotId,
       entity: 'Payment',
       entityId: payment.id,
-      metadata: { stage: 'confirmPayment', detalle: result.detail },
+      metadata: { stage: 'confirmPayment', estado, http: result.status ?? null, detalle: result.detail },
     });
   }
+}
+
+/**
+ * Cobro aprobado de ESTE tiquete que el parqueadero todavia no registro.
+ *
+ * Mientras exista, el tiquete no se vuelve a cobrar: el sistema del parqueadero lo sigue
+ * mostrando como pendiente (nunca se entero del pago) y, sin esta revision, el kiosco le
+ * cobraba otra vez al mismo cliente.
+ */
+export async function unregisteredApprovedPayment(
+  parkingLotId: string,
+  ticketId: string,
+): Promise<Payment | null> {
+  return db.payment.findFirst({
+    where: {
+      parkingLotId,
+      externalTicketId: ticketId,
+      status: 'APPROVED',
+      parkingConfirmStatus: { in: ['PENDING', 'REJECTED'] },
+      resolvedAt: { gte: new Date(Date.now() - 7 * 86_400_000) },
+    },
+    orderBy: { resolvedAt: 'asc' },
+  });
+}
+
+/** Reintenta los avisos pendientes (tarea diaria). Devuelve cuantos intento. */
+export async function retryParkingConfirmations(limit = 20): Promise<number> {
+  const pendientes = await db.payment.findMany({
+    where: { status: 'APPROVED', parkingConfirmStatus: 'PENDING', parkingConfirmAttempts: { lt: 12 } },
+    orderBy: { resolvedAt: 'asc' },
+    take: limit,
+  });
+  for (const pago of pendientes) {
+    await confirmToParkingSystem(pago).catch((error) =>
+      console.error('[payments] reintento de aviso al parqueadero fallo', { paymentId: pago.id, error }),
+    );
+  }
+  return pendientes.length;
 }
 
 /* --------------------------------------------------------------- Cancelar */

@@ -308,7 +308,13 @@ export class NovaParkingClient {
      * de la misma transaccion del cobro: quedan los dos o ninguno.
      */
     vehicleTypeId?: string | null;
-  }): Promise<{ confirmed: boolean; retryable: boolean; detail: string | null }> {
+  }): Promise<{
+    confirmed: boolean;
+    retryable: boolean;
+    detail: string | null;
+    /** Codigo HTTP con que respondio el parqueadero, si respondio. */
+    status?: number | null;
+  }> {
     try {
       await this.request({
         method: 'POST',
@@ -327,7 +333,9 @@ export class NovaParkingClient {
       // 201 registrado, 200 ya estaba registrado. Las dos son exito.
       return { confirmed: true, retryable: false, detail: null };
     } catch (error) {
-      const status = upstreamStatus(error);
+      const status =
+        upstreamStatus(error) ??
+        (error instanceof AppError && error.code === 'NOT_FOUND' ? 404 : null);
 
       // 503: la base estaba ocupada y el cobro NO quedo registrado. Reintentar
       // es correcto y necesario.
@@ -342,12 +350,17 @@ export class NovaParkingClient {
       return {
         confirmed: false,
         retryable,
+        status,
         detail:
           status === 409
             ? 'El tiquete ya fue pagado por otro canal.'
             : status === 400
               ? 'El sistema del parqueadero rechazo los datos del pago.'
-              : null,
+              : status === 404
+                ? 'El sistema del parqueadero no encontro el tiquete.'
+                : status
+                  ? `El sistema del parqueadero fallo al registrar el cobro (error ${status}).`
+                  : 'No hubo respuesta del sistema del parqueadero.',
       };
     }
   }

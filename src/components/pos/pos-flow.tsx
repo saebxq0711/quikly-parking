@@ -1259,6 +1259,16 @@ function Result({
         {mensaje}
       </p>
 
+      {approved && payment.parkingPending ? (
+        <p
+          role="alert"
+          className="mx-auto mt-4 max-w-md rounded-xl bg-warn-500/10 px-4 py-3 text-[15px] leading-relaxed text-warn-300 ring-1 ring-warn-400/25"
+        >
+          Tu pago quedo aprobado, pero la barrera no recibio el aviso. Acercate a la oficina del
+          parqueadero con tu comprobante para salir.
+        </p>
+      ) : null}
+
       {mostrarComprobante ? (
         <ReceiptScreen doc={comprobante(payment, issuer)} />
       ) : approved ? (

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { retryPendingInvoices } from '@/lib/billing/service';
+import { retryParkingConfirmations } from '@/lib/payments/service';
 
 export const maxDuration = 60;
 
@@ -28,5 +29,7 @@ export async function GET(request: Request) {
   }
 
   const reintentadas = await retryPendingInvoices();
-  return NextResponse.json({ reintentadas });
+  // Tambien los cobros aprobados que el parqueadero no alcanzo a registrar.
+  const avisos = await retryParkingConfirmations();
+  return NextResponse.json({ reintentadas, avisos });
 }
