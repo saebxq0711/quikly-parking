@@ -26,23 +26,27 @@ const SEED = {
   parkingCity: process.env.SEED_PARKING_CITY ?? '',
 
   superadminEmail: process.env.SEED_SUPERADMIN_EMAIL ?? 'superadmin@puntodepago.co',
-  superadminPassword: process.env.SEED_SUPERADMIN_PASSWORD ?? 'Superadmin2026',
+  superadminPassword: process.env.SEED_SUPERADMIN_PASSWORD ?? claveAlAzar(),
 
   adminEmail: process.env.SEED_ADMIN_EMAIL ?? 'admin@parqueadero122.co',
-  adminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'Admin122Parking',
+  adminPassword: process.env.SEED_ADMIN_PASSWORD ?? claveAlAzar(),
 
   posEmail: process.env.SEED_POS_EMAIL ?? 'caja@parqueadero122.co',
-  posPassword: process.env.SEED_POS_PASSWORD ?? 'Caja122Parking',
+  posPassword: process.env.SEED_POS_PASSWORD ?? claveAlAzar(),
 
   pointName: process.env.SEED_POINT_NAME ?? 'Punto de pago',
   pointCode: process.env.SEED_POINT_CODE ?? 'PP1',
 };
 
 /*
-  Las contrasenas de arriba son de ejemplo y el repositorio es publico: sirven para la
-  base local de desarrollo y para nada mas. Contra cualquier otra base (Supabase,
-  produccion) el seed se niega a correr sin contrasenas propias.
+  El repositorio es publico: aqui no hay contrasenas escritas. Sin las variables SEED_*,
+  en la base local de desarrollo se generan al azar y se muestran al terminar; contra
+  cualquier otra base (Supabase, produccion) el seed se niega a correr sin ellas.
 */
+function claveAlAzar(): string {
+  // Cumple validatePasswordStrength: 10+ caracteres, mayusculas, minusculas y numero.
+  return `${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}Aa1`;
+}
 const baseLocal = /@(127\.0\.0\.1|localhost)(:\d+)?\//.test(process.env.DATABASE_URL ?? '');
 const sinContrasena = ['SEED_SUPERADMIN_PASSWORD', 'SEED_ADMIN_PASSWORD', 'SEED_POS_PASSWORD'].filter(
   (clave) => !process.env[clave],

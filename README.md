@@ -33,14 +33,16 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  # C
 
 ### Usuarios iniciales
 
-| Rol            | Correo                      | Contraseña         | Entra a               |
-| -------------- | --------------------------- | ------------------ | --------------------- |
-| SuperAdmin     | `superadmin@puntodepago.co` | `Superadmin2026`   | `/admin/parqueaderos` |
-| Administrador  | `admin@parqueadero122.co`   | `Admin122Parking`  | `/p/122/pagos`        |
-| Punto de pago  | `caja@parqueadero122.co`    | `Caja122Parking`   | `/p/122/pos`          |
+| Rol            | Correo                      | Entra a               |
+| -------------- | --------------------------- | --------------------- |
+| SuperAdmin     | `superadmin@puntodepago.co` | `/admin/parqueaderos` |
+| Administrador  | `admin@parqueadero122.co`   | `/p/122/pagos`        |
+| Punto de pago  | `caja@parqueadero122.co`    | `/p/122/pos`          |
 
-Solo para el arranque: las tres deben cambiarse en el primer ingreso. En
-producción, sembrar con las variables `SEED_*`.
+Las contraseñas no se escriben aquí: este repositorio es público. El seed toma
+las de `SEED_SUPERADMIN_PASSWORD`, `SEED_ADMIN_PASSWORD` y `SEED_POS_PASSWORD`;
+en local, si no están, genera unas al azar y las muestra al terminar. Las de la
+web publicada se entregan por un canal privado.
 
 ### Qué falta configurar tras el primer arranque
 
