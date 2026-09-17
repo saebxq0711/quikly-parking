@@ -130,6 +130,14 @@ model ParkingLot {
   department String?
   phone      String?
   email      String?
+  /// Poliza de responsabilidad civil: todo parqueadero en Colombia debe tenerla e
+  /// informarla al usuario. Sale en el comprobante.
+  insurer         String?
+  insurancePolicy String?
+  /// Horario de atencion, tal como se informa al publico.
+  businessHours   String?
+  /// Ultimo consecutivo de comprobante emitido por este parqueadero.
+  receiptCounter  Int     @default(0)
 
   timezone String  @default("America/Bogota")
   active   Boolean @default(true)
@@ -412,6 +420,9 @@ model Payment {
   parkingConfirmAttempts Int       @default(0)
   parkingConfirmedAt     DateTime?
 
+  /// Consecutivo del comprobante dentro del parqueadero. Se asigna al aprobarse el pago.
+  receiptSeq Int?
+
   /// Cliente que pago, identificado en el kiosco por su numero de documento.
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   customerId String?
@@ -472,6 +483,7 @@ model Payment {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
+  @@unique([parkingLotId, receiptSeq])
   @@index([parkingLotId, createdAt])
   @@index([parkingLotId, status])
   @@index([externalTicketId])

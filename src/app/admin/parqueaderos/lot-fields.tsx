@@ -13,7 +13,17 @@ export function ParkingLotDataFields({
 }: {
   lot?: Pick<
     ParkingLot,
-    'legalName' | 'nit' | 'taxRegime' | 'address' | 'city' | 'department' | 'phone' | 'email'
+    | 'legalName'
+    | 'nit'
+    | 'taxRegime'
+    | 'address'
+    | 'city'
+    | 'department'
+    | 'phone'
+    | 'email'
+    | 'insurer'
+    | 'insurancePolicy'
+    | 'businessHours'
   >;
   /** Una sola columna, para la tarjeta angosta de "Nuevo parqueadero". */
   compacto?: boolean;
@@ -80,6 +90,37 @@ export function ParkingLotDataFields({
           <Input name="email" type="email" defaultValue={lot?.email ?? ''} />
         </Field>
       </div>
+
+      <p className="pt-1 text-[13px] font-medium text-ink-200">
+        Poliza de responsabilidad civil
+      </p>
+      <div className={pares}>
+        <Field label="Aseguradora">
+          <Input
+            name="insurer"
+            required
+            defaultValue={lot?.insurer ?? ''}
+            placeholder="Seguros Mundial"
+          />
+        </Field>
+        <Field label="Numero de poliza">
+          <Input
+            name="insurancePolicy"
+            required
+            defaultValue={lot?.insurancePolicy ?? ''}
+            placeholder="250008562"
+            spellCheck={false}
+          />
+        </Field>
+      </div>
+
+      <Field label="Horario de atencion" hint="Opcional. Como se informa al publico.">
+        <Input
+          name="businessHours"
+          defaultValue={lot?.businessHours ?? ''}
+          placeholder="Lunes a sabado 6:00 a. m. - 10:00 p. m."
+        />
+      </Field>
     </div>
   );
 }

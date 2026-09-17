@@ -48,6 +48,9 @@ export default async function PosPage({
       department: true,
       phone: true,
       email: true,
+      insurer: true,
+      insurancePolicy: true,
+      businessHours: true,
     },
   });
   if (!lot) notFound();

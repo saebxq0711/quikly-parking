@@ -695,6 +695,10 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
   });
 
   if (status === 'APPROVED') {
+    // Primero el consecutivo: el comprobante que se muestra, se imprime o se envia lo lleva.
+    await assignReceiptNumber(updated.id, updated.parkingLotId).catch((error) =>
+      console.error('[payments] no se pudo numerar el comprobante', { paymentId, error }),
+    );
     // El parqueadero tiene que enterarse para liberar el vehiculo, y hay que
     // facturar. Ninguna de las dos cosas puede invalidar un cobro ya hecho.
     await confirmToParkingSystem(updated).catch((error) =>
@@ -987,4 +991,29 @@ export async function findLivePayment(
 
   const refreshed = await refreshPaymentStatus(live.id);
   return isFinalStatus(refreshed.status) ? null : refreshed;
+}
+
+/**
+ * Consecutivo del comprobante, por parqueadero, sin saltos ni repetidos.
+ *
+ * El estado del pago se consulta cada pocos segundos y dos consultas pueden ver la
+ * aprobacion a la vez. Por eso se bloquea la fila del pago (`FOR UPDATE`) dentro de la
+ * transaccion: la segunda espera, ve que ya tiene numero y no gasta otro.
+ */
+async function assignReceiptNumber(paymentId: string, parkingLotId: string): Promise<void> {
+  await db.$transaction(async (tx) => {
+    const filas = await tx.$queryRaw<{ receiptSeq: number | null }[]>`
+      SELECT "receiptSeq" FROM "payments" WHERE "id" = ${paymentId} FOR UPDATE`;
+    if (!filas[0] || filas[0].receiptSeq !== null) return;
+
+    const lot = await tx.parkingLot.update({
+      where: { id: parkingLotId },
+      data: { receiptCounter: { increment: 1 } },
+      select: { receiptCounter: true },
+    });
+    await tx.payment.update({
+      where: { id: paymentId },
+      data: { receiptSeq: lot.receiptCounter },
+    });
+  });
 }

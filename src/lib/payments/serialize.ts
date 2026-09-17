@@ -30,6 +30,8 @@ export interface PaymentDTO {
   customerDocument: string | null;
   /** Referencia del cobro: el IdTransaccion que se envio al datafono. */
   reference: string | null;
+  /** Consecutivo del comprobante en el parqueadero, desde que se aprueba. */
+  receiptSeq: number | null;
   /** Datos del voucher del cliente. Nada de la terminal. */
   authorizationCode: string | null;
   receiptNumber: string | null;
@@ -93,6 +95,7 @@ export function serializePayment(payment: Payment): PaymentDTO {
     customerName: payment.customerName,
     customerDocument: payment.customerDocument,
     reference: payment.providerTransactionId,
+    receiptSeq: payment.receiptSeq,
     authorizationCode: payment.authorizationCode,
     receiptNumber: payment.receiptNumber,
     cardBrand: payment.cardBrand,

@@ -24,6 +24,9 @@ export interface ReceiptIssuer {
   department: string | null;
   phone: string | null;
   email: string | null;
+  insurer: string | null;
+  insurancePolicy: string | null;
+  businessHours: string | null;
 }
 
 export interface ReceiptRow {
@@ -70,7 +73,18 @@ export const VEHICULO: Record<string, string> = {
 
 type LotIssuerFields = Pick<
   ParkingLot,
-  'name' | 'legalName' | 'nit' | 'taxRegime' | 'address' | 'city' | 'department' | 'phone' | 'email'
+  | 'name'
+  | 'legalName'
+  | 'nit'
+  | 'taxRegime'
+  | 'address'
+  | 'city'
+  | 'department'
+  | 'phone'
+  | 'email'
+  | 'insurer'
+  | 'insurancePolicy'
+  | 'businessHours'
 >;
 
 export function emisorDe(lot: LotIssuerFields): ReceiptIssuer {
@@ -84,6 +98,9 @@ export function emisorDe(lot: LotIssuerFields): ReceiptIssuer {
     department: lot.department,
     phone: lot.phone,
     email: lot.email,
+    insurer: lot.insurer,
+    insurancePolicy: lot.insurancePolicy,
+    businessHours: lot.businessHours,
   };
 }
 
@@ -135,6 +152,10 @@ function encabezado(emisor: ReceiptIssuer): Pick<ReceiptDocument, 'title' | 'hea
       lugar || null,
       emisor.phone ? `Tel. ${emisor.phone}` : null,
       emisor.email,
+      emisor.insurancePolicy
+        ? `Poliza de responsabilidad civil No. ${emisor.insurancePolicy}${emisor.insurer ? ` - ${emisor.insurer}` : ''}`
+        : null,
+      emisor.businessHours ? `Horario: ${emisor.businessHours}` : null,
     ].filter((linea): linea is string => Boolean(linea)),
   };
 }
@@ -172,6 +193,8 @@ function seccionPago(pago: PaymentDTO, formaDePago: string | null): ReceiptSecti
   return {
     title: 'Pago',
     rows: filas([
+      // En la factura el concepto va en sus items; en el comprobante, aqui.
+      ['Concepto', formaDePago ? null : 'Servicio de parqueadero'],
       ['Forma de pago', formaDePago ?? 'Tarjeta (datafono)'],
       ['Tarjeta', pago.cardBrand ? `${pago.cardBrand}${pago.cardMask ? ` ${pago.cardMask}` : ''}` : null],
       ['Autorizacion', pago.authorizationCode],
@@ -185,7 +208,7 @@ export function comprobante(pago: PaymentDTO, emisor: ReceiptIssuer): ReceiptDoc
   return {
     ...encabezado(emisor),
     heading: 'Comprobante de pago',
-    number: null,
+    number: pago.receiptSeq ? `No. ${String(pago.receiptSeq).padStart(6, '0')}` : null,
     issuedAt: fechaHora(pago.resolvedAt ?? pago.createdAt),
     sections: [
       seccionCliente(pago.customerName, pago.customerDocument),
@@ -199,7 +222,7 @@ export function comprobante(pago: PaymentDTO, emisor: ReceiptIssuer): ReceiptDoc
     qrUrl: pago.receiptUrl,
     qrCaption: pago.receiptUrl ? 'Escanea para ver tu factura electronica' : null,
     notes: [
-      'Este papel es tu comprobante de pago. La factura electronica llega a tu correo.',
+      'Este comprobante no reemplaza la factura electronica de venta.',
       'Gracias por tu visita',
     ],
   };

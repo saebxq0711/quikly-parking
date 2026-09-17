@@ -55,6 +55,10 @@ export default async function ParkingLotsPage() {
             <ul className="divide-y divide-[var(--line-subtle)]">
               {lots.map((lot) => {
                 const pending: string[] = [];
+                // Sin estos datos el comprobante del cliente sale incompleto.
+                if (!lot.legalName || !lot.nit || !lot.address || !lot.insurancePolicy) {
+                  pending.push('datos de la empresa');
+                }
                 if (!lot.novaBaseUrl) pending.push('sistema');
                 if (lot._count.paymentPoints === 0) pending.push('kioscos');
                 else if ((datafonosPorLote.get(lot.id) ?? 0) === 0) pending.push('datafono');

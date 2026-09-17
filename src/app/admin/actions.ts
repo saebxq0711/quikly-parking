@@ -78,6 +78,9 @@ const parkingLotSchema = z.object({
       (valor) => valor === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor),
       'El correo del parqueadero no es valido.',
     ),
+  insurer: z.string().min(2, 'Escribe la aseguradora de la poliza de responsabilidad civil.').max(120),
+  insurancePolicy: z.string().min(2, 'Escribe el numero de la poliza de responsabilidad civil.').max(60),
+  businessHours: z.string().max(120),
 });
 
 function parkingLotFields(formData: FormData) {
@@ -94,6 +97,9 @@ function parkingLotFields(formData: FormData) {
     department: texto('department'),
     phone: texto('phone'),
     email: texto('email').toLowerCase(),
+    insurer: texto('insurer'),
+    insurancePolicy: texto('insurancePolicy'),
+    businessHours: texto('businessHours'),
   };
 }
 
@@ -109,6 +115,9 @@ function parkingLotData(datos: z.infer<typeof parkingLotSchema>) {
     department: datos.department,
     phone: datos.phone,
     email: datos.email || null,
+    insurer: datos.insurer,
+    insurancePolicy: datos.insurancePolicy,
+    businessHours: datos.businessHours || null,
   };
 }
 
