@@ -10,7 +10,8 @@ import {
   nombreImpresora,
   usbDisponible,
 } from '@/lib/printing/usb-printer';
-import { pruebaEscPos } from '@/lib/printing/tickets';
+import { comprobantePruebaEscPos } from '@/lib/printing/tickets';
+import type { ReceiptIssuer } from '@/lib/printing/receipt-data';
 
 type Estado =
   | { tipo: 'revisando' }
@@ -29,10 +30,11 @@ function explicar(error: unknown): string {
 }
 
 export function PrinterSetup({
-  parkingLotName,
+  issuer,
   backHref,
 }: {
-  parkingLotName: string;
+  /** Datos reales del parqueadero: encabezan el comprobante de prueba. */
+  issuer: ReceiptIssuer;
   backHref: string;
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'revisando' });
@@ -72,9 +74,17 @@ export function PrinterSetup({
     try {
       await imprimirPorUsb(
         estado.dispositivo,
-        pruebaEscPos(parkingLotName, nombreImpresora(estado.dispositivo)),
+        comprobantePruebaEscPos(
+          issuer,
+          nombreImpresora(estado.dispositivo),
+          window.location.origin,
+        ),
       );
-      setMensaje({ ok: true, texto: 'Prueba enviada. Si salio el papel con el QR, el kiosco ya imprime solo.' });
+      setMensaje({
+        ok: true,
+        texto:
+          'Comprobante de prueba enviado. Revisa que salgan completos los datos del parqueadero y el QR: si es asi, el kiosco ya imprime solo.',
+      });
     } catch (error) {
       setMensaje({ ok: false, texto: explicar(error) });
     } finally {

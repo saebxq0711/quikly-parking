@@ -59,27 +59,58 @@ export function comprobanteEscPos(pago: PaymentDTO, emisor: ReceiptIssuer): Uint
   return imprimir(comprobante(pago, emisor));
 }
 
-/** Hoja de prueba para comprobar la conexion desde la pantalla de configuracion. */
-export function pruebaEscPos(parqueadero: string, impresora: string): Uint8Array {
-  return new EscPos()
-    .iniciar()
-    .alinear('centro')
-    .negrita(true)
-    .tamano(2, 2)
-    .linea('PRUEBA')
-    .tamano(1, 1)
-    .linea(parqueadero)
-    .negrita(false)
-    .linea(fechaHora(new Date().toISOString()))
-    .separador()
-    .alinear('izquierda')
-    .fila('Impresora', impresora)
-    .fila('Conexion', 'USB directo')
-    .separador()
-    .alinear('centro')
-    .qr('A7B48')
-    .linea('Si ves el QR, la impresora esta lista')
-    .avanzar(3)
-    .cortar()
-    .bytesFinales();
+/**
+ * Comprobante de PRUEBA para la pantalla de configuracion de la impresora.
+ *
+ * Es el mismo papel que recibe un cliente, con los datos reales del parqueadero (asi se
+ * revisa que el encabezado salga completo) y una venta inventada: cliente, tiquete,
+ * tiempo, tarjeta y total de ejemplo. Va marcado como prueba arriba y abajo para que
+ * nadie lo confunda con un pago real.
+ */
+export function comprobantePruebaEscPos(
+  emisor: ReceiptIssuer,
+  impresora: string,
+  qrUrl: string | null,
+): Uint8Array {
+  const ahora = Date.now();
+  const pago: PaymentDTO = {
+    id: 'prueba',
+    status: 'APPROVED',
+    stage: 'RESOLVED',
+    instruction: '',
+    amount: 4500,
+    plate: null,
+    vehicleIdentifier: 'A7B48',
+    vehicleType: 'MOTORCYCLE',
+    ticketCode: 'A7B48',
+    entryAt: new Date(ahora - 95 * 60_000).toISOString(),
+    stayMinutes: 95,
+    customerName: 'CLIENTE DE PRUEBA',
+    customerDocument: '1000000000',
+    reference: 'PRUEBA0001',
+    receiptSeq: null,
+    authorizationCode: '000000',
+    receiptNumber: '000000',
+    cardBrand: 'VISA',
+    cardMask: '**** 0000',
+    failureReason: null,
+    parkingPending: false,
+    isFinal: true,
+    receiptUrl: qrUrl,
+    createdAt: new Date(ahora).toISOString(),
+    resolvedAt: new Date(ahora).toISOString(),
+  };
+
+  const doc = comprobante(pago, emisor);
+  return imprimir({
+    ...doc,
+    heading: 'Comprobante de pago - PRUEBA',
+    number: 'No. PRUEBA',
+    qrCaption: qrUrl ? 'QR de prueba' : null,
+    notes: [
+      '*** DOCUMENTO DE PRUEBA ***',
+      'No corresponde a un pago real ni sirve como soporte.',
+      `Impresora: ${impresora} - ${fechaHora(new Date(ahora).toISOString())}`,
+    ],
+  });
 }
