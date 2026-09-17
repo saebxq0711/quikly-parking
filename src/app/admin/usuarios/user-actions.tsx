@@ -24,11 +24,14 @@ export function UserActions({
   active,
   hasSession,
   isSelf,
+  allowLogout = true,
 }: {
   userId: string;
   active: boolean;
   hasSession: boolean;
   isSelf: boolean;
+  /** Los kioscos los cierra a distancia el administrador del parqueadero, no el SuperAdmin. */
+  allowLogout?: boolean;
 }) {
   const [reset, resetAction] = useActionState(resetUserPassword, null);
   const [logout, logoutAction] = useActionState(forceLogout, null);
@@ -57,7 +60,7 @@ export function UserActions({
           Cambiar contrasena
         </button>
 
-        {hasSession ? (
+        {hasSession && allowLogout ? (
           <form action={logoutAction}>
             <input type="hidden" name="userId" value={userId} />
             <SmallButton label="Cerrar sesion" pendingLabel="Cerrando..." />

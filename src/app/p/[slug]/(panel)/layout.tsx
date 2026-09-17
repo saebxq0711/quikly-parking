@@ -60,6 +60,7 @@ export default async function ParkingLotLayout({
     { href: `/p/${slug}/cajas`, label: 'Cajas', icon: 'cash', matchPrefix: true },
     { href: `/p/${slug}/reportes`, label: 'Reportes', icon: 'reports' },
     { href: `/p/${slug}/pagos`, label: 'Pagos del kiosco', icon: 'payments' },
+    { href: `/p/${slug}/kioscos`, label: 'Kioscos', icon: 'pos' },
   ];
 
   return (

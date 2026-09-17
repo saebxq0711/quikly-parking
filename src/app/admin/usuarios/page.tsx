@@ -123,6 +123,7 @@ export default async function UsersPage() {
                       active={user.active}
                       hasSession={user._count.sessions > 0}
                       isSelf={user.id === actor.id}
+                      allowLogout={user.role !== 'PUNTO_PAGO'}
                     />
                   </div>
                 </li>
@@ -147,8 +148,8 @@ export default async function UsersPage() {
           <Alert tone="info" title="Sobre los kioscos">
             Los usuarios de kiosco se crean en la ficha de cada parqueadero, junto con su
             kiosco. La pantalla no tiene un boton de salida a la vista, para que ningun
-            cliente la deje fuera de servicio: su sesion se cierra a distancia desde aqui o
-            desde la ficha del parqueadero.
+            cliente la deje fuera de servicio: su sesion la cierra a distancia el administrador
+            del parqueadero, desde su panel en Kioscos.
           </Alert>
         </div>
       </div>

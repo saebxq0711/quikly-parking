@@ -292,6 +292,27 @@ export function PosFlow({
   const isWaiting = step === 'waiting';
 
   /*
+    Sesion cerrada a distancia por el administrador del parqueadero. Mientras la pantalla
+    espera al siguiente cliente se comprueba cada minuto; si ya no hay sesion, vuelve al
+    inicio de sesion en vez de fallar cuando alguien intente pagar.
+  */
+  useEffect(() => {
+    if (step !== 'type') return;
+    const revisar = async () => {
+      try {
+        const response = await fetch('/api/pos/payments', { cache: 'no-store' });
+        if (response.status === 401 || (response.redirected && response.url.includes('/login'))) {
+          window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        }
+      } catch {
+        // Sin red: se vuelve a intentar en el siguiente minuto.
+      }
+    };
+    const timer = setInterval(revisar, 60_000);
+    return () => clearInterval(timer);
+  }, [step]);
+
+  /*
     Inactividad a media operacion: se vuelve al inicio para que el siguiente
     cliente encuentre la pantalla limpia. Cualquier toque reinicia la cuenta.
   */

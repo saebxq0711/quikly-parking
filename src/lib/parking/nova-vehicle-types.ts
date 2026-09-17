@@ -134,3 +134,52 @@ export async function novaVehicleTypeIdOrNull(
     return null;
   }
 }
+
+/* ------------------------------------------------ Tipo guardado en el tiquete */
+
+const ETIQUETA: Record<VehicleType, string> = {
+  CAR: 'Carro',
+  MOTORCYCLE: 'Moto',
+  BICYCLE: 'Bicicleta',
+  SCOOTER: 'Patineta',
+};
+
+/** Tipo por el nombre del catalogo de Nova Parking. `null` = "Por Definir" o desconocido. */
+export function vehicleTypeFromLabel(label: string | null | undefined): VehicleType | null {
+  if (!label) return null;
+  const nombre = normalizar(label);
+  for (const [tipo, alias] of Object.entries(NOMBRES) as [VehicleType, string[]][]) {
+    if (alias.includes(nombre)) return tipo;
+  }
+  return null;
+}
+
+/**
+ * El tipo que eligio el cliente tiene que ser el del tiquete.
+ *
+ * El cliente elige su tipo a la salida solo porque la camara no distingue moto de
+ * bicicleta de patineta: esos ingresos quedan "Por Definir" y ahi cualquier tipo sin
+ * placa vale. Pero si el tiquete YA tiene un tipo (lo registro un operario, o se cobro
+ * antes), elegir otro seria pagar con la tarifa equivocada: se rechaza y se le dice cual
+ * elegir.
+ *
+ * El tipo guardado sale de `pay-checkout` SIN tipo: con tipo, Nova Parking responde con
+ * el tipo pedido y no con el del tiquete. Si no se puede saber (respuesta sin datos del
+ * tiquete, tiquete ya pagado), no se bloquea: lo resuelve la cotizacion que sigue.
+ */
+export async function assertTicketType(
+  client: NovaParkingClient,
+  ticketId: string,
+  elegido: VehicleType,
+): Promise<void> {
+  const base = await client.getCheckout(ticketId, null);
+  if (base.alreadyPaid) return;
+
+  const guardado = vehicleTypeFromLabel(base.ticket.vehicleTypeLabel);
+  if (guardado && guardado !== elegido) {
+    throw new AppError('VALIDATION', {
+      publicMessage: `Este tiquete esta registrado como ${ETIQUETA[guardado]}. Vuelve al inicio y elige ${ETIQUETA[guardado]}.`,
+      detail: { ticketId, elegido, guardado: base.ticket.vehicleTypeLabel },
+    });
+  }
+}

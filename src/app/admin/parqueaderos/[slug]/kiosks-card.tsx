@@ -177,8 +177,10 @@ function KioskItem({
                 <p className="mb-3 text-xs text-[var(--text-muted)]">
                   {kiosk.user.email} ·{' '}
                   {sesionAbierta ? 'la pantalla tiene la sesion abierta' : 'sin sesion abierta'}
+                  {' '}(la cierra a distancia el administrador del parqueadero, desde su panel)
                 </p>
                 <UserActions
+                  allowLogout={false}
                   userId={kiosk.user.id}
                   active={kiosk.user.active}
                   hasSession={sesionAbierta}

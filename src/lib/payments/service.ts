@@ -26,6 +26,7 @@ import type { OperablePoint } from '../parking/payment-point';
 import type { NovaCheckout } from '@/integrations/nova-parking/types';
 import { maskCard } from '@/integrations/sipconnector/codec';
 import {
+  assertTicketType,
   novaVehicleTypeId,
   novaVehicleTypeIdOrNull,
 } from '@/lib/parking/nova-vehicle-types';
@@ -220,6 +221,11 @@ export async function lookupVehicle(params: {
       ? null
       : await novaVehicleTypeId(client, params.parkingLotId, params.vehicleType);
 
+  // Un tiquete que ya tiene tipo (moto, bicicleta o patineta) solo se paga con ese tipo.
+  if (config.identifierKind !== 'PLATE') {
+    await assertTicketType(client, ticket.id, params.vehicleType);
+  }
+
   let checkout: NovaCheckout;
   try {
     checkout = await client.getCheckout(ticket.id, vehicleTypeId);
@@ -323,6 +329,10 @@ export async function startCardPayment(
       config.identifierKind === 'PLATE'
         ? null
         : await novaVehicleTypeId(nova, input.parkingLotId, input.vehicleType);
+    // Se vuelve a validar aqui: el cobro no puede depender de que la pantalla haya buscado antes.
+    if (config.identifierKind !== 'PLATE') {
+      await assertTicketType(nova, input.ticketId, input.vehicleType);
+    }
     const checkout = await nova.getCheckout(input.ticketId, vehicleTypeId);
 
     if (checkout.alreadyPaid) {
