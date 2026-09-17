@@ -26,9 +26,8 @@ import type { OperablePoint } from '../parking/payment-point';
 import type { NovaCheckout } from '@/integrations/nova-parking/types';
 import { maskCard } from '@/integrations/sipconnector/codec';
 import {
-  assertTicketType,
-  novaVehicleTypeId,
-  novaVehicleTypeIdOrNull,
+  vehicleTypeIdForConfirm,
+  vehicleTypeIdForQuote,
 } from '@/lib/parking/nova-vehicle-types';
 import { SIP_CODE, publicMessageForCode } from '@/integrations/sipconnector/codes';
 import { queueInvoice } from '../billing/service';
@@ -214,17 +213,15 @@ export async function lookupVehicle(params: {
     };
   }
 
-  // El tipo que eligio el cliente. Solo los que no van por placa: un carro ya
-  // entro tipado por la camara y no hace falta decirselo.
+  /*
+    Con que tipo se cotiza. El carro va por placa y ya entro tipado: sin tipo. Sin placa,
+    si el tiquete ya tiene tipo se usa el valor que trae el parqueadero tal cual (y solo
+    si el cliente eligio ese tipo); si esta "Por Definir", se cotiza con el tipo elegido.
+  */
   const vehicleTypeId =
     config.identifierKind === 'PLATE'
       ? null
-      : await novaVehicleTypeId(client, params.parkingLotId, params.vehicleType);
-
-  // Un tiquete que ya tiene tipo (moto, bicicleta o patineta) solo se paga con ese tipo.
-  if (config.identifierKind !== 'PLATE') {
-    await assertTicketType(client, ticket.id, params.vehicleType);
-  }
+      : await vehicleTypeIdForQuote(client, params.parkingLotId, ticket.id, params.vehicleType);
 
   let checkout: NovaCheckout;
   try {
@@ -321,18 +318,15 @@ export async function startCardPayment(
     const nova = await novaClientFor(input.parkingLotId);
 
     /*
-      Este es el monto que se le cobra al datafono, asi que tiene que salir con
-      el tipo que eligio el cliente — el mismo con que se le mostro el precio.
-      Si se cotizara sin tipo, un "Por Definir" se cobraria como moto.
+      Este es el monto que se le cobra al datafono: sale igual que el que se le mostro.
+      "Por Definir" se cotiza con el tipo elegido (sin tipo se cobraria como moto); un
+      tiquete con tipo definido, con el valor que ya trae el parqueadero. La validacion
+      se repite aqui: el cobro no depende de que la pantalla haya buscado antes.
     */
     const vehicleTypeId =
       config.identifierKind === 'PLATE'
         ? null
-        : await novaVehicleTypeId(nova, input.parkingLotId, input.vehicleType);
-    // Se vuelve a validar aqui: el cobro no puede depender de que la pantalla haya buscado antes.
-    if (config.identifierKind !== 'PLATE') {
-      await assertTicketType(nova, input.ticketId, input.vehicleType);
-    }
+        : await vehicleTypeIdForQuote(nova, input.parkingLotId, input.ticketId, input.vehicleType);
     const checkout = await nova.getCheckout(input.ticketId, vehicleTypeId);
 
     if (checkout.alreadyPaid) {
@@ -804,13 +798,18 @@ async function expireIfStale(payment: Payment, age: number): Promise<Payment> {
 async function confirmToParkingSystem(payment: Payment): Promise<void> {
   const client = await novaClientFor(payment.parkingLotId);
 
-  // Nova Parking fija el tipo en el tiquete dentro de la misma transaccion del
-  // cobro. Aqui el dinero ya se cobro, asi que si el tipo no se resuelve se
-  // confirma igual sin el: peor seria dejar el vehiculo sin salir.
+  // Nova Parking fija el tipo en el tiquete dentro de la misma transaccion del cobro,
+  // pero solo se le manda si el tiquete sigue "Por Definir": a uno con tipo no se le
+  // cambia. Aqui el dinero ya se cobro, asi que esto nunca impide confirmar.
   const vehicleTypeId =
     payment.identifierKind === 'PLATE'
       ? null
-      : await novaVehicleTypeIdOrNull(client, payment.parkingLotId, payment.vehicleType);
+      : await vehicleTypeIdForConfirm(
+          client,
+          payment.parkingLotId,
+          payment.externalTicketId,
+          payment.vehicleType,
+        );
 
   const attempt = () =>
     client.confirmPayment({

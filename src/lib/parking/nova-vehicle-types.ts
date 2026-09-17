@@ -137,14 +137,7 @@ export async function novaVehicleTypeIdOrNull(
 
 /* ------------------------------------------------ Tipo guardado en el tiquete */
 
-const ETIQUETA: Record<VehicleType, string> = {
-  CAR: 'Carro',
-  MOTORCYCLE: 'Moto',
-  BICYCLE: 'Bicicleta',
-  SCOOTER: 'Patineta',
-};
-
-/** Tipo por el nombre del catalogo de Nova Parking. `null` = "Por Definir" o desconocido. */
+/** Tipo por el nombre del catalogo de Nova Parking. `null` = nombre desconocido. */
 export function vehicleTypeFromLabel(label: string | null | undefined): VehicleType | null {
   if (!label) return null;
   const nombre = normalizar(label);
@@ -155,31 +148,69 @@ export function vehicleTypeFromLabel(label: string | null | undefined): VehicleT
 }
 
 /**
- * El tipo que eligio el cliente tiene que ser el del tiquete.
+ * Tipo con que el tiquete esta guardado en el parqueadero.
  *
- * El cliente elige su tipo a la salida solo porque la camara no distingue moto de
- * bicicleta de patineta: esos ingresos quedan "Por Definir" y ahi cualquier tipo sin
- * placa vale. Pero si el tiquete YA tiene un tipo (lo registro un operario, o se cobro
- * antes), elegir otro seria pagar con la tarifa equivocada: se rechaza y se le dice cual
- * elegir.
- *
- * El tipo guardado sale de `pay-checkout` SIN tipo: con tipo, Nova Parking responde con
- * el tipo pedido y no con el del tiquete. Si no se puede saber (respuesta sin datos del
- * tiquete, tiquete ya pagado), no se bloquea: lo resuelve la cotizacion que sigue.
+ * Sale de `pay-checkout` SIN tipo: con tipo, Nova Parking responde con el tipo pedido y
+ * no con el del tiquete. `definido` es falso para "Por Definir" (ingreso automatico por
+ * camara, que no distingue moto de bicicleta de patineta) y cuando la respuesta no trae
+ * el tipo (tiquete ya pagado o sin nada por cobrar).
  */
-export async function assertTicketType(
+async function storedTicketType(
   client: NovaParkingClient,
   ticketId: string,
-  elegido: VehicleType,
-): Promise<void> {
+): Promise<{ definido: boolean; tipo: VehicleType | null }> {
   const base = await client.getCheckout(ticketId, null);
-  if (base.alreadyPaid) return;
+  const label = base.alreadyPaid ? null : base.ticket.vehicleTypeLabel;
+  if (!label || normalizar(label) === 'por definir') return { definido: false, tipo: null };
+  return { definido: true, tipo: vehicleTypeFromLabel(label) };
+}
 
-  const guardado = vehicleTypeFromLabel(base.ticket.vehicleTypeLabel);
-  if (guardado && guardado !== elegido) {
-    throw new AppError('VALIDATION', {
-      publicMessage: `Este tiquete esta registrado como ${ETIQUETA[guardado]}. Vuelve al inicio y elige ${ETIQUETA[guardado]}.`,
-      detail: { ticketId, elegido, guardado: base.ticket.vehicleTypeLabel },
-    });
+/**
+ * Tipo con que se COTIZA un tiquete sin placa, validando la eleccion del cliente.
+ *
+ * - "Por Definir": el tipo solo se conoce a la salida, asi que se cotiza con el que
+ *   eligio el cliente y la tarifa la calcula el parqueadero con ese tipo.
+ * - Tipo ya definido: no se recalcula nada. Se devuelve `null` para pedir el valor tal
+ *   cual lo trae el parqueadero, y solo si el cliente eligio ese mismo tipo. Si eligio
+ *   otro, se rechaza SIN decir a que tipo pertenece el codigo: esa pista le serviria a
+ *   alguien para buscar la tarifa mas baja.
+ */
+export async function vehicleTypeIdForQuote(
+  client: NovaParkingClient,
+  parkingLotId: string,
+  ticketId: string,
+  elegido: VehicleType,
+): Promise<string | null> {
+  const guardado = await storedTicketType(client, ticketId);
+
+  if (guardado.definido) {
+    if (guardado.tipo !== elegido) {
+      throw new AppError('VALIDATION', {
+        publicMessage: 'Este codigo no pertenece a este tipo de vehiculo.',
+        detail: { ticketId, elegido, guardado: guardado.tipo },
+      });
+    }
+    return null;
   }
+
+  return novaVehicleTypeId(client, parkingLotId, elegido);
+}
+
+/**
+ * Tipo para CONFIRMAR el cobro. Solo se manda si el tiquete sigue "Por Definir": a uno
+ * con tipo definido no se le cambia. No falla nunca: el dinero ya se cobro, y si no se
+ * puede saber el tipo guardado se manda el elegido (ya se valido al cobrar).
+ */
+export async function vehicleTypeIdForConfirm(
+  client: NovaParkingClient,
+  parkingLotId: string,
+  ticketId: string,
+  elegido: VehicleType,
+): Promise<string | null> {
+  const guardado = await storedTicketType(client, ticketId).catch(() => ({
+    definido: false,
+    tipo: null,
+  }));
+  if (guardado.definido) return null;
+  return novaVehicleTypeIdOrNull(client, parkingLotId, elegido);
 }
