@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getCurrentUser, scopeToParkingLot } from '@/lib/auth/guards';
 import { emisorDe } from '@/lib/printing/receipt-data';
+import { SCRIPT_TEMA_KIOSCO } from '@/components/pos/theme-script';
 import { PrinterSetup } from './printer-setup';
 
 export const metadata = { title: 'Impresora del kiosco' };
@@ -45,5 +46,11 @@ export default async function PrinterPage({
   if (!lot) notFound();
   scopeToParkingLot(user, lot.id);
 
-  return <PrinterSetup issuer={emisorDe(lot)} backHref={`/p/${slug}/pos`} />;
+  return (
+    <>
+      {/* Mismo tema dia/noche que el kiosco: se configura en la misma pantalla. */}
+      <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_KIOSCO }} />
+      <PrinterSetup issuer={emisorDe(lot)} backHref={`/p/${slug}/pos`} />
+    </>
+  );
 }

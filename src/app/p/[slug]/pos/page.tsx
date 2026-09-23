@@ -6,6 +6,7 @@ import { getPaymentPoint } from '@/lib/parking/payment-point';
 import { findLivePayment } from '@/lib/payments/service';
 import { serializePayment } from '@/lib/payments/serialize';
 import { PosFlow } from '@/components/pos/pos-flow';
+import { SCRIPT_TEMA_KIOSCO } from '@/components/pos/theme-script';
 import { emisorDe } from '@/lib/printing/receipt-data';
 
 export const metadata = { title: 'Punto de pago' };
@@ -97,21 +98,29 @@ export default async function PosPage({
   const live = await findLivePayment(parkingLotId, point.id);
 
   return (
-    <PosFlow
-      vehicles={rules.map((rule) => ({
-        vehicleType: rule.vehicleType,
-        label: rule.label,
-        identifierKind: rule.identifierKind,
-        inputLabel: rule.inputLabel,
-        inputPlaceholder: rule.inputPlaceholder,
-      }))}
-      parkingLotName={lot.name}
-      issuer={emisorDe(lot)}
-      hasPrinter={point.hasPrinter}
-      testMode={lot.testMode}
-      paymentPointName={point.name}
-      livePayment={live ? serializePayment(live) : null}
-    />
+    <>
+      {/*
+        Tema dia/noche antes de pintar. Va aqui, en el HTML de la pagina, y no
+        dentro del componente: si esperara a que React monte, de noche la
+        pantalla daria un fogonazo blanco antes de oscurecerse.
+      */}
+      <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_KIOSCO }} />
+      <PosFlow
+        vehicles={rules.map((rule) => ({
+          vehicleType: rule.vehicleType,
+          label: rule.label,
+          identifierKind: rule.identifierKind,
+          inputLabel: rule.inputLabel,
+          inputPlaceholder: rule.inputPlaceholder,
+        }))}
+        parkingLotName={lot.name}
+        issuer={emisorDe(lot)}
+        hasPrinter={point.hasPrinter}
+        testMode={lot.testMode}
+        paymentPointName={point.name}
+        livePayment={live ? serializePayment(live) : null}
+      />
+    </>
   );
 }
 
@@ -119,7 +128,7 @@ function Notice({ title, detail }: { title: string; detail: string }) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 text-center">
       <div className="max-w-md">
-        <h1 className="text-2xl font-semibold text-ink-100">{title}</h1>
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{title}</h1>
         <p className="mt-3 leading-relaxed text-[var(--text-secondary)]">
           {detail}
         </p>

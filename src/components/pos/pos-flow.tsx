@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   TerminalStage,
@@ -23,6 +24,7 @@ import { Keypad } from './keypad';
 import { ExitGate } from './exit-gate';
 import { CustomerStep, type CustomerData } from './customer-step';
 import { ReceiptScreen } from './receipt';
+import { ThemeToggle } from './theme';
 import { impresoraEmparejada, imprimirPorUsb, vigilarImpresora } from '@/lib/printing/usb-printer';
 import { comprobante, type ReceiptIssuer } from '@/lib/printing/receipt-data';
 import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
@@ -411,7 +413,14 @@ export function PosFlow({
   }, [isWaiting, paymentId]);
 
   return (
-    <main className="touch-surface flex min-h-dvh flex-col overflow-hidden">
+    /*
+      `kiosk-root` no pinta nada: es la marca que usa `globals.css` para subir el
+      tamano de la raiz en pantallas grandes. El kiosco del 122 es un monitor de
+      27" en vertical y, con la medida de tablet, el cliente ve botones de sello
+      a medio metro de distancia. Al escalar la raiz crece todo a la vez —texto,
+      botones, margenes— sin duplicar una sola clase.
+    */
+    <main className="touch-surface kiosk-root flex min-h-dvh flex-col overflow-hidden">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--line-subtle)] px-5 py-3 kland:py-2">
         {/*
           El nombre del parqueadero es lo unico que el cliente necesita ver aqui.
@@ -420,27 +429,32 @@ export function PosFlow({
           vista que cualquiera pulse.
         */}
         <ExitGate disabled={isWaiting}>
-          <p className="truncate text-sm font-semibold text-ink-100">
+          <p className="truncate text-base font-semibold text-[var(--text-primary)]">
             {parkingLotName}
           </p>
           <p className="truncate text-xs text-[var(--text-muted)]">
             Punto de pago
             {testMode ? (
-              <span className="ml-2 rounded bg-warn-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn-300 ring-1 ring-warn-400/30">
+              <span className="ml-2 rounded bg-warn-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn-300 day:text-warn-600 ring-1 ring-warn-400/30">
                 Modo de pruebas
               </span>
             ) : null}
           </p>
         </ExitGate>
 
-        {step !== 'type' && step !== 'waiting' ? (
-          <button
-            onClick={reset}
-            className="shrink-0 rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100"
-          >
-            Cancelar
-          </button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {step !== 'type' && step !== 'waiting' ? (
+            <button
+              onClick={reset}
+              className="rounded-xl px-4 py-2 text-base font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--fill-soft)] hover:text-[var(--text-primary)]"
+            >
+              Cancelar
+            </button>
+          ) : null}
+          {/* Dia/noche. Se deja a la vista y no escondido: quien atiende el
+              parqueadero es quien sabe si le esta pegando el sol a la pantalla. */}
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex flex-1 items-center justify-center overflow-y-auto px-5 py-6 kland:py-3">
@@ -551,7 +565,7 @@ function SelectType({
             onClick={() => onSelect(vehicle)}
             className="group flex min-h-44 flex-col items-center justify-center gap-4 rounded-3xl bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)] transition-[background-color,box-shadow] duration-150 hover:bg-brand-600 hover:ring-brand-400/50 active:bg-brand-700 kland:min-h-36 kland:gap-2.5 kland:p-4 kshort:min-h-28"
           >
-            <span className="h-24 w-24 text-brand-300 transition-colors duration-150 group-hover:text-white kland:h-16 kland:w-16 kshort:h-12 kshort:w-12">
+            <span className="h-24 w-24 text-brand-400 day:text-brand-700 transition-colors duration-150 group-hover:text-white kland:h-16 kland:w-16 kshort:h-12 kshort:w-12">
               <VehicleIcon type={vehicle.vehicleType} />
             </span>
             <span className="text-xl font-semibold uppercase tracking-wide kland:text-base kshort:text-sm">
@@ -690,8 +704,8 @@ function Identify({
         </h1>
         {porCodigo ? (
           <div className="mt-3 space-y-2 text-left kland:mt-2">
-            <p className="flex items-center gap-2.5 text-base font-medium text-ink-100 kshort:text-sm">
-              <MdQrCodeScanner className="h-6 w-6 shrink-0 text-brand-300" aria-hidden focusable="false" />
+            <p className="flex items-center gap-2.5 text-base font-medium text-[var(--text-primary)] kshort:text-sm">
+              <MdQrCodeScanner className="h-6 w-6 shrink-0 text-brand-400 day:text-brand-700" aria-hidden focusable="false" />
               Usa el escaner con el QR de tu tiquete o de tu celular
             </p>
             <p className="flex items-center gap-2.5 text-base text-[var(--text-secondary)] kshort:text-sm">
@@ -718,13 +732,13 @@ function Identify({
           placeholder={vehicle.inputPlaceholder}
           inputMode="none"
           aria-label={vehicle.inputLabel}
-          className="tnum mt-5 w-full rounded-2xl bg-[var(--surface-sunken)] px-5 py-6 text-center text-5xl font-bold tracking-[0.18em] text-ink-50 ring-2 ring-inset ring-white/12 transition-shadow duration-150 placeholder:text-2xl placeholder:font-medium placeholder:tracking-normal placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kland:py-5 kland:text-4xl kshort:mt-4 kshort:py-3.5 kshort:text-3xl"
+          className="tnum mt-5 w-full rounded-2xl bg-[var(--surface-sunken)] px-5 py-6 text-center text-5xl font-bold tracking-[0.18em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-2xl placeholder:font-medium placeholder:tracking-normal placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kland:py-5 kland:text-4xl kshort:mt-4 kshort:py-3.5 kshort:text-3xl"
         />
 
         {error ? (
           <p
             role="alert"
-            className="mt-3 text-[15px] leading-relaxed text-bad-400"
+            className="mt-3 text-[15px] leading-relaxed text-bad-400 day:text-bad-600"
           >
             {error}
           </p>
@@ -743,14 +757,14 @@ function Identify({
       <div className="flex gap-3 kland:col-start-1 kland:row-start-2">
         <button
           onClick={onBack}
-          className="min-h-16 flex-1 rounded-2xl bg-white/[0.04] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:text-ink-100 kshort:min-h-13"
+          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
         >
           Atras
         </button>
         <button
           onClick={onSubmit}
           disabled={busy || value.length === 0}
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-white/[0.05] disabled:text-ink-600 kshort:min-h-13"
+          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
         >
           {busy ? 'Consultando...' : 'Consultar'}
         </button>
@@ -798,7 +812,7 @@ function Summary({
       <div className="step-in w-full max-w-lg text-center">
         <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-warn-500/12 ring-1 ring-warn-400/25 kland:h-14 kland:w-14">
           <MdWarningAmber
-            className="h-9 w-9 text-warn-400 kland:h-7 kland:w-7"
+            className="h-9 w-9 text-warn-400 day:text-warn-600 kland:h-7 kland:w-7"
             aria-hidden
             focusable="false"
           />
@@ -838,12 +852,14 @@ function Summary({
 
   return (
     <div className="step-in w-full max-w-lg kland:max-w-3xl">
-      <div className="rounded-3xl bg-[var(--surface-raised)] p-7 ring-1 ring-[var(--line-subtle)] kland:grid kland:grid-cols-2 kland:items-center kland:gap-8 kland:p-6">
+      {/* El ambar es el color de la linea Parking en el manual de marca: aqui
+          marca el dinero, que es lo unico que el cliente tiene que mirar. */}
+      <div className="overflow-hidden rounded-3xl border-t-4 border-gold-500 bg-[var(--surface-raised)] p-7 shadow-[var(--shadow-card)] ring-1 ring-[var(--line-subtle)] kland:grid kland:grid-cols-2 kland:items-center kland:gap-8 kland:p-6">
         <div className="text-center kland:text-left">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--text-muted)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-500 day:text-gold-800">
             Total a pagar
           </p>
-          <p className="tnum mt-2 text-6xl font-bold tracking-tight text-ink-50 kland:text-5xl kshort:text-4xl">
+          <p className="tnum mt-2 text-6xl font-bold tracking-tight text-[var(--text-primary)] kland:text-5xl kshort:text-4xl">
             {formatCOP(lookup.amount ?? 0)}
           </p>
         </div>
@@ -874,7 +890,7 @@ function Summary({
       {error ? (
         <p
           role="alert"
-          className="mt-4 text-center text-[15px] leading-relaxed text-bad-400"
+          className="mt-4 text-center text-[15px] leading-relaxed text-bad-400 day:text-bad-600"
         >
           {error}
         </p>
@@ -883,14 +899,14 @@ function Summary({
       <div className="mt-5 flex gap-3">
         <button
           onClick={onRetry}
-          className="min-h-15 flex-1 rounded-2xl bg-white/[0.04] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:text-ink-100 kshort:min-h-12"
+          className="min-h-15 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-12"
         >
           Atras
         </button>
         <button
           onClick={onPay}
           disabled={busy}
-          className="min-h-15 flex-[2] rounded-2xl bg-ok-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-ok-500 active:bg-ok-600 disabled:bg-white/[0.05] disabled:text-ink-600 kshort:min-h-12"
+          className="min-h-15 flex-[2] rounded-2xl bg-ok-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-ok-500 active:bg-ok-600 day:bg-ok-700 day:hover:bg-ok-600 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-12"
         >
           {busy ? 'Enviando al datafono...' : 'Pagar con tarjeta'}
         </button>
@@ -903,7 +919,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-[var(--text-muted)]">{label}</dt>
-      <dd className="text-right font-medium text-ink-100">{value}</dd>
+      <dd className="text-right font-medium text-[var(--text-primary)]">{value}</dd>
     </div>
   );
 }
@@ -933,6 +949,9 @@ function Waiting({
 }) {
   // Mientras el datafono no haya tomado la operacion, cancelar es seguro.
   const canCancel = payment.stage === 'WAITING_TERMINAL';
+  // La misma condicion sirve para la foto: es el momento —y el unico— en que el
+  // cliente tiene que tocar algo en el aparato.
+  const mostrarDatafono = payment.stage === 'WAITING_TERMINAL';
 
   return (
     <div className="step-in w-full max-w-lg text-center kland:max-w-3xl kland:text-left">
@@ -945,7 +964,7 @@ function Waiting({
         </div>
 
         <div className="min-w-0">
-          <p className="tnum mt-7 text-4xl font-bold tracking-tight text-ink-50 kland:mt-0 kland:text-3xl">
+          <p className="tnum mt-7 text-4xl font-bold tracking-tight text-[var(--text-primary)] kland:mt-0 kland:text-3xl">
             {formatCOP(payment.amount)}
           </p>
 
@@ -968,16 +987,42 @@ function Waiting({
         </div>
       </div>
 
+      {/*
+        Foto real del datafono con el boton que hay que pulsar.
+
+        El aparato esta conectado por serial y no cobra solo: la orden ya quedo
+        puesta, pero alguien tiene que iniciarla en la pantalla verde. Escrito con
+        palabras, la gente se queda mirando el kiosco esperando que pase algo;
+        con la foto del mismo aparato que tiene delante, lo encuentra sin que
+        nadie se lo explique.
+      */}
+      {mostrarDatafono ? (
+        <figure className="mt-7 flex flex-col items-center kland:mt-5">
+          <Image
+            src="/datafono-iniciar-cobro.jpg"
+            alt="Pantalla del datafono con el boton verde Iniciar cobro resaltado"
+            width={1254}
+            height={1254}
+            priority
+            className="w-full max-w-72 rounded-2xl ring-1 ring-[var(--line-subtle)] kland:max-w-56 kshort:max-w-44"
+          />
+          <figcaption className="mt-3 text-center text-base font-semibold text-[var(--text-primary)] kshort:text-sm">
+            Toca <span className="text-ok-600 day:text-ok-700">Iniciar cobro</span> en el
+            datafono
+          </figcaption>
+        </figure>
+      ) : null}
+
       {canCancel ? (
         <button
           onClick={onCancel}
           disabled={busy}
-          className="mt-9 min-h-14 w-full rounded-2xl bg-white/[0.04] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:text-ink-100 disabled:text-ink-600 kland:mt-6 kshort:min-h-12"
+          className="mt-9 min-h-14 w-full rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] disabled:text-[var(--text-muted)] kland:mt-6 kshort:min-h-12"
         >
           {busy ? 'Cancelando...' : 'Cancelar cobro'}
         </button>
       ) : (
-        <p className="mt-9 rounded-2xl bg-warn-500/10 px-5 py-4 text-sm leading-relaxed text-warn-300 ring-1 ring-inset ring-warn-400/25 kland:mt-6">
+        <p className="mt-9 rounded-2xl bg-warn-500/10 px-5 py-4 text-sm leading-relaxed text-warn-300 day:text-warn-600 ring-1 ring-inset ring-warn-400/25 kland:mt-6">
           Cobro en curso. Espera aqui hasta ver el resultado.
         </p>
       )}
@@ -1008,7 +1053,7 @@ function StageTrail({ stage }: { stage: TerminalStage }) {
             key={item.key}
             className={`flex items-center gap-3 text-sm ${
               active
-                ? 'text-ink-100'
+                ? 'text-[var(--text-primary)]'
                 : done
                   ? 'text-[var(--text-secondary)]'
                   : 'text-[var(--text-muted)]'
@@ -1021,11 +1066,11 @@ function StageTrail({ stage }: { stage: TerminalStage }) {
                   ? 'bg-ok-500/20 ring-ok-400/40'
                   : active
                     ? 'bg-brand-500/25 ring-brand-400/50'
-                    : 'ring-white/12'
+                    : 'ring-[var(--ring-soft)]'
               }`}
             >
               {done ? (
-                <MdCheck className="h-3 w-3 text-ok-400" aria-hidden focusable="false" />
+                <MdCheck className="h-3 w-3 text-ok-400 day:text-ok-700" aria-hidden focusable="false" />
               ) : active ? (
                 <span className="h-2 w-2 rounded-full bg-brand-300" />
               ) : null}
@@ -1257,13 +1302,13 @@ function Result({
       >
         {approved ? (
           <MdCheck
-            className="h-10 w-10 text-ok-400 kland:h-8 kland:w-8"
+            className="h-10 w-10 text-ok-400 day:text-ok-700 kland:h-8 kland:w-8"
             aria-hidden
             focusable="false"
           />
         ) : (
           <MdClose
-            className="h-10 w-10 text-bad-400 kland:h-8 kland:w-8"
+            className="h-10 w-10 text-bad-400 day:text-bad-600 kland:h-8 kland:w-8"
             aria-hidden
             focusable="false"
           />
@@ -1283,7 +1328,7 @@ function Result({
       {approved && payment.parkingPending ? (
         <p
           role="alert"
-          className="mx-auto mt-4 max-w-md rounded-xl bg-warn-500/10 px-4 py-3 text-[15px] leading-relaxed text-warn-300 ring-1 ring-warn-400/25"
+          className="mx-auto mt-4 max-w-md rounded-xl bg-warn-500/10 px-4 py-3 text-[15px] leading-relaxed text-warn-300 day:text-warn-600 ring-1 ring-warn-400/25"
         >
           Tu pago quedo aprobado, pero la barrera no recibio el aviso. Acercate a la oficina del
           parqueadero con tu comprobante para salir.
@@ -1326,7 +1371,7 @@ function Result({
         </>
       ) : (
         /* Sin boton de terminar mientras sale el papel: cerrar aqui cancelaria la impresion. */
-        <div className="mt-8 flex items-center justify-center gap-3 rounded-2xl bg-white/[0.04] px-5 py-4 text-base text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 kland:mt-6">
+        <div className="mt-8 flex items-center justify-center gap-3 rounded-2xl bg-[var(--fill-soft)] px-5 py-4 text-base text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] kland:mt-6">
           <span className="halo relative h-3 w-3 rounded-full bg-brand-400" aria-hidden="true" />
           {impresion === 'factura-en-camino' ? 'Generando tu factura...' : 'Imprimiendo...'}
         </div>

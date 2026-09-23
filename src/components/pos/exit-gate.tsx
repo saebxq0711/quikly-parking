@@ -96,7 +96,7 @@ export function ExitGate({
             onSubmit={handleExit}
             className="w-full max-w-sm rounded-2xl bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)]"
           >
-            <h2 className="text-lg font-semibold text-ink-100">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
               Cerrar el punto de pago
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-secondary)]">
@@ -110,11 +110,11 @@ export function ExitGate({
               onChange={(e) => setPassword(e.target.value)}
               autoFocus
               autoComplete="current-password"
-              className="mt-4 block w-full rounded-lg border-0 bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-ink-100 ring-1 ring-inset ring-white/10 transition-shadow duration-150 focus:ring-2 focus:ring-inset focus:ring-brand-500 focus:outline-none"
+              className="mt-4 block w-full rounded-lg border-0 bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 focus:ring-2 focus:ring-inset focus:ring-brand-500 focus:outline-none"
             />
 
             {error ? (
-              <p role="alert" className="mt-3 text-sm text-bad-400">
+              <p role="alert" className="mt-3 text-sm text-bad-400 day:text-bad-600">
                 {error}
               </p>
             ) : null}
@@ -122,7 +122,7 @@ export function ExitGate({
             {/* La configuracion de la impresora vive detras de este mismo gesto oculto. */}
             <a
               href={`${pathname.replace(/\/pos(\/.*)?$/, '/pos')}/impresora`}
-              className="mt-4 inline-block text-sm font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+              className="mt-4 inline-block text-sm font-medium text-brand-400 day:text-brand-700 transition-colors duration-150 hover:text-brand-300 day:text-brand-800"
             >
               Configurar la impresora del kiosco
             </a>
@@ -131,14 +131,14 @@ export function ExitGate({
               <button
                 type="button"
                 onClick={close}
-                className="h-11 flex-1 rounded-lg bg-white/[0.04] text-sm font-semibold text-ink-200 ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:ring-white/20"
+                className="h-11 flex-1 rounded-lg bg-[var(--fill-soft)] text-sm font-semibold text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)]"
               >
                 Volver
               </button>
               <button
                 type="submit"
                 disabled={busy || password.length === 0}
-                className="h-11 flex-1 rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand-500 disabled:bg-white/[0.05] disabled:text-ink-600"
+                className="h-11 flex-1 rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand-500 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)]"
               >
                 {busy ? 'Saliendo...' : 'Salir'}
               </button>

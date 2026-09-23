@@ -91,6 +91,27 @@ Para activarlo, la web tiene que estar publicada con su dominio (`APP_URL`) y en
 
 ## 3. El flujo completo, paso a paso
 
+### 3.0. Cómo se ve la pantalla: sol, noche y 27 pulgadas
+
+Tres cosas de la pantalla que no son estética, sino que deciden si el cliente
+puede usar el kiosco o no:
+
+- **De día es blanca y de noche es oscura.** El kiosco está a la intemperie: al
+  mediodía le pega el sol de frente y de madrugada es la única luz del
+  parqueadero. La pantalla cambia sola a las 6:00 y a las 18:00, y hay un botón
+  de sol/luna arriba a la derecha para forzarlo cuando el sol pega de lado. Ese
+  ajuste manual dura hasta el siguiente amanecer o anochecer, para que la
+  pantalla no amanezca en modo noche con el sol encima.
+- **Todo crece con el tamaño del monitor.** En el 122 el kiosco es un monitor de
+  27" en vertical, y el cliente está de pie a medio metro. La interfaz escala
+  por tamaño de pantalla (`.kiosk-root` en `globals.css`): en un monitor así,
+  letras y botones salen casi al doble que en una tablet, sin cambiar la
+  composición.
+- **Números y letras van separados.** El teclado en pantalla tiene dos bloques
+  con su título — los números en aqua, las letras en gris — porque una placa
+  (`ABC123`) y un código (`A7B48`) obligan a saltar entre los dos, y con todo
+  mezclado la gente se pierde en cada salto.
+
 ### 3.1. El cliente elige su vehículo
 
 Cuatro botones grandes: carro, moto, patineta, bicicleta.
@@ -179,6 +200,12 @@ qué hacer, siguiendo los códigos reales del servicio.
 ```
 
 Consultamos cada 3 segundos, que es el mínimo que exige el Anexo 3 del manual.
+
+**En el paso 1 la pantalla muestra la foto del datáfono** con el botón verde
+"Iniciar cobro" señalado (`public/datafono-iniciar-cobro.jpg`). Escrito con
+palabras, la gente se queda mirando el kiosco esperando que pase algo; con la
+foto del mismo aparato que tiene delante, lo encuentra sin que nadie se lo
+explique. La foto desaparece en cuanto el datáfono toma la operación.
 
 Mientras hay una transacción viva **no se puede abandonar la pantalla**: no hay
 botón de cancelar, se avisa antes de recargar y se anula el botón "atrás". Si aun

@@ -35,8 +35,8 @@ export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
       aria-label="Comprobante de pago"
       className="receipt-in mt-6 max-h-[50dvh] overflow-y-auto rounded-2xl bg-[var(--surface-raised)] text-left ring-1 ring-[var(--line-subtle)] kland:mt-4 kland:max-h-[58dvh]"
     >
-      <header className="border-b border-dashed border-white/12 px-5 py-4 text-center">
-        <p className="text-[15px] font-semibold text-ink-50">{doc.title}</p>
+      <header className="border-b border-dashed border-[var(--line-strong)] px-5 py-4 text-center">
+        <p className="text-[15px] font-semibold text-[var(--text-primary)]">{doc.title}</p>
         {doc.headerLines.map((linea, index) => (
           <p key={`${index}-${linea}`} className="text-xs leading-relaxed text-[var(--text-muted)]">
             {linea}
@@ -51,7 +51,7 @@ export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
           </p>
           <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{doc.issuedAt}</p>
         </div>
-        <p className="tnum text-3xl font-bold tracking-tight text-ink-50">{doc.total}</p>
+        <p className="tnum text-3xl font-bold tracking-tight text-[var(--text-primary)]">{doc.total}</p>
       </div>
 
       <div className="grid gap-5 border-t border-[var(--line-subtle)] px-5 py-4 sm:grid-cols-2 kland:grid-cols-3">
@@ -64,7 +64,7 @@ export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
               {seccion.rows.map((fila) => (
                 <div key={fila.label} className="flex justify-between gap-3">
                   <dt className="shrink-0 text-[var(--text-muted)]">{fila.label}</dt>
-                  <dd className="min-w-0 break-words text-right font-medium text-ink-100">
+                  <dd className="min-w-0 break-words text-right font-medium text-[var(--text-primary)]">
                     {fila.value}
                   </dd>
                 </div>

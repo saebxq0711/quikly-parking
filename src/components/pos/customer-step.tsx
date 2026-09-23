@@ -87,7 +87,7 @@ export function CustomerStep({
     return (
       <div className="step-in w-full max-w-lg text-center">
         <p className="text-lg text-[var(--text-secondary)]">Hola,</p>
-        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-ink-50 kland:text-3xl">
+        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-[var(--text-primary)] kland:text-3xl">
           {lookup.fullName}
         </h1>
 
@@ -114,7 +114,7 @@ export function CustomerStep({
               setIdentification('');
               setMissingEmail('');
             }}
-            className="min-h-16 flex-1 rounded-2xl bg-white/[0.04] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:text-ink-100 kshort:min-h-13"
+            className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
           >
             No soy yo
           </button>
@@ -129,7 +129,7 @@ export function CustomerStep({
               })
             }
             disabled={!emailOk}
-            className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-white/[0.05] disabled:text-ink-600 kshort:min-h-13"
+            className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
           >
             Continuar
           </button>
@@ -175,11 +175,11 @@ export function CustomerStep({
           autoFocus
           aria-label="Numero de documento"
           placeholder="1098765432"
-          className="tnum mt-5 w-full rounded-2xl bg-[var(--surface-sunken)] px-5 py-6 text-center text-5xl font-bold tracking-[0.12em] text-ink-50 ring-2 ring-inset ring-white/12 transition-shadow duration-150 placeholder:text-2xl placeholder:font-medium placeholder:tracking-normal placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kland:py-5 kland:text-4xl kshort:mt-4 kshort:py-3.5 kshort:text-3xl"
+          className="tnum mt-5 w-full rounded-2xl bg-[var(--surface-sunken)] px-5 py-6 text-center text-5xl font-bold tracking-[0.12em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-2xl placeholder:font-medium placeholder:tracking-normal placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kland:py-5 kland:text-4xl kshort:mt-4 kshort:py-3.5 kshort:text-3xl"
         />
 
         {error ? (
-          <p role="alert" className="mt-3 text-[15px] text-bad-400">
+          <p role="alert" className="mt-3 text-[15px] text-bad-400 day:text-bad-600">
             {error}
           </p>
         ) : null}
@@ -197,14 +197,14 @@ export function CustomerStep({
       <div className="flex gap-3 kland:col-start-1 kland:row-start-2">
         <button
           onClick={onBack}
-          className="min-h-16 flex-1 rounded-2xl bg-white/[0.04] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:text-ink-100 kshort:min-h-13"
+          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
         >
           Atras
         </button>
         <button
           onClick={handleLookup}
           disabled={busy || identification.length < 5}
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-white/[0.05] disabled:text-ink-600 kshort:min-h-13"
+          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
         >
           {busy ? 'Consultando...' : 'Continuar'}
         </button>
@@ -246,7 +246,7 @@ function NewCustomerForm({
     (email === '' || EMAIL.test(email));
 
   const field =
-    'block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-ink-50 ring-2 ring-inset ring-white/12 transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base';
+    'block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base';
 
   return (
     <div className="step-in w-full max-w-xl">
@@ -261,9 +261,9 @@ function NewCustomerForm({
       </div>
 
       <div className="mt-6 space-y-3">
-        <div className="rounded-xl bg-white/[0.03] px-4 py-3 text-sm">
+        <div className="rounded-xl bg-[var(--fill-soft)] px-4 py-3 text-sm">
           <span className="text-[var(--text-muted)]">Documento</span>
-          <span className="tnum ml-3 font-medium text-ink-100">
+          <span className="tnum ml-3 font-medium text-[var(--text-primary)]">
             {identification}
           </span>
         </div>
@@ -304,7 +304,7 @@ function NewCustomerForm({
       <div className="mt-6 flex gap-3">
         <button
           onClick={onBack}
-          className="min-h-16 flex-1 rounded-2xl bg-white/[0.04] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:text-ink-100 kshort:min-h-13"
+          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
         >
           Atras
         </button>
@@ -319,7 +319,7 @@ function NewCustomerForm({
             })
           }
           disabled={!ready}
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-white/[0.05] disabled:text-ink-600 kshort:min-h-13"
+          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
         >
           Continuar
         </button>
@@ -347,8 +347,8 @@ function EmailField({
 
   return (
     <div>
-      <label className="flex items-center gap-2 text-sm font-medium text-ink-100">
-        <MdOutlineMail className="h-4.5 w-4.5 text-brand-300" aria-hidden focusable="false" />
+      <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+        <MdOutlineMail className="h-4.5 w-4.5 text-brand-400 day:text-brand-700" aria-hidden focusable="false" />
         Correo electronico
       </label>
       <input
@@ -361,10 +361,10 @@ function EmailField({
         type="email"
         autoComplete="email"
         autoFocus={autoFocus}
-        className="mt-2 block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-ink-50 ring-2 ring-inset ring-white/12 transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base"
+        className="mt-2 block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base"
       />
       {looksWrong ? (
-        <p role="alert" className="mt-1.5 text-sm text-bad-400">
+        <p role="alert" className="mt-1.5 text-sm text-bad-400 day:text-bad-600">
           Revisa el correo: parece incompleto.
         </p>
       ) : (
@@ -380,7 +380,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-[var(--text-muted)]">{label}</dt>
-      <dd className="text-right font-medium text-ink-100">{value}</dd>
+      <dd className="text-right font-medium text-[var(--text-primary)]">{value}</dd>
     </div>
   );
 }
