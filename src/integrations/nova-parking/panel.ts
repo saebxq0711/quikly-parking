@@ -1,4 +1,5 @@
 import { AppError } from '@/lib/errors';
+import { parseUpstreamDate } from '@/lib/parking/tickets-view';
 import type { NovaParkingClient } from './client';
 
 /**
@@ -447,7 +448,7 @@ export function getCashBox(client: NovaParkingClient, id: string, limit = 200) {
       const base = parseCashBox(d)[0];
       if (!base) return null;
 
-      const movements = list(d.logs)
+      const movements: NovaCashMovement[] = list(d.logs)
         .flatMap((item) => {
           if (!isDict(item)) return [];
           const movementId = str(item.id);
@@ -468,6 +469,18 @@ export function getCashBox(client: NovaParkingClient, id: string, limit = 200) {
               comment: str(item.comment),
             } satisfies NovaCashMovement,
           ];
+        })
+        /*
+          Del mas reciente al mas antiguo, y ORDENADO ANTES DE RECORTAR: Nova
+          Parking devuelve todos los movimientos desde siempre y aqui solo caben
+          `limit`. Recortando sin ordenar se corria el riesgo de mostrar los
+          doscientos primeros de la historia de la caja en vez de los ultimos
+          doscientos, que es lo unico que alguien va a mirar.
+        */
+        .sort((a, b) => {
+          const A = parseUpstreamDate(a.at)?.getTime() ?? 0;
+          const B = parseUpstreamDate(b.at)?.getTime() ?? 0;
+          return B - A;
         })
         .slice(0, limit);
 

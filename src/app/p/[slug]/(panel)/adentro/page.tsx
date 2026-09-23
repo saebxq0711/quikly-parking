@@ -56,8 +56,13 @@ export default async function InsidePage({
             mensualidad: /mensual/i.test(vehiculo.clientKind ?? ''),
           };
         })
-        // Los que llevan mas tiempo, arriba.
-        .sort((a, b) => a.entradaMs - b.entradaMs)
+        /*
+          El que acaba de entrar, arriba. Es el orden de todas las listas del
+          panel: lo ultimo que paso es lo que el administrador esta mirando. Para
+          ver quien lleva mas tiempo esta la columna "Tiempo adentro", que se
+          puede leer de un vistazo porque corre sola.
+        */
+        .sort((a, b) => b.entradaMs - a.entradaMs)
     : [];
 
   const numero = (value: number | null) => value?.toLocaleString('es-CO') ?? '—';

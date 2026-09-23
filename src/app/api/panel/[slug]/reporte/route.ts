@@ -121,7 +121,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       : Promise.resolve(null),
     db.payment.findMany({
       where: { parkingLotId: lot.id, createdAt: { gte: inicio, lte: fin } },
-      orderBy: { createdAt: 'asc' },
+      // Del mas reciente al mas antiguo, como el volcado de vehiculos y como se
+      // ven las listas en el panel. Quien necesite el orden cronologico lo tiene
+      // a un clic: la hoja lleva filtro en la cabecera.
+      orderBy: { createdAt: 'desc' },
       include: {
         invoice: { select: { number: true, status: true } },
         paymentPoint: { select: { name: true } },
