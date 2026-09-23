@@ -21,19 +21,25 @@ import {
   TicketStatus,
   formatUpstreamDate,
 } from '@/components/panel/pieces';
+import { Pager } from '@/components/pager';
 import { ReportFilters } from './filters';
 import { ExcelButton } from './excel-button';
 
 export const metadata = { title: 'Reportes' };
 
 const MAX_DIAS = 31;
-/** Filas que se muestran en pantalla; el Excel lleva todas. */
-const VISTA_PREVIA = 100;
+/**
+ * Filas por pagina en la vista previa. El Excel lleva todas, sin paginar: es el
+ * archivo el que se guarda y se manda al contador, esto es solo para mirar por
+ * encima que el periodo elegido trae lo que se espera.
+ */
+const VISTA_PREVIA = 50;
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
 interface SearchParams extends Record<string, string | undefined> {
   desde?: string;
   hasta?: string;
+  pagina?: string;
 }
 
 function diaEnBogota(fecha: Date): string {
@@ -96,6 +102,10 @@ export default async function ReportsPage({
   const sinPagar = filas.filter((t) => !t.cancelled && !ticketPaid(t)).length;
   const recaudado = pagados.reduce((suma, t) => suma + (t.amount ?? 0), 0);
 
+  const pagina = Math.max(1, Number(query.pagina) || 1);
+  const totalPaginas = Math.max(1, Math.ceil(filas.length / VISTA_PREVIA));
+  const enPantalla = filas.slice((pagina - 1) * VISTA_PREVIA, pagina * VISTA_PREVIA);
+
   return (
     <>
       <PageHeader
@@ -156,7 +166,7 @@ export default async function ReportsPage({
                   title="Vehiculos del periodo"
                   description={
                     filas.length > VISTA_PREVIA
-                      ? `Se muestran los primeros ${VISTA_PREVIA} de ${filas.length}. El Excel los trae todos.`
+                      ? `${filas.length} vehiculos en el periodo. El Excel trae ademas quien registro la entrada, quien cobro y los pagos del kiosco.`
                       : 'El Excel trae ademas quien registro la entrada, quien cobro y los pagos del kiosco.'
                   }
                 />
@@ -166,61 +176,71 @@ export default async function ReportsPage({
                     description="No entro ningun vehiculo entre esas fechas."
                   />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[60rem] text-sm">
-                      <TableHead>
-                        <Th first>Codigo</Th>
-                        <Th>Placa</Th>
-                        <Th>Tipo</Th>
-                        <Th>Entrada</Th>
-                        <Th>Salida</Th>
-                        <Th>Permanencia</Th>
-                        <Th>Medio</Th>
-                        <Th align="right">Valor</Th>
-                        <Th last>Estado</Th>
-                      </TableHead>
-                      <TableBody>
-                        {filas.slice(0, VISTA_PREVIA).map((ticket) => {
-                          const adentroAhora = ticket.status === 'IN' && !ticket.cancelled;
-                          const minutos = stayMinutes(
-                            parseUpstreamDate(ticket.checkedInAt),
-                            adentroAhora ? null : parseUpstreamDate(ticket.checkedOutAt),
-                          );
-                          return (
-                            <Row key={ticket.id}>
-                              <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
-                                {ticket.code ?? '—'}
-                              </td>
-                              <td className="px-4 py-3 font-medium text-ink-100">
-                                {ticket.plate ?? (
-                                  <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-[var(--text-secondary)]">{ticket.vehicleType ?? '—'}</td>
-                              <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
-                                {formatUpstreamDate(ticket.checkedInAt)}
-                              </td>
-                              <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
-                                {adentroAhora ? '—' : formatUpstreamDate(ticket.checkedOutAt)}
-                              </td>
-                              <td className="tnum whitespace-nowrap px-4 py-3 text-ink-100">
-                                {minutos !== null ? permanencia(minutos) : '—'}
-                              </td>
-                              <td className="px-4 py-3 text-[var(--text-secondary)]">
-                                {ticketPaid(ticket) ? (paymentMethodLabel(ticket.paymentMethod) ?? '—') : '—'}
-                              </td>
-                              <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
-                                {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
-                              </td>
-                              <td className="py-3 pl-4 pr-5">
-                                <TicketStatus status={ticket.status} cancelled={ticket.cancelled} />
-                              </td>
-                            </Row>
-                          );
-                        })}
-                      </TableBody>
-                    </table>
-                  </div>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[60rem] text-sm">
+                        <TableHead>
+                          <Th first>Codigo</Th>
+                          <Th>Placa</Th>
+                          <Th>Tipo</Th>
+                          <Th>Entrada</Th>
+                          <Th>Salida</Th>
+                          <Th>Permanencia</Th>
+                          <Th>Medio</Th>
+                          <Th align="right">Valor</Th>
+                          <Th last>Estado</Th>
+                        </TableHead>
+                        <TableBody>
+                          {enPantalla.map((ticket) => {
+                            const adentroAhora = ticket.status === 'IN' && !ticket.cancelled;
+                            const minutos = stayMinutes(
+                              parseUpstreamDate(ticket.checkedInAt),
+                              adentroAhora ? null : parseUpstreamDate(ticket.checkedOutAt),
+                            );
+                            return (
+                              <Row key={ticket.id}>
+                                <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                                  {ticket.code ?? '—'}
+                                </td>
+                                <td className="px-4 py-3 font-medium text-ink-100">
+                                  {ticket.plate ?? (
+                                    <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-[var(--text-secondary)]">{ticket.vehicleType ?? '—'}</td>
+                                <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                                  {formatUpstreamDate(ticket.checkedInAt)}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                                  {adentroAhora ? '—' : formatUpstreamDate(ticket.checkedOutAt)}
+                                </td>
+                                <td className="tnum whitespace-nowrap px-4 py-3 text-ink-100">
+                                  {minutos !== null ? permanencia(minutos) : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-[var(--text-secondary)]">
+                                  {ticketPaid(ticket) ? (paymentMethodLabel(ticket.paymentMethod) ?? '—') : '—'}
+                                </td>
+                                <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                                  {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
+                                </td>
+                                <td className="py-3 pl-4 pr-5">
+                                  <TicketStatus status={ticket.status} cancelled={ticket.cancelled} />
+                                </td>
+                              </Row>
+                            );
+                          })}
+                        </TableBody>
+                      </table>
+                    </div>
+                    {totalPaginas > 1 ? (
+                      <Pager
+                        basePath={`/p/${slug}/reportes`}
+                        page={pagina}
+                        totalPages={totalPaginas}
+                        query={query}
+                      />
+                    ) : null}
+                  </>
                 )}
               </Card>
             )}

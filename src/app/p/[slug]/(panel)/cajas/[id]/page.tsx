@@ -14,8 +14,18 @@ import {
   formatUpstreamDate,
 } from '@/components/panel/pieces';
 import { DownloadButton } from '@/components/panel/download-button';
+import { Pager } from '@/components/pager';
 
 export const metadata = { title: 'Movimientos de caja' };
+
+/**
+ * Movimientos por pagina.
+ *
+ * Una caja abierta hace meses acumula miles: sin paginar, la pantalla se hacia
+ * interminable y el navegador tenia que dibujarlos todos. La descarga si se
+ * lleva todos los que se trajeron, que para eso es.
+ */
+const PAGE_SIZE = 50;
 
 /** Los tipos de movimiento que registra Nova Parking en su `POSLog`. */
 const MOVEMENT_LABEL: Record<string, string> = {
@@ -45,10 +55,13 @@ function detalle(comment: string | null): string {
 
 export default async function CashBoxDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; id: string }>;
+  searchParams: Promise<{ pagina?: string }>;
 }) {
   const { slug, id } = await params;
+  const query = await searchParams;
   const { client } = await panelAccess(slug);
   const result = client ? await getCashBox(client, id) : NO_SOURCE;
 
@@ -60,6 +73,10 @@ export default async function CashBoxDetailPage({
         detalle: detalle(m.comment),
       }))
     : [];
+
+  const page = Math.max(1, Number(query.pagina) || 1);
+  const totalPages = Math.max(1, Math.ceil(filas.length / PAGE_SIZE));
+  const enPantalla = filas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
@@ -128,42 +145,52 @@ export default async function CashBoxDetailPage({
                   description="Esta caja todavia no registra ninguna operacion."
                 />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[52rem] text-sm">
-                    <TableHead>
-                      <Th first>Fecha</Th>
-                      <Th>Movimiento</Th>
-                      <Th>Responsable</Th>
-                      <Th align="right">Valor</Th>
-                      <Th align="right">Saldo</Th>
-                      <Th last>Detalle</Th>
-                    </TableHead>
-                    <TableBody>
-                      {filas.map((movement) => (
-                        <Row key={movement.id}>
-                          <td className="whitespace-nowrap py-3 pl-5 pr-4 text-[var(--text-secondary)]">
-                            {formatUpstreamDate(movement.at)}
-                          </td>
-                          <td className="px-4 py-3 font-medium text-ink-100">
-                            {movement.movimiento}
-                          </td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">
-                            {movement.responsible ?? '—'}
-                          </td>
-                          <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
-                            {movement.amount !== null ? formatCOP(movement.amount) : '—'}
-                          </td>
-                          <td className="tnum whitespace-nowrap px-4 py-3 text-right text-[var(--text-secondary)]">
-                            {movement.cashAfter !== null ? formatCOP(movement.cashAfter) : '—'}
-                          </td>
-                          <td className="max-w-xs truncate py-3 pl-4 pr-5 text-[var(--text-muted)]">
-                            {movement.detalle}
-                          </td>
-                        </Row>
-                      ))}
-                    </TableBody>
-                  </table>
-                </div>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[52rem] text-sm">
+                      <TableHead>
+                        <Th first>Fecha</Th>
+                        <Th>Movimiento</Th>
+                        <Th>Responsable</Th>
+                        <Th align="right">Valor</Th>
+                        <Th align="right">Saldo</Th>
+                        <Th last>Detalle</Th>
+                      </TableHead>
+                      <TableBody>
+                        {enPantalla.map((movement) => (
+                          <Row key={movement.id}>
+                            <td className="whitespace-nowrap py-3 pl-5 pr-4 text-[var(--text-secondary)]">
+                              {formatUpstreamDate(movement.at)}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-ink-100">
+                              {movement.movimiento}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--text-secondary)]">
+                              {movement.responsible ?? '—'}
+                            </td>
+                            <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                              {movement.amount !== null ? formatCOP(movement.amount) : '—'}
+                            </td>
+                            <td className="tnum whitespace-nowrap px-4 py-3 text-right text-[var(--text-secondary)]">
+                              {movement.cashAfter !== null ? formatCOP(movement.cashAfter) : '—'}
+                            </td>
+                            <td className="max-w-xs truncate py-3 pl-4 pr-5 text-[var(--text-muted)]">
+                              {movement.detalle}
+                            </td>
+                          </Row>
+                        ))}
+                      </TableBody>
+                    </table>
+                  </div>
+                  {totalPages > 1 ? (
+                    <Pager
+                      basePath={`/p/${slug}/cajas/${id}`}
+                      page={page}
+                      totalPages={totalPages}
+                      query={query}
+                    />
+                  ) : null}
+                </>
               )}
             </Card>
           </div>

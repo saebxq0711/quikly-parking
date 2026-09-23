@@ -28,7 +28,7 @@ export default async function ParkingLotLayout({
   const user = await getCurrentUser();
   const { slug } = await params;
 
-  if (!user) redirect(`/login?next=/p/${slug}/pagos`);
+  if (!user) redirect(`/login?next=/p/${slug}`);
 
   const lot = await db.parkingLot.findUnique({
     where: { slug },

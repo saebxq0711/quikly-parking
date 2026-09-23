@@ -13,11 +13,21 @@ import {
   Th,
   formatUpstreamDate,
 } from '@/components/panel/pieces';
+import { Pager } from '@/components/pager';
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { LiveDuration } from '@/components/panel/live-duration';
 import { VehiclePhoto } from '@/components/panel/vehicle-photo';
 
 export const metadata = { title: 'Adentro ahora' };
+
+/**
+ * Cuantos vehiculos se ven por pagina.
+ *
+ * El reporte de presentes llega entero, sin paginar: en un parqueadero lleno son
+ * cientos de filas de una sola vez, y una tabla que no termina no se consulta,
+ * se cierra. Se recorta aqui, y las cifras de arriba siguen contando el total.
+ */
+const PAGE_SIZE = 50;
 
 /**
  * Quien esta adentro en este momento, con el tiempo corriendo.
@@ -29,10 +39,13 @@ export const metadata = { title: 'Adentro ahora' };
  */
 export default async function InsidePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ pagina?: string }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
   const { client } = await panelAccess(slug);
 
   const [inside, abiertos] = client
@@ -64,6 +77,10 @@ export default async function InsidePage({
         */
         .sort((a, b) => b.entradaMs - a.entradaMs)
     : [];
+
+  const page = Math.max(1, Number(query.pagina) || 1);
+  const totalPages = Math.max(1, Math.ceil(vehiculos.length / PAGE_SIZE));
+  const enPantalla = vehiculos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const numero = (value: number | null) => value?.toLocaleString('es-CO') ?? '—';
 
@@ -101,60 +118,70 @@ export default async function InsidePage({
                   description="No hay ningun vehiculo adentro en este momento."
                 />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[56rem] text-sm">
-                    <TableHead>
-                      <Th first>Foto</Th>
-                      <Th>Codigo</Th>
-                      <Th>Placa</Th>
-                      <Th>Tipo</Th>
-                      <Th>Entrada</Th>
-                      <Th>Tiempo adentro</Th>
-                      <Th last>Pago</Th>
-                    </TableHead>
-                    <TableBody>
-                      {vehiculos.map((vehiculo) => (
-                        <Row key={vehiculo.ticketId}>
-                          {/* Foto de la entrada: aqui es lo mas util de la fila,
-                              porque son los vehiculos que estan ahi afuera
-                              ahora mismo y se comparan con lo que se ve. */}
-                          <td className="py-2 pl-5 pr-4">
-                            <VehiclePhoto
-                              src={vehiculo.photo}
-                              slug={slug}
-                              label={vehiculo.plate ?? vehiculo.code ?? 'vehiculo'}
-                              size="wide"
-                            />
-                          </td>
-                          <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
-                            {vehiculo.code ?? <span className="text-[var(--text-muted)]">—</span>}
-                          </td>
-                          <td className="px-4 py-3 font-medium text-ink-100">
-                            {vehiculo.plate ?? (
-                              <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">
-                            {vehiculo.vehicleType ?? '—'}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
-                            {formatUpstreamDate(vehiculo.checkedInAt)}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 font-medium text-ink-100">
-                            <LiveDuration since={vehiculo.entradaIso} />
-                          </td>
-                          <td className="py-3 pl-4 pr-5">
-                            {vehiculo.mensualidad ? (
-                              <Badge tone="ok">Mensualidad</Badge>
-                            ) : (
-                              <Badge tone="warn">Pendiente</Badge>
-                            )}
-                          </td>
-                        </Row>
-                      ))}
-                    </TableBody>
-                  </table>
-                </div>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[56rem] text-sm">
+                      <TableHead>
+                        <Th first>Foto</Th>
+                        <Th>Codigo</Th>
+                        <Th>Placa</Th>
+                        <Th>Tipo</Th>
+                        <Th>Entrada</Th>
+                        <Th>Tiempo adentro</Th>
+                        <Th last>Pago</Th>
+                      </TableHead>
+                      <TableBody>
+                        {enPantalla.map((vehiculo) => (
+                          <Row key={vehiculo.ticketId}>
+                            {/* Foto de la entrada: aqui es lo mas util de la fila,
+                                porque son los vehiculos que estan ahi afuera
+                                ahora mismo y se comparan con lo que se ve. */}
+                            <td className="py-2 pl-5 pr-4">
+                              <VehiclePhoto
+                                src={vehiculo.photo}
+                                slug={slug}
+                                label={vehiculo.plate ?? vehiculo.code ?? 'vehiculo'}
+                                size="wide"
+                              />
+                            </td>
+                            <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
+                              {vehiculo.code ?? <span className="text-[var(--text-muted)]">—</span>}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-ink-100">
+                              {vehiculo.plate ?? (
+                                <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--text-secondary)]">
+                              {vehiculo.vehicleType ?? '—'}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
+                              {formatUpstreamDate(vehiculo.checkedInAt)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 font-medium text-ink-100">
+                              <LiveDuration since={vehiculo.entradaIso} />
+                            </td>
+                            <td className="py-3 pl-4 pr-5">
+                              {vehiculo.mensualidad ? (
+                                <Badge tone="ok">Mensualidad</Badge>
+                              ) : (
+                                <Badge tone="warn">Pendiente</Badge>
+                              )}
+                            </td>
+                          </Row>
+                        ))}
+                      </TableBody>
+                    </table>
+                  </div>
+                  {totalPages > 1 ? (
+                    <Pager
+                      basePath={`/p/${slug}/adentro`}
+                      page={page}
+                      totalPages={totalPages}
+                      query={query}
+                    />
+                  ) : null}
+                </>
               )}
             </Card>
           </div>
