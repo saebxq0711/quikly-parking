@@ -66,6 +66,9 @@ function tiquete(identificador: string, esCarro: boolean): NovaTicket {
     customerName: null,
     customerDocument: null,
     status: 'IN',
+    // En pruebas no hay camaras: el kiosco muestra el paso de confirmacion con
+    // los datos del tiquete, sin foto.
+    photo: null,
   };
 }
 
