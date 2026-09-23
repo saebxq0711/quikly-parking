@@ -63,6 +63,32 @@ export async function sendMail(options: {
 }
 
 /**
+ * El logo, centrado en cualquier cliente de correo.
+ *
+ * Va en una TABLA y no en un `div` centrado: los clientes basados en Word
+ * (Outlook de escritorio) ignoran `display:inline-block` y convierten el div en
+ * un bloque de ancho completo — la placa oscura se estiraba de lado a lado y la
+ * imagen quedaba pegada al borde izquierdo. Una tabla con `align="center"` es lo
+ * unico que centra igual en todos.
+ *
+ * El alto va escrito (180x62 es la proporcion real del archivo) para que el
+ * correo no salte al cargar la imagen, y el `alt` lleva estilo propio porque la
+ * mayoria de las bandejas bloquean las imagenes la primera vez: si no se ve el
+ * logo, se lee el nombre de la marca en su sitio y no un icono roto.
+ */
+function logoHtml(logoUrl: string): string {
+  return `
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+          <tr>
+            <td align="center" style="background-color:#0b0814;border-radius:12px;padding:14px 22px;">
+              <img src="${logoUrl}" alt="Quikly Parking" width="180" height="62"
+                   style="display:block;width:180px;height:62px;border:0;outline:none;text-decoration:none;color:#f5f2fb;font-family:'Segoe UI',Tahoma,sans-serif;font-size:18px;font-weight:700;">
+            </td>
+          </tr>
+        </table>`;
+}
+
+/**
  * Plantilla del correo de restablecimiento.
  *
  * Detalles que no son decorativos:
@@ -85,10 +111,8 @@ export function resetPasswordEmail(options: {
 <div style="margin:0;padding:24px 12px;background:#0b0814;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background:#171126;border-radius:16px;border:1px solid #2c2741;">
     <tr>
-      <td style="padding:32px 32px 8px;text-align:center;">
-        <div style="display:inline-block;background-color:#0b0814;border-radius:12px;padding:14px 22px;">
-          <img src="${options.logoUrl}" alt="Quikly Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
-        </div>
+      <td align="center" style="padding:32px 24px 8px;">
+        ${logoHtml(options.logoUrl)}
       </td>
     </tr>
     <tr>
@@ -200,10 +224,8 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
 <div style="margin:0;padding:24px 12px;background:#0b0814;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background:#171126;border-radius:16px;border:1px solid #2c2741;">
     <tr>
-      <td style="padding:32px 32px 8px;text-align:center;">
-        <div style="display:inline-block;background-color:#0b0814;border-radius:12px;padding:14px 22px;">
-          <img src="${options.logoUrl}" alt="Quikly Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
-        </div>
+      <td align="center" style="padding:32px 24px 8px;">
+        ${logoHtml(options.logoUrl)}
       </td>
     </tr>
     <tr>
