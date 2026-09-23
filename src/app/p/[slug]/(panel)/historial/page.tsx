@@ -26,8 +26,21 @@ import { HistoryFilters } from './filters';
 
 export const metadata = { title: 'Historial' };
 
-/** Nova Parking pagina de a 10 y hoy no acepta otro tamano. */
-const PAGE_SIZE = 10;
+/**
+ * Cuantos tiquetes se ven por pagina.
+ *
+ * Nova Parking pagina de a 10 y hoy no acepta otro tamano (se le pidio en
+ * REQUERIMIENTOS_PANEL_ADMIN.md 4.1). Diez filas es muy poco para un
+ * parqueadero con cientos de movimientos al dia: obliga a pasar paginas todo el
+ * tiempo. Asi que cada pagina nuestra son CINCO suyas, pedidas en paralelo —
+ * tardan lo mismo que una— y presentadas como una sola tabla de cincuenta.
+ *
+ * Cuando publiquen el tamano de pagina configurable, esto se reduce a un solo
+ * pedido y el resto de la pantalla no cambia.
+ */
+const PAGE_SIZE = 50;
+const UPSTREAM_PAGE_SIZE = 10;
+const BLOQUE = PAGE_SIZE / UPSTREAM_PAGE_SIZE;
 
 interface SearchParams extends Record<string, string | undefined> {
   q?: string;
@@ -54,15 +67,39 @@ export default async function HistoryPage({
   const { client } = await panelAccess(slug);
 
   const page = Math.max(1, Number(query.pagina) || 1);
-  const filters: TicketFilters = {
-    page,
+  const filtros: TicketFilters = {
     plate: query.q,
     status: query.estado,
     fromDate: query.desde,
     toDate: query.hasta,
   };
 
-  const result = client ? await getTickets(client, filters) : NO_SOURCE;
+  /*
+    Las cinco paginas de Nova Parking que componen esta, en paralelo. Una pagina
+    fuera de rango devuelve una lista vacia (su vista recorta a mano, no falla),
+    asi que la ultima pagina se completa sola sin pedir nada especial.
+  */
+  const bloques = client
+    ? await Promise.all(
+        Array.from({ length: BLOQUE }, (_, i) =>
+          getTickets(client, { ...filtros, page: (page - 1) * BLOQUE + i + 1 }),
+        ),
+      )
+    : [NO_SOURCE];
+
+  // Si la primera falla, no hay nada que mostrar. Si falla una posterior, se
+  // muestra lo que si llego: media tabla es mas util que un aviso de error.
+  const primera = bloques[0];
+  const result = primera.ok
+    ? {
+        ok: true as const,
+        data: {
+          total: primera.data.total,
+          rows: bloques.flatMap((b) => (b.ok ? b.data.rows : [])),
+        },
+      }
+    : primera;
+
   const hasFilters = Boolean(query.q || query.estado || query.desde || query.hasta);
 
   return (

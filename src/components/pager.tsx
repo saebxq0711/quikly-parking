@@ -29,7 +29,7 @@ export function Pager({
   };
 
   const link =
-    'inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-ink-200 ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.06] hover:ring-white/20';
+    'inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft)] hover:ring-[var(--ring-strong)]';
 
   return (
     <nav

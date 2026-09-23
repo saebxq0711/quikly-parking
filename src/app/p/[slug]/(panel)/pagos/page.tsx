@@ -33,7 +33,8 @@ const INVOICE_LABEL: Record<string, string> = {
   FAILED: 'Fallida',
 };
 
-const PAGE_SIZE = 25;
+/** Mismo tamano en todas las tablas del panel. */
+const PAGE_SIZE = 50;
 
 interface SearchParams extends Record<string, string | undefined> {
   q?: string;

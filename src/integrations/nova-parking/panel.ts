@@ -437,7 +437,7 @@ export function getCashBoxes(client: NovaParkingClient) {
  * Mientras tanto se recorta aqui: mostrar diez mil filas no ayuda a nadie y
  * hace pesada la pagina.
  */
-export function getCashBox(client: NovaParkingClient, id: string, limit = 200) {
+export function getCashBox(client: NovaParkingClient, id: string, limit = 1000) {
   return read(
     client,
     `/api/pos/${encodeURIComponent(id)}/`,

@@ -163,7 +163,10 @@ export function homePathForRole(user: {
     case 'SUPERADMIN':
       return '/admin/parqueaderos';
     case 'ADMIN_PARQUEADERO':
-      return user.parkingLot ? `/p/${user.parkingLot.slug}/pagos` : '/sin-parqueadero';
+      // El Resumen: el parqueadero en este momento. Los pagos del kiosco son
+      // una parte del movimiento, no lo primero que alguien quiere ver al
+      // entrar.
+      return user.parkingLot ? `/p/${user.parkingLot.slug}` : '/sin-parqueadero';
     case 'PUNTO_PAGO':
       // El punto de pago vive dentro del parqueadero: cada sitio tiene su
       // propio sistema, sus propias cajas y su propio datafono.
