@@ -77,8 +77,20 @@ const entorno: Record<string, string | undefined> = Object.fromEntries(
   entrega sin el https://.
 */
 if (!entorno.APP_URL) {
-  const dominioVercel = entorno.VERCEL_PROJECT_PRODUCTION_URL ?? entorno.VERCEL_URL;
-  if (dominioVercel) entorno.APP_URL = `https://${dominioVercel}`;
+  if (entorno.VERCEL_ENV === 'production') {
+    /*
+      Dominio propio y no el `*.vercel.app` que entrega Vercel: ese dominio lo
+      bloquea Chrome (pasó en septiembre de 2026 y dejó a los clientes sin poder
+      abrir la factura desde el QR). Los enlaces de los correos y los QR impresos
+      tienen que llevar a una direccion que la gente pueda abrir de verdad.
+      Configurar `APP_URL` en Vercel sigue mandando sobre esto.
+    */
+    entorno.APP_URL = 'https://parking.quiklygo.com';
+  } else {
+    // Vistas previas y despliegues de rama: su propia direccion.
+    const dominioVercel = entorno.VERCEL_URL ?? entorno.VERCEL_PROJECT_PRODUCTION_URL;
+    if (dominioVercel) entorno.APP_URL = `https://${dominioVercel}`;
+  }
 } else if (!/^https?:\/\//i.test(entorno.APP_URL)) {
   // Escrito sin protocolo ("pago.midominio.com"): se asume https.
   entorno.APP_URL = `https://${entorno.APP_URL}`;
