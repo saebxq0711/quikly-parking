@@ -121,6 +121,11 @@ export interface VehicleLookupResult {
   amount: number | null;
   alreadyPaid: boolean;
   notice: string | null;
+  /**
+   * Ruta de la foto de entrada dentro del sistema del parqueadero. El kiosco la
+   * pide por `/api/pos/foto`, que es quien tiene el token del tunel.
+   */
+  photo: string | null;
 }
 
 /**
@@ -185,6 +190,7 @@ export async function lookupVehicle(params: {
       amount: null,
       alreadyPaid: false,
       notice: `No encontramos un ingreso activo con ese dato (${config.inputLabel.toLowerCase()}). Verifica e intenta de nuevo.`,
+      photo: null,
     };
   }
 
@@ -210,6 +216,7 @@ export async function lookupVehicle(params: {
       alreadyPaid: true,
       notice:
         'Este tiquete ya se pago en el kiosco. Si la barrera no abre, acercate a la oficina del parqueadero con tu comprobante.',
+      photo: ticket.photo,
     };
   }
 
@@ -240,6 +247,7 @@ export async function lookupVehicle(params: {
         amount: null,
         alreadyPaid: false,
         notice: 'No fue posible obtener el valor a cobrar para este tiquete.',
+        photo: ticket.photo,
       };
     }
     throw error;
@@ -259,6 +267,8 @@ export async function lookupVehicle(params: {
     notice: checkout.alreadyPaid
       ? 'Este tiquete ya fue pagado. No corresponde cobrarlo de nuevo.'
       : null,
+    // `pay-checkout` no devuelve la foto; la trae la busqueda.
+    photo: checkout.ticket.photo ?? ticket.photo,
   };
 }
 

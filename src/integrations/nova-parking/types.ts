@@ -55,6 +55,15 @@ export interface NovaTicket {
   customerName: string | null;
   customerDocument: string | null;
   status: string | null;
+  /**
+   * Foto que tomo la camara al entrar el vehiculo, como la nombra Nova Parking:
+   * una ruta suya (`/media/parking_tickets/...`), no una URL publica. Su
+   * buscador de tiquetes ya la devuelve (`front_image`).
+   *
+   * Quien la quiera ver pasa por nuestro proxy, que es el unico que conoce el
+   * tunel y el token.
+   */
+  photo: string | null;
 }
 
 /** Resultado de `pay-checkout` (GET): el monto que Nova Parking determino. */

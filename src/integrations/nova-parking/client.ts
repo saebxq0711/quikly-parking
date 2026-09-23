@@ -456,5 +456,6 @@ function emptyTicket(id: string): NovaTicket {
     customerName: null,
     customerDocument: null,
     status: null,
+    photo: null,
   };
 }

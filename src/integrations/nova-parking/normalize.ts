@@ -186,6 +186,26 @@ export function normalizeTicket(raw: unknown): NovaTicket | null {
       ),
     ),
     status: asString(pick(source, 'status', 'estado')),
+    /*
+      Foto de la entrada. Nova Parking la guarda en el propio tiquete
+      (`front_image`, y `plate_image` para el plano de la placa) y ademas en una
+      lista aparte (`images`), que es la que usan las instalaciones con varias
+      camaras. Se mira primero el campo propio y despues la lista, igual que hace
+      su propio buscador.
+    */
+    photo: (() => {
+      const propia = asString(pick(source, 'front_image', 'frontImage', 'foto'));
+      if (propia) return propia;
+
+      const galeria = source.images;
+      if (Array.isArray(galeria)) {
+        for (const item of galeria) {
+          const ruta = isDict(item) ? asString(pick(item, 'image', 'url')) : asString(item);
+          if (ruta) return ruta;
+        }
+      }
+      return asString(pick(source, 'plate_image', 'plateImage'));
+    })(),
   };
 }
 

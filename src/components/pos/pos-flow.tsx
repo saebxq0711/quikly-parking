@@ -12,6 +12,7 @@ import {
   MdClose,
   MdCreditCard,
   MdKeyboard,
+  MdNoPhotography,
   MdPointOfSale,
   MdQrCodeScanner,
   MdWarningAmber,
@@ -32,7 +33,8 @@ import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
 /**
  * Flujo del punto de pago (CLAUDE.md secciones 6, 7, 8 y 27).
  *
- *   Seleccionar vehiculo -> Identificar -> Ver valor -> Confirmar -> Resultado
+ *   Seleccionar vehiculo -> Identificar -> Reconocer el vehiculo (foto) ->
+ *   Datos del cliente -> Ver valor -> Pagar -> Resultado
  *
  * ORIENTACION
  * -----------
@@ -58,7 +60,14 @@ export interface PosVehicle {
  * primero hay que saber si hay algo que cobrar: pedirle los datos a alguien
  * cuyo tiquete no existe seria hacerle perder el tiempo.
  */
-type Step = 'type' | 'identify' | 'customer' | 'summary' | 'waiting' | 'result';
+type Step =
+  | 'type'
+  | 'identify'
+  | 'confirm'
+  | 'customer'
+  | 'summary'
+  | 'waiting'
+  | 'result';
 
 interface LookupResult {
   found: boolean;
@@ -73,6 +82,8 @@ interface LookupResult {
   amount: number | null;
   alreadyPaid: boolean;
   notice: string | null;
+  /** Ruta de la foto de entrada en el sistema del parqueadero. */
+  photo: string | null;
 }
 
 /** El manual de SIPConnector (Anexo 3) exige no consultar mas seguido que 3 s. */
@@ -184,9 +195,10 @@ export function PosFlow({
       }
       const result = data as LookupResult;
       setLookup(result);
-      // Solo se pide el documento si de verdad hay algo que cobrar.
+      // Solo se sigue si de verdad hay algo que cobrar. Antes de pedir datos, el
+      // cliente confirma que el vehiculo encontrado es el suyo.
       const cobrable = result.found && !result.alreadyPaid && (result.amount ?? 0) > 0;
-      setStep(cobrable ? 'customer' : 'summary');
+      setStep(cobrable ? 'confirm' : 'summary');
     } catch {
       setError('No fue posible consultar. Intenta nuevamente.');
     } finally {
@@ -319,7 +331,14 @@ export function PosFlow({
     cliente encuentre la pantalla limpia. Cualquier toque reinicia la cuenta.
   */
   useEffect(() => {
-    if (step !== 'identify' && step !== 'customer' && step !== 'summary') return;
+    if (
+      step !== 'identify' &&
+      step !== 'confirm' &&
+      step !== 'customer' &&
+      step !== 'summary'
+    ) {
+      return;
+    }
 
     let timer: ReturnType<typeof setTimeout>;
     const restart = () => {
@@ -485,6 +504,22 @@ export function PosFlow({
           />
         ) : null}
 
+        {step === 'confirm' && lookup ? (
+          <ConfirmVehicle
+            lookup={lookup}
+            vehicleLabel={vehicle?.label ?? null}
+            onConfirm={() => setStep('customer')}
+            onReject={() => {
+              // Se vuelve al campo vacio: si la foto no era su vehiculo, el dato
+              // que escribio tampoco servia.
+              setIdentifier('');
+              setLookup(null);
+              setStep('identify');
+              setError(null);
+            }}
+          />
+        ) : null}
+
         {step === 'customer' ? (
           <CustomerStep
             onReady={(data) => {
@@ -492,7 +527,7 @@ export function PosFlow({
               setStep('summary');
             }}
             onBack={() => {
-              setStep('identify');
+              setStep('confirm');
               setError(null);
             }}
           />
@@ -773,7 +808,115 @@ function Identify({
   );
 }
 
-/* ------------------------------------------------------- Paso 3: resumen */
+/* ------------------------------------- Paso 3: confirmar que es su vehiculo */
+
+/**
+ * "¿Este es tu vehiculo?" con la foto de la entrada.
+ *
+ * POR QUE ESTE PASO. Una placa mal tecleada o un codigo de otro tiquete llevan
+ * a cobrarle a un vehiculo que no es el suyo, y de eso nadie se entera hasta que
+ * la barrera no abre. La foto la tomo la camara al entrar: el cliente reconoce
+ * su carro en un segundo, mucho antes de que pueda leer una placa en la pantalla.
+ *
+ * SIN FOTO TAMBIEN SIRVE. Mientras el sistema del parqueadero no publique sus
+ * imagenes —hoy estan cerradas en el tunel— el paso se queda igual, con los
+ * datos del tiquete en grande: hora de entrada, placa o codigo. Se confirma
+ * leyendo, que es lo mismo que hacia el operador antes. El paso NO se salta al
+ * faltar la foto: la confirmacion es el punto, la foto es la ayuda.
+ */
+function ConfirmVehicle({
+  lookup,
+  vehicleLabel,
+  onConfirm,
+  onReject,
+}: {
+  lookup: LookupResult;
+  vehicleLabel: string | null;
+  onConfirm: () => void;
+  onReject: () => void;
+}) {
+  // `falla` cubre los dos casos de "no se ve": que no haya ruta y que la imagen
+  // no cargue (que es lo que pasa hoy, con /media/ cerrado en el tunel).
+  const [falla, setFalla] = useState(!lookup.photo);
+  const url = lookup.photo
+    ? `/api/pos/foto?src=${encodeURIComponent(lookup.photo)}`
+    : null;
+
+  return (
+    <div className="step-in w-full max-w-xl text-center kland:max-w-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight kland:text-2xl kshort:text-xl">
+        {falla ? 'Confirma tu vehiculo' : '¿Este es tu vehiculo?'}
+      </h1>
+      <p className="mx-auto mt-2 max-w-md text-lg leading-relaxed text-[var(--text-secondary)] kland:text-base">
+        {falla
+          ? 'Revisa que los datos sean los de tu vehiculo antes de continuar.'
+          : 'Asi entro al parqueadero. Si no es el tuyo, vuelve y revisa el dato.'}
+      </p>
+
+      <div className="mt-6 overflow-hidden rounded-3xl bg-[var(--surface-raised)] ring-1 ring-[var(--line-subtle)] kland:mt-4 kland:grid kland:grid-cols-2 kland:items-center kland:text-left">
+        {falla ? (
+          <div className="flex h-56 flex-col items-center justify-center gap-3 bg-[var(--surface-sunken)] text-[var(--text-muted)] kland:h-44">
+            <MdNoPhotography className="h-12 w-12" aria-hidden focusable="false" />
+            <p className="px-6 text-sm leading-relaxed">
+              El parqueadero no tiene foto de esta entrada.
+            </p>
+          </div>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element -- la sirve
+             nuestra propia ruta; pasarla por el optimizador de Next la volveria
+             a bajar por el tunel en cada tamano. */
+          <img
+            src={url ?? ''}
+            alt="Foto del vehiculo al entrar al parqueadero"
+            onError={() => setFalla(true)}
+            className="h-72 w-full bg-[var(--surface-sunken)] object-cover kland:h-64"
+          />
+        )}
+
+        <dl className="space-y-3 p-6 text-base kland:p-7">
+          <Row
+            label={lookup.plate ? 'Placa' : 'Codigo'}
+            value={lookup.plate ?? lookup.code ?? '—'}
+          />
+          <Row label="Vehiculo" value={lookup.vehicleTypeLabel ?? vehicleLabel ?? '—'} />
+          <Row label="Entrada" value={horaDeEntrada(lookup.entryAt)} />
+          <Row label="Permanencia" value={formatDuration(lookup.minutes)} />
+        </dl>
+      </div>
+
+      <div className="mt-6 flex gap-3 kland:mt-4">
+        <button
+          onClick={onReject}
+          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
+        >
+          No es el mio
+        </button>
+        <button
+          onClick={onConfirm}
+          autoFocus
+          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 kshort:min-h-13"
+        >
+          Si, continuar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Hora de ingreso en formato de reloj, que es como la reconoce el cliente. */
+function horaDeEntrada(iso: string | null): string {
+  if (!iso) return '—';
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-CO', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'America/Bogota',
+  }).format(fecha);
+}
+
+/* ------------------------------------------------------- Paso 4: resumen */
 
 function Summary({
   lookup,

@@ -112,6 +112,57 @@ puede usar el kiosco o no:
   (`ABC123`) y un código (`A7B48`) obligan a saltar entre los dos, y con todo
   mezclado la gente se pierde en cada salto.
 
+### 3.0.1. Cómo ver el kiosco desde un PC normal
+
+Para revisar cambios sin ir hasta el monitor de 27":
+
+1. **Saca las medidas reales en el kiosco.** Abre el navegador en pantalla
+   completa (`F11`), abre la consola (`F12` → Consola) y pega:
+
+   ```js
+   innerWidth + ' x ' + innerHeight + '  ·  zoom del sistema: ' + devicePixelRatio
+   ```
+
+   Ese `ancho x alto` es lo que hay que reproducir — **no** la resolución que
+   dice Windows. Si el escalado de Windows está en 125 % o 150 %, un monitor de
+   2560×1440 se comporta como uno de 2048×1152 o 1707×960, y la pantalla se ve
+   distinta. En el kiosco conviene dejar el escalado en **100 %**.
+
+2. **Reprodúcelas en tu PC.** `F12` → `Ctrl+Shift+M` (icono de celular/tablet) →
+   arriba, donde dice *Dimensions*, elige **Responsive** y escribe el ancho y el
+   alto. El zoom del panel ("Fit"/"Ajustar") no afecta: la página sigue creyendo
+   que tiene ese tamaño.
+
+   | Monitor de 27" en vertical | Qué escribir (ancho × alto) |
+   |---|---|
+   | Full HD (1920×1080) girado | **1080 × 1920** |
+   | QHD (2560×1440) girado | **1440 × 2560** |
+   | Full HD horizontal (mostrador) | **1920 × 1080** |
+
+3. **Lo que deberías ver.** La interfaz cambia de tamaño sola según esas
+   medidas:
+
+   | Pantalla | Tamaño base |
+   |---|---|
+   | Vertical, desde 820×1150 | 21 px |
+   | Vertical, desde 1000×1500 | 26 px (el caso del 122) |
+   | Horizontal, desde 1700×950 | 20 px |
+   | Cualquier otra (tablet, portátil) | 16 px |
+
+   Para comprobarlo sin medir a ojo, en la consola:
+
+   ```js
+   getComputedStyle(document.documentElement).fontSize   // "26px" en el kiosco
+   ```
+
+4. **Día y noche.** Cambia solo por hora, así que a las 3 de la tarde solo verás
+   el modo claro. Para ver el otro, usa el botón de sol/luna del kiosco, o en la
+   consola:
+
+   ```js
+   document.documentElement.dataset.theme = 'night';   // o 'day'
+   ```
+
 ### 3.1. El cliente elige su vehículo
 
 Cuatro botones grandes: carro, moto, patineta, bicicleta.
@@ -158,6 +209,23 @@ Con ese dato llamamos a Nova Parking:
 GET /api/parking/find-ticket/<tipo>/?term=<dato>&exact=true  →  el tiquete
 GET /api/parking/ticket/<codigo>/pay-checkout/               →  cuánto debe
 ```
+
+### 3.2.1. El cliente reconoce su vehículo
+
+Antes de pedirle un solo dato se le muestra **la foto que tomó la cámara cuando
+entró** y se le pregunta si ese es su vehículo. Confirma y sigue; dice que no y
+vuelve al campo, vacío.
+
+Por qué: una placa mal tecleada o el código de otro tiquete llevan a cobrarle a
+un vehículo ajeno, y de eso nadie se entera hasta que la barrera no abre. En la
+foto el cliente reconoce su carro en un segundo — mucho antes de alcanzar a leer
+una placa en la pantalla.
+
+Mientras el sistema del parqueadero no publique sus fotos (hoy `/media/` está
+cerrada en el túnel, ver `REQUERIMIENTOS_PANEL_ADMIN.md` 4.6) el paso se queda
+igual, con los datos del tiquete en grande: placa o código, tipo, hora de
+entrada y permanencia. **El paso no se salta cuando falta la foto:** la
+confirmación es el punto, la foto es la ayuda.
 
 ### 3.3. Se identifica el cliente
 
