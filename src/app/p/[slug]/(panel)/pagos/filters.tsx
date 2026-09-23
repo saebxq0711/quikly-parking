@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select } from '@/components/ui';
+import { DateField } from '@/components/date-field';
 import { STATUS_LABEL } from '@/components/ui';
 
 /**
@@ -86,14 +87,14 @@ export function PaymentFilters({
         <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
           Desde
         </label>
-        <Input type="date" name="desde" defaultValue={current.desde ?? ''} />
+        <DateField name="desde" defaultValue={current.desde ?? ''} label="Desde" />
       </div>
 
       <div>
         <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
           Hasta
         </label>
-        <Input type="date" name="hasta" defaultValue={current.hasta ?? ''} />
+        <DateField name="hasta" defaultValue={current.hasta ?? ''} label="Hasta" />
       </div>
 
       <div className="flex gap-2 sm:col-span-2 lg:col-span-6">
