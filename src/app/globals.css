@@ -1,83 +1,168 @@
 @import 'tailwindcss';
 
 /*
-  UN SOLO MUNDO VISUAL para todo el sistema (CLAUDE.md seccion 28).
+  IDENTIDAD QUIKLY PARKING (Manual de Marca Quikly, secciones "Paleta de colores"
+  y "Tipografia") aplicada a los tres roles: superadmin, administrador y kiosco.
 
-  El punto de pago fijo la identidad: superficie profunda, acento indigo,
-  confirmacion esmeralda. La administracion la hereda entera; lo que cambia
-  entre las dos no es el color sino la densidad — el kiosco se opera de pie y a
-  un brazo de distancia, el panel se lee sentado.
+  De la marca salen cuatro colores:
+    #b58fff  primario   — lavanda del logotipo. Es la ACCION en toda la plataforma.
+    #5CE1E6  primario   — aqua. Acompana, nunca compite: datos y acentos frios.
+    #85BB65  secundario — verde (linea Holding). Aqui es "aprobado / al dia".
+    #F7B500  secundario — ambar de la linea PARKING. Es el color propio de este
+                          producto: la marca, el dinero y lo que pide atencion.
 
-  Por que oscuro y no claro: el punto de pago vive encendido todo el dia en una
-  pantalla fija, muchas veces en un parqueadero con poca luz. Una superficie
-  clara a pantalla completa deslumbra en ese escenario. La administracion adopta
-  la misma superficie para que un operario que pasa de una a otra no cambie de
-  producto.
+  Las escalas no son esos cuatro tonos sueltos sino la familia completa de cada
+  uno: el color de marca es claro y sobre blanco no da contraste para un boton,
+  asi que los pasos oscuros (600/700) existen para poder usarlos de verdad.
+
+  DOS TEMAS, UNA SOLA IDENTIDAD
+  -----------------------------
+  El kiosco de 27" vive a la intemperie: de dia le pega el sol y de noche es la
+  unica luz del parqueadero. Un solo tema no sirve para las dos cosas.
+
+    dia    superficie blanca, texto casi negro. Es lo unico que se lee con el sol
+           de frente: el contraste maximo lo da el papel, no el brillo.
+    noche  superficie profunda violeta. Con poca luz una pantalla blanca de 27"
+           deslumbra y deja al cliente sin ver el teclado.
+
+  El kiosco los alterna solo por hora y deja cambiarlo a mano (`theme-toggle.tsx`).
+  La administracion se queda en el tema profundo: se opera bajo techo y sentado.
 */
 
 @theme {
-  /* --- Acento: accion primaria, seleccion y foco. Nunca decoracion. ------ */
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
-  --color-brand-950: #1e1b4b;
+  /* --- Lavanda de marca: accion primaria, seleccion y foco. --------------- */
+  --color-brand-50: #f6f1ff;
+  --color-brand-100: #ede3ff;
+  --color-brand-200: #dccbff;
+  --color-brand-300: #c9adff;
+  --color-brand-400: #b58fff; /* color exacto del manual */
+  --color-brand-500: #9d6bff;
+  --color-brand-600: #8445f5;
+  --color-brand-700: #6d2fd4;
+  --color-brand-800: #5726a9;
+  --color-brand-900: #462382;
+  --color-brand-950: #2b0f5c;
 
-  /* --- Neutros. La escala completa, para tener pasos reales de jerarquia. */
-  --color-ink-50: #f8fafc;
-  --color-ink-100: #f1f5f9;
-  --color-ink-200: #e2e8f0;
-  --color-ink-300: #cbd5e1;
-  --color-ink-400: #94a3b8;
-  --color-ink-500: #64748b;
-  --color-ink-600: #475569;
-  --color-ink-700: #334155;
-  --color-ink-800: #1e293b;
-  --color-ink-900: #0f172a;
-  --color-ink-950: #020617;
+  /* --- Aqua de marca: acentos frios, nunca una accion. -------------------- */
+  --color-aqua-100: #d3fbfd;
+  --color-aqua-200: #a8f4f8;
+  --color-aqua-300: #7eeaef;
+  --color-aqua-400: #5ce1e6; /* color exacto del manual */
+  --color-aqua-500: #2ec6cd;
+  --color-aqua-600: #189fa8;
+  --color-aqua-700: #167e87;
+  --color-aqua-800: #17646c;
 
-  /* --- Semanticos. Vocabulario unico de estado en toda la aplicacion. ---- */
-  --color-ok-300: #6ee7b7;
-  --color-ok-400: #34d399;
-  --color-ok-500: #10b981;
-  --color-ok-600: #059669;
-  --color-warn-300: #fcd34d;
-  --color-warn-400: #fbbf24;
-  --color-warn-500: #f59e0b;
-  --color-bad-300: #fca5a5;
-  --color-bad-400: #f87171;
-  --color-bad-500: #ef4444;
-  --color-bad-600: #dc2626;
+  /* --- Ambar de la linea Parking: la marca, el dinero, el total a pagar. -- */
+  --color-gold-100: #fff0bf;
+  --color-gold-200: #ffe485;
+  --color-gold-300: #ffd44a;
+  --color-gold-400: #ffc21f;
+  --color-gold-500: #f7b500; /* color exacto del manual */
+  --color-gold-600: #d99400;
+  --color-gold-700: #a86f00;
+  --color-gold-800: #7e5403;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* --- Neutros tintados de lavanda. Un gris puro al lado de la marca se ve
+         sucio; estos comparten su matiz y la acompanan. -------------------- */
+  --color-ink-50: #f8f7fc;
+  --color-ink-100: #f1eff8;
+  --color-ink-200: #e3dfee;
+  --color-ink-300: #cbc5dd;
+  --color-ink-400: #a49dbd;
+  --color-ink-500: #7d7598;
+  --color-ink-600: #5d5575;
+  --color-ink-700: #453e5a;
+  --color-ink-800: #2c2741;
+  --color-ink-900: #1a1629;
+  --color-ink-950: #0d0a17;
+
+  /* --- Semanticos. Vocabulario unico de estado en toda la aplicacion.
+         Verde y ambar salen de los secundarios de la marca; el rojo no existe
+         en el manual, asi que se eligio uno calido que convive con ellos. --- */
+  --color-ok-200: #cde9ba;
+  --color-ok-300: #b6dc9c;
+  --color-ok-400: #9acb7c;
+  --color-ok-500: #85bb65; /* secundario del manual */
+  --color-ok-600: #67a04a;
+  --color-ok-700: #4f7f39;
+  --color-warn-300: #ffd166;
+  --color-warn-400: #f7b500;
+  --color-warn-500: #e89600;
+  --color-warn-600: #bf7a00;
+  --color-bad-300: #f7a6a6;
+  --color-bad-400: #ef6d6d;
+  --color-bad-500: #e24a4a;
+  --color-bad-600: #c93434;
+
+  /* Poppins es la tipografia de la marca en digital (manual, "TIPOGRAFIA"). */
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 /*
-  Capas de superficie. La barra lateral es una capa distinta del contenido
-  (mas fria y profunda) para que la navegacion se lea como cromo y no como
-  contenido; es la segunda capa neutra que pide una interfaz de trabajo.
+  TEMA PROFUNDO (por defecto: administracion, ingreso y kiosco de noche).
+
+  Las superficies son violeta muy oscuro, no azul marino: comparten matiz con el
+  lavanda de marca. La barra lateral es una capa aparte para que la navegacion se
+  lea como cromo y no como contenido.
+
+  Los `--fill-*` y `--ring-*` son el relleno y el borde de los controles suaves.
+  Existen como variables —y no como `white/5` escrito en cada boton— porque en el
+  tema claro tienen que invertirse: alli lo suave es una sombra, no una luz.
 */
 :root {
-  --surface-base: #060a16;
-  --surface-chrome: #0b1120;
-  --surface-raised: #111a2e;
-  --surface-raised-hover: #16203a;
-  --surface-sunken: #05080f;
+  --surface-base: #0b0814;
+  --surface-chrome: #100c1c;
+  --surface-raised: #171126;
+  --surface-raised-hover: #1e1731;
+  --surface-sunken: #080511;
 
-  --line-subtle: rgb(148 163 184 / 0.12);
-  --line-strong: rgb(148 163 184 / 0.22);
+  --line-subtle: rgb(181 143 255 / 0.14);
+  --line-strong: rgb(181 143 255 / 0.28);
 
-  /* Texto sobre superficie oscura. Los secundarios se tintan del mismo azul
-     de la superficie en lugar de un gris neutro, para que no se vean sucios. */
-  --text-primary: #f1f5f9;
-  --text-secondary: #a6b4cc;
-  --text-muted: #7e8da8;
+  --text-primary: #f5f2fb;
+  --text-secondary: #b3a9cc;
+  --text-muted: #8a80a6;
+
+  --fill-soft: rgb(255 255 255 / 0.05);
+  --fill-soft-hover: rgb(255 255 255 / 0.1);
+  --fill-strong: rgb(255 255 255 / 0.14);
+  --ring-soft: rgb(255 255 255 / 0.12);
+  --ring-strong: rgb(255 255 255 / 0.24);
+
+  --focus-ring: var(--color-brand-400);
+  /* Sombra de tarjeta: sobre superficie oscura la sombra es profundidad real. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+}
+
+/*
+  TEMA DIA (kiosco con sol). Blanco y texto casi negro: es la combinacion con mas
+  contraste que existe, y con el sol de frente el contraste es lo unico que salva
+  la lectura. Los grises secundarios son deliberadamente oscuros (>6:1 sobre
+  blanco): un gris medio elegante aqui desaparece a mediodia.
+*/
+[data-theme='day'] {
+  --surface-base: #ffffff;
+  --surface-chrome: #f6f4fb;
+  --surface-raised: #ffffff;
+  --surface-raised-hover: #f3effd;
+  --surface-sunken: #f4f1fa;
+
+  --line-subtle: rgb(26 22 41 / 0.14);
+  --line-strong: rgb(26 22 41 / 0.3);
+
+  --text-primary: #120e1e;
+  --text-secondary: #413a54;
+  --text-muted: #5d5573;
+
+  --fill-soft: rgb(18 14 30 / 0.05);
+  --fill-soft-hover: rgb(18 14 30 / 0.1);
+  --fill-strong: rgb(18 14 30 / 0.14);
+  --ring-soft: rgb(18 14 30 / 0.16);
+  --ring-strong: rgb(18 14 30 / 0.32);
+
+  --focus-ring: var(--color-brand-700);
+  --shadow-card: 0 1px 2px rgb(26 22 41 / 0.08), 0 12px 28px -18px rgb(26 22 41 / 0.5);
 }
 
 html,
@@ -91,6 +176,48 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/*
+  TAMANO REAL DEL KIOSCO.
+
+  El kiosco del 122 es un monitor de 27" en vertical. Un pixel CSS ahi mide lo
+  mismo que en una tablet de 10", asi que la pantalla disenada para la tablet se
+  ve diminuta: el cliente esta de pie a medio metro y los botones le quedan del
+  tamano de un sello.
+
+  En vez de repetir cada clase con un tamano alternativo, se agranda la RAIZ: en
+  Tailwind casi todo (texto, alto, relleno, separaciones) esta en `rem`, asi que
+  subir la base escala la pantalla entera manteniendo las proporciones. Solo
+  aplica donde vive el kiosco (`.kiosk-root`), nunca en la administracion.
+*/
+@media (orientation: portrait) and (min-width: 820px) and (min-height: 1150px) {
+  html:has(.kiosk-root) {
+    font-size: 21px;
+  }
+}
+
+@media (orientation: portrait) and (min-width: 1000px) and (min-height: 1500px) {
+  html:has(.kiosk-root) {
+    font-size: 26px;
+  }
+}
+
+/* Monitores grandes en horizontal (kiosco de mostrador): sube menos, porque ahi
+   el limite es la altura y no la distancia. */
+@media (orientation: landscape) and (min-width: 1700px) and (min-height: 950px) {
+  html:has(.kiosk-root) {
+    font-size: 20px;
+  }
+}
+
+/*
+  Variante `day:` — solo dentro del tema claro.
+
+  Casi todo se resuelve con las variables de superficie, pero no los tonos de
+  marca: un texto `brand-200` sobre superficie profunda es perfecto y sobre
+  blanco desaparece. Ahi hace falta decir el tono oscuro explicitamente.
+*/
+@custom-variant day (&:where([data-theme='day'], [data-theme='day'] *));
 
 /*
   Variante para kiosco en horizontal.
@@ -135,17 +262,17 @@ button:disabled,
 }
 
 /* Foco visible y consistente. Se dibuja por fuera para que nunca lo tape el
-   borde del propio control. */
+   borde del propio control, y cambia de tono con el tema: en el claro el
+   lavanda claro no se veria. */
 :focus-visible {
-  outline: 2px solid var(--color-brand-400);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
 
-/* Barras de desplazamiento acordes a la superficie: en oscuro, la barra clara
-   del sistema corta la composicion. */
+/* Barras de desplazamiento acordes a la superficie. */
 * {
-  scrollbar-color: rgb(148 163 184 / 0.25) transparent;
+  scrollbar-color: var(--ring-strong) transparent;
   scrollbar-width: thin;
 }
 
@@ -209,9 +336,9 @@ button:disabled,
    Papel termico de 80 mm (area imprimible ~72 mm). En pantalla no existe: solo
    aparece al imprimir, y al imprimir desaparece todo lo demas.
 
-   Negro sobre blanco declarado a mano: la aplicacion es oscura, y la mayoria de
-   los navegadores no imprimen fondos, asi que sin esto saldria texto claro sobre
-   papel blanco — ilegible.
+   Negro sobre blanco declarado a mano: el comprobante se imprime igual en el
+   tema profundo y en el claro, y la mayoria de los navegadores no imprimen
+   fondos, asi que sin esto saldria texto claro sobre papel blanco — ilegible.
    ------------------------------------------------------------------------- */
 .print-receipt {
   display: none;
@@ -385,7 +512,7 @@ button:disabled,
   position: relative;
   overflow: hidden;
   border-radius: 0.5rem;
-  background: rgb(255 255 255 / 0.05);
+  background: var(--fill-soft);
 }
 
 .skeleton::after {
@@ -393,10 +520,11 @@ button:disabled,
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+  background: linear-gradient(90deg, transparent, var(--fill-soft-hover), transparent);
   animation: brillo 1.4s ease-in-out infinite;
 }
 
+/* Barra de progreso de navegacion, en los dos colores de marca. */
 .nav-progress {
   position: fixed;
   top: 0;
@@ -406,8 +534,8 @@ button:disabled,
   width: 0;
   opacity: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, #818cf8, #4f46e5);
-  box-shadow: 0 0 10px rgb(99 102 241 / 0.6);
+  background: linear-gradient(90deg, #5ce1e6, #b58fff);
+  box-shadow: 0 0 10px rgb(181 143 255 / 0.6);
   transition:
     width 200ms ease,
     opacity 300ms ease;
@@ -445,7 +573,8 @@ button:disabled,
   }
 }
 
-/* Lista desplegable propia (`select.tsx`): aparece desde el campo, corta. */
+/* Lista desplegable propia (`select.tsx`) y calendario propio (`date-field.tsx`):
+   aparecen desde el campo, corto. */
 @keyframes desplegar {
   from {
     opacity: 0;

@@ -67,7 +67,7 @@ export async function sendMail(options: {
  *
  * Detalles que no son decorativos:
  *
- *  - El logo va sobre una placa OSCURA declarada explicitamente. El logo de Nova
+ *  - El logo va sobre una placa OSCURA declarada explicitamente. El logo de Quikly
  *    Parking lleva el texto en blanco, y los clientes de correo con modo oscuro
  *    invierten los fondos: sin una placa con color propio, en la mitad de las
  *    bandejas el nombre desaparece.
@@ -82,21 +82,21 @@ export function resetPasswordEmail(options: {
   logoUrl: string;
 }): string {
   return `
-<div style="margin:0;padding:24px 12px;background:#0b0e14;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background:#131722;border-radius:16px;border:1px solid #232838;">
+<div style="margin:0;padding:24px 12px;background:#0b0814;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background:#171126;border-radius:16px;border:1px solid #2c2741;">
     <tr>
       <td style="padding:32px 32px 8px;text-align:center;">
-        <div style="display:inline-block;background-color:#0b0e14;border-radius:12px;padding:14px 22px;">
+        <div style="display:inline-block;background-color:#0b0814;border-radius:12px;padding:14px 22px;">
           <img src="${options.logoUrl}" alt="Quikly Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
         </div>
       </td>
     </tr>
     <tr>
       <td style="padding:20px 32px 0;">
-        <h1 style="margin:0 0 10px;font-size:21px;line-height:1.3;font-weight:700;color:#f2f4f8;text-align:center;">
+        <h1 style="margin:0 0 10px;font-size:21px;line-height:1.3;font-weight:700;color:#f5f2fb;text-align:center;">
           Restablece tu contrase&ntilde;a
         </h1>
-        <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#98a2b8;text-align:center;">
+        <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#b3a9cc;text-align:center;">
           Alguien pidi&oacute; una nueva contrase&ntilde;a para tu cuenta.
           Pulsa el bot&oacute;n para elegirla.
         </p>
@@ -105,18 +105,18 @@ export function resetPasswordEmail(options: {
     <tr>
       <td style="padding:0 32px 24px;text-align:center;">
         <a href="${options.link}"
-           style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;">
+           style="display:inline-block;background:#6d2fd4;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;">
           Elegir mi contrase&ntilde;a
         </a>
       </td>
     </tr>
     <tr>
       <td style="padding:0 32px 8px;">
-        <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#98a2b8;text-align:center;">
-          El enlace vence en <b style="color:#c7cedb;">${options.minutes} minutos</b>
+        <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#b3a9cc;text-align:center;">
+          El enlace vence en <b style="color:#dccbff;">${options.minutes} minutos</b>
           y solo puede usarse una vez.
         </p>
-        <p style="margin:0 0 20px;font-size:12px;line-height:1.6;color:#6b7488;text-align:center;">
+        <p style="margin:0 0 20px;font-size:12px;line-height:1.6;color:#8a80a6;text-align:center;">
           Si no fuiste t&uacute;, no hagas nada: tu contrase&ntilde;a actual sigue
           funcionando. Pero si esto se repite, av&iacute;sale a quien administra
           la plataforma.
@@ -125,16 +125,16 @@ export function resetPasswordEmail(options: {
     </tr>
     <tr>
       <td style="padding:0 32px 28px;">
-        <p style="margin:0;font-size:11px;line-height:1.6;color:#5a6377;text-align:center;word-break:break-all;">
+        <p style="margin:0;font-size:11px;line-height:1.6;color:#7d7598;text-align:center;word-break:break-all;">
           Si el bot&oacute;n no funciona, copia esta direcci&oacute;n:<br>
-          <span style="color:#8b93a7;">${options.link}</span>
+          <span style="color:#a49dbd;">${options.link}</span>
         </p>
       </td>
     </tr>
     <tr>
       <td style="padding:0 32px 28px;">
-        <div style="height:1px;background:#232838;margin-bottom:16px;"></div>
-        <p style="margin:0;font-size:11px;color:#5a6377;text-align:center;">
+        <div style="height:1px;background:#2c2741;margin-bottom:16px;"></div>
+        <p style="margin:0;font-size:11px;color:#7d7598;text-align:center;">
           Quikly Parking &middot; Gesti&oacute;n y cobro de parqueaderos
         </p>
       </td>
@@ -158,8 +158,8 @@ function filasHtml(rows: ReceiptRow[]): string {
     .map(
       (row) => `
         <tr>
-          <td style="padding:5px 0;font-size:13px;color:#98a2b8;">${escapeHtml(row.label)}</td>
-          <td style="padding:5px 0;font-size:13px;color:#f2f4f8;font-weight:600;text-align:right;">${escapeHtml(row.value)}</td>
+          <td style="padding:5px 0;font-size:13px;color:#b3a9cc;">${escapeHtml(row.label)}</td>
+          <td style="padding:5px 0;font-size:13px;color:#f5f2fb;font-weight:600;text-align:right;">${escapeHtml(row.value)}</td>
         </tr>`,
     )
     .join('');
@@ -178,7 +178,7 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
       (seccion) => `
     <tr>
       <td style="padding:0 32px 18px;">
-        <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7488;">${escapeHtml(seccion.title)}</p>
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#8a80a6;">${escapeHtml(seccion.title)}</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${filasHtml(seccion.rows)}</table>
       </td>
     </tr>`,
@@ -189,7 +189,7 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
     ? `
     <tr>
       <td style="padding:4px 32px 24px;text-align:center;">
-        <a href="${escapeHtml(doc.qrUrl)}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;">
+        <a href="${escapeHtml(doc.qrUrl)}" style="display:inline-block;background:#6d2fd4;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;">
           Ver mi factura
         </a>
       </td>
@@ -197,27 +197,27 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
     : '';
 
   return `
-<div style="margin:0;padding:24px 12px;background:#0b0e14;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background:#131722;border-radius:16px;border:1px solid #232838;">
+<div style="margin:0;padding:24px 12px;background:#0b0814;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background:#171126;border-radius:16px;border:1px solid #2c2741;">
     <tr>
       <td style="padding:32px 32px 8px;text-align:center;">
-        <div style="display:inline-block;background-color:#0b0e14;border-radius:12px;padding:14px 22px;">
+        <div style="display:inline-block;background-color:#0b0814;border-radius:12px;padding:14px 22px;">
           <img src="${options.logoUrl}" alt="Quikly Parking" width="180" style="width:180px;max-width:70%;height:auto;display:block;border:0;">
         </div>
       </td>
     </tr>
     <tr>
       <td style="padding:20px 32px 4px;text-align:center;">
-        <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#34d399;">Pago aprobado</p>
-        <h1 style="margin:8px 0 4px;font-size:20px;line-height:1.3;font-weight:700;color:#f2f4f8;">${escapeHtml(doc.title)}</h1>
-        ${doc.headerLines.map((linea) => `<p style="margin:0;font-size:12px;line-height:1.6;color:#98a2b8;">${escapeHtml(linea)}</p>`).join('')}
+        <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9acb7c;">Pago aprobado</p>
+        <h1 style="margin:8px 0 4px;font-size:20px;line-height:1.3;font-weight:700;color:#f5f2fb;">${escapeHtml(doc.title)}</h1>
+        ${doc.headerLines.map((linea) => `<p style="margin:0;font-size:12px;line-height:1.6;color:#b3a9cc;">${escapeHtml(linea)}</p>`).join('')}
       </td>
     </tr>
     <tr>
       <td style="padding:20px 32px;text-align:center;">
-        <div style="background:#0b0e14;border-radius:12px;padding:18px;">
-          <p style="margin:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7488;">${escapeHtml(doc.heading)} &middot; ${escapeHtml(doc.issuedAt)}</p>
-          <p style="margin:6px 0 0;font-size:34px;font-weight:800;color:#f2f4f8;">${escapeHtml(doc.total)}</p>
+        <div style="background:#0b0814;border-radius:12px;padding:18px;">
+          <p style="margin:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#8a80a6;">${escapeHtml(doc.heading)} &middot; ${escapeHtml(doc.issuedAt)}</p>
+          <p style="margin:6px 0 0;font-size:34px;font-weight:800;color:#f5f2fb;">${escapeHtml(doc.total)}</p>
         </div>
       </td>
     </tr>
@@ -225,11 +225,11 @@ export function receiptEmail(options: { doc: ReceiptDocument; logoUrl: string })
     ${boton}
     <tr>
       <td style="padding:0 32px 28px;">
-        <div style="height:1px;background:#232838;margin-bottom:16px;"></div>
-        <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:#98a2b8;text-align:center;">
+        <div style="height:1px;background:#2c2741;margin-bottom:16px;"></div>
+        <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:#b3a9cc;text-align:center;">
           La factura electr&oacute;nica te llega en un correo aparte cuando se emite.
         </p>
-        <p style="margin:0;font-size:11px;color:#5a6377;text-align:center;">
+        <p style="margin:0;font-size:11px;color:#7d7598;text-align:center;">
           Quikly Parking &middot; Gesti&oacute;n y cobro de parqueaderos
         </p>
       </td>

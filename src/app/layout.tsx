@@ -1,11 +1,18 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import { NavigationProgress } from '@/components/navigation-progress';
 import './globals.css';
 
-const inter = Inter({
+/**
+ * Poppins es la tipografia institucional de Quikly en digital (Manual de Marca,
+ * "TIPOGRAFIA"): el manual pide usar solo las tipografias de la marca. Se cargan
+ * los cuatro pesos que usa la interfaz — el kiosco vive en negrita y la
+ * administracion en regular — y ninguno mas, que cada peso es una descarga.
+ */
+const poppins = Poppins({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
   display: 'swap',
 });
 
@@ -25,14 +32,14 @@ export const viewport: Viewport = {
   // El punto de pago corre en pantallas tactiles fijas; el zoom accidental
   // desalinea la interfaz. Se mantiene `user-scalable` por accesibilidad.
   maximumScale: 5,
-  themeColor: '#4f46e5',
+  themeColor: '#b58fff',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-CO" className={inter.variable}>
+    <html lang="es-CO" className={poppins.variable}>
       <body className="font-sans antialiased">
         <NavigationProgress />
         {children}

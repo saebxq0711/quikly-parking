@@ -43,10 +43,10 @@ export function AppShell({
       <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--line-subtle)] bg-[var(--surface-chrome)] lg:sticky lg:top-0 lg:flex lg:h-dvh">
         <div className="border-b border-[var(--line-subtle)] px-5 py-5">
           {/*
-            El logo de Nova Parking, no una marca propia: el administrador entra
-            a ver su parqueadero, y para el es el mismo producto que ya conoce.
-            El PNG lleva el texto en blanco, asi que solo funciona sobre superficie
-            oscura — que es la unica que tiene esta aplicacion.
+            Logo de Quikly Parking en su version negativa: el PNG lleva el texto
+            en blanco, asi que solo funciona sobre superficie oscura — que es la
+            que usan las areas de administracion (el manual de marca pide
+            justamente elegir la version segun el fondo).
           */}
           <Image
             src="/quikly-parking.png"

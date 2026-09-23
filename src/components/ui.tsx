@@ -16,16 +16,21 @@ type ButtonSize = 'sm' | 'md' | 'lg' | 'kiosk';
  * ve distinto en dos pantallas, una de las dos esta mal.
  * Todas las variantes traen hover, active y disabled: no se envia media tabla
  * de estados.
+ *
+ * El lavanda de marca se usa en el paso 600/700 y no en el 400 del manual: el
+ * tono puro es un color claro, y un boton solido necesita sostener texto blanco
+ * encima. Las variantes suaves van por variables (`--fill-*`, `--ring-*`) para
+ * que el mismo boton funcione sobre superficie profunda y sobre blanco.
  */
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700 disabled:bg-brand-600/30 disabled:text-white/40',
+    'bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700 day:hover:bg-brand-700 disabled:bg-brand-600/30 disabled:text-white/40',
   confirm:
-    'bg-ok-600 text-white hover:bg-ok-500 active:bg-ok-600 disabled:bg-ok-600/30 disabled:text-white/40',
+    'bg-ok-600 text-white hover:bg-ok-500 active:bg-ok-600 day:bg-ok-700 day:hover:bg-ok-600 disabled:bg-ok-600/30 disabled:text-white/40',
   secondary:
-    'bg-white/[0.04] text-ink-100 ring-1 ring-inset ring-white/10 hover:bg-white/[0.09] hover:ring-white/20 active:bg-white/[0.13] disabled:text-ink-500 disabled:ring-white/5',
+    'bg-[var(--fill-soft)] text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)] active:bg-[var(--fill-strong)] disabled:text-[var(--text-muted)]',
   ghost:
-    'text-ink-300 hover:bg-white/[0.06] hover:text-ink-100 active:bg-white/10 disabled:text-ink-600',
+    'text-[var(--text-secondary)] hover:bg-[var(--fill-soft)] hover:text-[var(--text-primary)] active:bg-[var(--fill-soft-hover)] disabled:text-[var(--text-muted)]',
   danger:
     'bg-bad-600 text-white hover:bg-bad-500 active:bg-bad-600 disabled:bg-bad-600/30 disabled:text-white/40',
 };
@@ -78,7 +83,7 @@ export function Card({
     <div
       className={cn(
         'rounded-xl bg-[var(--surface-raised)] ring-1 ring-[var(--line-subtle)]',
-        'shadow-[0_1px_2px_rgb(0_0_0/0.4),0_8px_24px_-12px_rgb(0_0_0/0.6)]',
+        'shadow-[var(--shadow-card)]',
         className,
       )}
       {...props}
@@ -98,7 +103,7 @@ export function CardHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-[var(--line-subtle)] px-5 py-4">
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold text-ink-100">{title}</h2>
+        <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">{title}</h2>
         {description ? (
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)]">
             {description}
@@ -125,7 +130,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-medium text-ink-200">
+      <span className="mb-1.5 block text-[13px] font-medium text-[var(--text-primary)]">
         {label}
       </span>
       {children}
@@ -141,12 +146,12 @@ export function Field({
 }
 
 const CONTROL = [
-  'block w-full rounded-lg border-0 bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-ink-100',
-  'ring-1 ring-inset ring-white/10 placeholder:text-[var(--text-muted)]',
+  'block w-full rounded-lg border-0 bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)]',
+  'ring-1 ring-inset ring-[var(--ring-soft)] placeholder:text-[var(--text-muted)]',
   'transition-shadow duration-150',
-  'hover:ring-white/20',
-  'focus:ring-2 focus:ring-inset focus:ring-brand-500 focus:outline-none',
-  'disabled:bg-white/[0.02] disabled:text-ink-500 disabled:ring-white/5',
+  'hover:ring-[var(--ring-strong)]',
+  'focus:ring-2 focus:ring-inset focus:ring-brand-500 focus:outline-none day:focus:ring-brand-700',
+  'disabled:opacity-60 disabled:text-[var(--text-muted)]',
 ].join(' ');
 
 export function Input({
@@ -165,12 +170,12 @@ export function Checkbox({
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink-200">
+    <label className="flex cursor-pointer items-center gap-2.5 text-sm text-[var(--text-primary)]">
       <input
         type="checkbox"
         className={cn(
           'h-4 w-4 rounded border-0 bg-[var(--surface-sunken)] text-brand-500',
-          'ring-1 ring-inset ring-white/15 focus:ring-2 focus:ring-brand-500',
+          'ring-1 ring-inset ring-[var(--ring-strong)] focus:ring-2 focus:ring-brand-500',
           className,
         )}
         {...props}
@@ -192,10 +197,10 @@ export function Alert({
   children: React.ReactNode;
 }) {
   const tones = {
-    info: 'bg-brand-500/10 text-brand-200 ring-brand-400/25',
-    success: 'bg-ok-500/10 text-ok-300 ring-ok-400/25',
-    warning: 'bg-warn-500/10 text-warn-300 ring-warn-400/25',
-    error: 'bg-bad-500/10 text-bad-300 ring-bad-400/25',
+    info: 'bg-brand-500/10 text-brand-200 ring-brand-400/25 day:text-brand-800 day:ring-brand-600/30',
+    success: 'bg-ok-500/10 text-ok-300 ring-ok-400/25 day:text-ok-700 day:ring-ok-600/35',
+    warning: 'bg-warn-500/10 text-warn-300 ring-warn-400/25 day:text-warn-600 day:ring-warn-500/40',
+    error: 'bg-bad-500/10 text-bad-300 ring-bad-400/25 day:text-bad-600 day:ring-bad-500/35',
   } as const;
 
   return (
@@ -271,7 +276,7 @@ export function EmptyState({
 }) {
   return (
     <div className="px-6 py-14 text-center">
-      <p className="text-sm font-medium text-ink-200">{title}</p>
+      <p className="text-sm font-medium text-[var(--text-primary)]">{title}</p>
       <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-[var(--text-muted)]">
         {description}
       </p>

@@ -16,7 +16,17 @@ export default async function LoginPage({
   const { next } = await searchParams;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-12">
+    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+      {/*
+        Resplandor de marca detras del formulario: lavanda arriba, aqua abajo,
+        los dos colores primarios del manual. Es la unica decoracion de todo el
+        producto y esta aqui a proposito — es la primera pantalla, la unica que
+        no esta haciendo un trabajo.
+      */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_32rem_at_50%_-10%,rgb(181_143_255/0.16),transparent_70%),radial-gradient(40rem_24rem_at_50%_110%,rgb(92_225_230/0.1),transparent_70%)]"
+      />
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           {/*
@@ -37,7 +47,7 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)] shadow-[0_1px_2px_rgb(0_0_0/0.4),0_24px_48px_-24px_rgb(0_0_0/0.8)]">
+        <div className="overflow-hidden rounded-2xl border-t-2 border-gold-500 bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)] shadow-[var(--shadow-card)]">
           <LoginForm nextPath={next} />
         </div>
 
