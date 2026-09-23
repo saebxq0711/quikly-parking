@@ -79,6 +79,15 @@ export interface NovaTicketRow {
   enteredBy: string | null;
   chargedBy: string | null;
   paidAt: string | null;
+  /**
+   * Foto que tomo la camara cuando el vehiculo entro, tal como la guarda Nova
+   * Parking: una ruta suya (`/media/parking_tickets/...`), no una URL publica.
+   * Quien la quiera ver pasa por nuestro proxy (`/api/panel/[slug]/foto`), que es
+   * el unico que conoce el tunel y el token.
+   */
+  photo: string | null;
+  /** Segunda camara: el plano cerrado de la placa, cuando existe. */
+  platePhoto: string | null;
 }
 
 export interface NovaTicketPage {
@@ -326,6 +335,17 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
   // El campo `vehicle_type` suelto es el id de su catalogo: no sirve en pantalla.
   const vehicle = item.vehicle_type;
 
+  /*
+    Fotos de la entrada. Nova Parking las guarda en dos campos del tiquete
+    (`front_image`, `plate_image`) y ademas en una lista aparte (`images`) que
+    usan las instalaciones con varias camaras. Se mira primero el campo propio y
+    despues la lista, igual que hace su propio buscador de tiquetes.
+  */
+  const galeria = list(item.images).flatMap((foto) =>
+    isDict(foto) ? [str(foto.image)].filter(Boolean) : [],
+  ) as string[];
+  const photo = str(item.front_image) ?? galeria[0] ?? null;
+
   return [
     {
       id,
@@ -344,6 +364,8 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
       enteredBy: entry?.responsible ?? null,
       chargedBy: paid?.responsible ?? null,
       paidAt: paid?.at ?? null,
+      photo,
+      platePhoto: str(item.plate_image),
     } satisfies NovaTicketRow,
   ];
 }

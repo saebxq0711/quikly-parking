@@ -176,6 +176,56 @@ export class NovaParkingClient {
   }
 
   /**
+   * Trae un archivo que sirve Nova Parking: hoy, la foto que tomo la camara al
+   * entrar el vehiculo (`/media/parking_tickets/...`).
+   *
+   * No pasa por `request()` porque eso espera JSON y esto son bytes. Lo que si se
+   * mantiene es la regla: el navegador nunca habla con el tunel, asi que la foto
+   * la baja el servidor con el token y la reenvia (`/api/panel/[slug]/foto`).
+   *
+   * La ruta se exige que empiece por `/media/` — la decide Nova Parking, pero
+   * llega por la URL de una peticion y nadie va a usarla para pedir otra cosa.
+   */
+  async media(path: string): Promise<{ bytes: ArrayBuffer; contentType: string }> {
+    if (!path.startsWith('/media/') || path.includes('..')) {
+      throw new AppError('NOT_FOUND', { detail: { operation: 'media', path } });
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(new URL(this.baseUrl + path), {
+        headers: {
+          Accept: 'image/*',
+          ...(this.token ? { 'X-Platform-Token': this.token } : {}),
+        },
+        signal: AbortSignal.timeout(this.timeoutMs),
+        cache: 'no-store',
+      });
+    } catch (error) {
+      throw new AppError('UPSTREAM_UNAVAILABLE', {
+        detail: { operation: 'media', path },
+        cause: error,
+      });
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    /*
+      Un 404 aqui casi siempre significa que `/media/` sigue cerrado en el tunel
+      —esta fuera a proposito desde el primer dia— y no que falte la foto. Lo
+      mismo vale para una respuesta que no es una imagen: eso es la pagina de
+      error del borde de Cloudflare, no un vehiculo.
+    */
+    if (!response.ok || !contentType.startsWith('image/')) {
+      throw new AppError('NOT_FOUND', {
+        publicMessage: 'La foto no esta disponible.',
+        detail: { operation: 'media', path, status: response.status, contentType },
+      });
+    }
+
+    return { bytes: await response.arrayBuffer(), contentType };
+  }
+
+  /**
    * Busca el tiquete abierto de un vehiculo.
    *
    * El segmento y el dato de busqueda salen de la configuracion del

@@ -15,6 +15,7 @@ import {
 } from '@/components/panel/pieces';
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { LiveDuration } from '@/components/panel/live-duration';
+import { VehiclePhoto } from '@/components/panel/vehicle-photo';
 
 export const metadata = { title: 'Adentro ahora' };
 
@@ -47,6 +48,9 @@ export default async function InsidePage({
           return {
             ...vehiculo,
             code: porId.get(vehiculo.ticketId)?.code ?? null,
+            // El reporte de presentes no trae la foto; el volcado de tiquetes
+            // abiertos si, y ya se esta cruzando para sacar el codigo.
+            photo: porId.get(vehiculo.ticketId)?.photo ?? null,
             entradaIso: entrada?.toISOString() ?? null,
             entradaMs: entrada?.getTime() ?? Number.MAX_SAFE_INTEGER,
             mensualidad: /mensual/i.test(vehiculo.clientKind ?? ''),
@@ -93,9 +97,10 @@ export default async function InsidePage({
                 />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[48rem] text-sm">
+                  <table className="w-full min-w-[56rem] text-sm">
                     <TableHead>
-                      <Th first>Codigo</Th>
+                      <Th first>Foto</Th>
+                      <Th>Codigo</Th>
                       <Th>Placa</Th>
                       <Th>Tipo</Th>
                       <Th>Entrada</Th>
@@ -105,7 +110,18 @@ export default async function InsidePage({
                     <TableBody>
                       {vehiculos.map((vehiculo) => (
                         <Row key={vehiculo.ticketId}>
-                          <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                          {/* Foto de la entrada: aqui es lo mas util de la fila,
+                              porque son los vehiculos que estan ahi afuera
+                              ahora mismo y se comparan con lo que se ve. */}
+                          <td className="py-2 pl-5 pr-4">
+                            <VehiclePhoto
+                              src={vehiculo.photo}
+                              slug={slug}
+                              label={vehiculo.plate ?? vehiculo.code ?? 'vehiculo'}
+                              size="wide"
+                            />
+                          </td>
+                          <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
                             {vehiculo.code ?? <span className="text-[var(--text-muted)]">—</span>}
                           </td>
                           <td className="px-4 py-3 font-medium text-ink-100">

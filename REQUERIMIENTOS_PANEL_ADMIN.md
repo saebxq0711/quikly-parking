@@ -330,6 +330,53 @@ De paso: nos hace pensar que **Patinete Eléctrico no tiene tarifa configurada**
 porque un vehículo con horas adentro debería deber algo. Encaja con lo que
 advirtieron en su sección 6.3.
 
+### 4.6. Las fotos de entrada: `/media/` está cerrada en el túnel
+
+**Lo que queremos mostrar:** la foto que toman las cámaras cuando entra el
+vehículo, dentro del panel del administrador — en "Resumen", en "Adentro ahora"
+y en el "Historial", al lado de cada tiquete. Es lo que convierte una fila de
+tabla en un vehículo reconocible, y es la prueba a la que se recurre cuando
+alguien reclama por un cobro.
+
+**Lo que ya tenemos hecho de este lado:** el panel lee `front_image` (y, si no
+está, la primera de `images`) del listado de tiquetes, que ya viene con
+`fields = '__all__'`. Con eso arma una ruta tuya, `/media/parking_tickets/...`,
+y la pide a través de un proxy propio: el navegador del administrador **nunca**
+habla con tu servidor, la imagen la baja nuestro backend con el
+`X-Platform-Token` y la reenvía. Mientras no haya foto, la tabla muestra un
+marcador apagado y no se rompe nada.
+
+**Lo que falta de tu lado:** `/media/` está fuera del `ingress` **a propósito**
+—así lo dejaste documentado en `COMANDOS_TUNEL_CLOUDFLARE.md`, y nos parece
+bien pensado—, así que hoy esas peticiones reciben `404` en el borde.
+
+Para habilitarlo, dos cosas, y la segunda importa tanto como la primera:
+
+1. **Publicar solo las fotos de tiquetes**, no `/media/` entero:
+
+   ```yaml
+   # Fotos de entrada de los tiquetes (panel del administrador)
+   - hostname: api.parqueadero122.com
+     path: ^/media/parking_tickets/[^/]+\.(jpg|jpeg|png|webp)$
+     service: http://127.0.0.1:8000
+   ```
+
+2. **Exigir el token también ahí.** Hoy `/media/` lo sirve Django sin
+   autenticación: si solo se abre la ruta en el túnel, cualquiera con la URL ve
+   la foto de un vehículo y su placa, y los nombres de archivo no son
+   impredecibles. Nosotros mandamos el `X-Platform-Token` en cada petición de
+   imagen, así que lo único que hace falta es una vista que sirva esos archivos
+   detrás de `require_platform_token_readonly` (la misma que ya usan las 12
+   rutas de lectura) en lugar del `static()` directo.
+
+Si prefieres no abrir `/media/` de ninguna forma, la alternativa que nos sirve
+igual es una ruta de lectura que devuelva la imagen —o su base64— a partir del
+id del tiquete, por ejemplo `GET /api/parking/ticket/<id>/foto/`. Nos da lo
+mismo cuál de las dos: lo que no queremos es que las fotos queden públicas.
+
+**Mientras tanto no se rompe nada:** el panel funciona hoy sin las fotos. Esto
+es una mejora, no un bloqueo.
+
 ---
 
 ## 5. Qué NO te estamos pidiendo
@@ -393,6 +440,8 @@ Los PNG se ven bien pero pierden nitidez en pantallas grandes.
 - [ ] *(opcional)* fechas y paginación en los movimientos de caja — 4.2
 - [ ] **`code` en `vehicles-in-parking`** — 4.4
 - [ ] **Misma forma de respuesta en `pay-checkout` cuando el monto es cero** — 4.5
+- [ ] **Fotos de entrada: publicar `/media/parking_tickets/` con token, o una ruta
+      que devuelva la imagen del tiquete** — 4.6
 
 Cualquier cosa que no te cuadre, dinos y lo ajustamos: nada de esto vale la pena
 si te desordena el sistema que ya funciona.

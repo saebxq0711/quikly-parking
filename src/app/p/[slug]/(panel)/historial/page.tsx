@@ -21,6 +21,7 @@ import {
 } from '@/components/panel/pieces';
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { LiveDuration } from '@/components/panel/live-duration';
+import { VehiclePhoto } from '@/components/panel/vehicle-photo';
 import { HistoryFilters } from './filters';
 
 export const metadata = { title: 'Historial' };
@@ -94,9 +95,10 @@ export default async function HistoryPage({
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[64rem] text-sm">
+                  <table className="w-full min-w-[72rem] text-sm">
                     <TableHead>
-                      <Th first>Codigo</Th>
+                      <Th first>Foto</Th>
+                      <Th>Codigo</Th>
                       <Th>Placa</Th>
                       <Th>Tipo</Th>
                       <Th>Entrada</Th>
@@ -116,8 +118,18 @@ export default async function HistoryPage({
                         const pago = ticketPaid(ticket);
                         return (
                           <Row key={ticket.id}>
+                            {/* Foto de la entrada: en el historial es la prueba
+                                de que ese tiquete es ese vehiculo, util cuando
+                                alguien reclama por un cobro. */}
+                            <td className="py-2 pl-5 pr-4">
+                              <VehiclePhoto
+                                src={ticket.photo}
+                                slug={slug}
+                                label={ticket.plate ?? ticket.code ?? 'vehiculo'}
+                              />
+                            </td>
                             {/* El CODIGO, nunca el id: el id es secuencial y dejaria deducir otros. */}
-                            <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                            <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
                               {ticket.code ?? <span className="text-[var(--text-muted)]">—</span>}
                             </td>
                             <td className="px-4 py-3 font-medium text-ink-100">

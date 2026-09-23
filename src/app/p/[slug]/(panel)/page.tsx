@@ -29,6 +29,7 @@ import {
 } from '@/components/panel/pieces';
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { LiveDuration } from '@/components/panel/live-duration';
+import { VehiclePhoto } from '@/components/panel/vehicle-photo';
 
 export const metadata = { title: 'Resumen' };
 
@@ -166,9 +167,10 @@ export default async function PanelHomePage({
               <p className="px-5 pb-5 text-sm text-[var(--text-secondary)]">Todavia no hay tiquetes.</p>
             ) : (
               <div className="mt-3 overflow-x-auto border-t border-[var(--line-subtle)]">
-                <table className="w-full min-w-[56rem] text-sm">
+                <table className="w-full min-w-[62rem] text-sm">
                   <TableHead>
-                    <Th first>Codigo</Th>
+                    <Th first>Foto</Th>
+                    <Th>Codigo</Th>
                     <Th>Placa</Th>
                     <Th>Tipo</Th>
                     <Th>Entrada</Th>
@@ -185,7 +187,16 @@ export default async function PanelHomePage({
                       const pago = ticketPaid(ticket);
                       return (
                         <Row key={ticket.id}>
-                          <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                          {/* La foto primero: es lo que deja reconocer el
+                              vehiculo sin leer una sola columna. */}
+                          <td className="py-2 pl-5 pr-4">
+                            <VehiclePhoto
+                              src={ticket.photo}
+                              slug={slug}
+                              label={ticket.plate ?? ticket.code ?? 'vehiculo'}
+                            />
+                          </td>
+                          <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
                             {ticket.code ?? '—'}
                           </td>
                           <td className="px-4 py-3 font-medium text-ink-100">

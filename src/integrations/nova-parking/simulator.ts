@@ -84,6 +84,15 @@ export class SimulatedNovaParkingClient extends NovaParkingClient {
     };
   }
 
+  override async media(): Promise<{ bytes: ArrayBuffer; contentType: string }> {
+    // En pruebas no hay camaras ni fotos: se responde lo mismo que cuando la foto
+    // no existe, para que el panel muestre su marcador y no un error.
+    throw new AppError('NOT_FOUND', {
+      publicMessage: 'La foto no esta disponible.',
+      detail: { modo: 'pruebas' },
+    });
+  }
+
   override async read<T = unknown>(path: string): Promise<T> {
     if (path === '/api/parking/vehicleType/') return CATALOGO as T;
     throw new AppError('NOT_FOUND', {
