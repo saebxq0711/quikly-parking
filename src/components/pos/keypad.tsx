@@ -17,9 +17,10 @@
  * (`A7B48`) salta entre los dos grupos todo el tiempo, y con los dos
  * indistinguibles se pierde en cada salto.
  *
- * Ahora son dos bloques con su titulo, su superficie y su tono: los numeros en
- * aqua —el frio de la marca— y las letras en neutro. La forma del bloque ya dice
- * donde esta lo que se busca, antes de leer una sola tecla.
+ * Ahora son dos bloques separados, cada uno con su superficie y su tono: los
+ * numeros en aqua —el frio de la marca— y las letras en neutro. No llevan
+ * rotulo: la forma y el color ya dicen donde esta cada cosa, y un letrero que
+ * dice "Numeros" encima de unos numeros no le ensena nada a nadie.
  *
  * Las filas de letras conservan la disposicion QWERTY con el escalonado real,
  * porque un operario que ya conoce un teclado encuentra la letra sin leerla.
@@ -45,9 +46,6 @@ const NUM_KEY =
   'ring-1 ring-inset ring-aqua-400/35 transition-colors duration-100 ' +
   'hover:bg-aqua-400/20 active:bg-aqua-600 active:text-white ' +
   'select-none';
-
-const TITULO =
-  'mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]';
 
 function BackspaceIcon() {
   return <MdBackspace className="h-5 w-5" aria-hidden focusable="false" />;
@@ -110,7 +108,6 @@ export function Keypad({
     <div className="w-full space-y-3 kshort:space-y-2">
       {/* -------------------------------------------------------- Numeros */}
       <section className="rounded-2xl bg-aqua-400/[0.05] p-2.5 ring-1 ring-inset ring-aqua-400/20 kshort:p-2">
-        <span className={TITULO}>Numeros</span>
         <div className="grid grid-cols-10 gap-1.5">
           {DIGITS.map((key) => (
             <button
@@ -127,7 +124,6 @@ export function Keypad({
 
       {/* --------------------------------------------------------- Letras */}
       <section className="rounded-2xl bg-[var(--fill-soft)] p-2.5 ring-1 ring-inset ring-[var(--ring-soft)] kshort:p-2">
-        <span className={TITULO}>Letras</span>
         <div className="space-y-1.5">
           <div className="grid grid-cols-10 gap-1.5">
             {ROW_1.map((key) => (
