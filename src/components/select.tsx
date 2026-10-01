@@ -230,18 +230,18 @@ export function Select({
         className={cn(
           'flex w-full items-center justify-between gap-3 rounded-lg bg-[var(--surface-sunken)] px-3 py-2.5 text-left text-sm',
           'ring-1 ring-inset transition-[box-shadow,background-color] duration-150',
-          abierto ? 'ring-2 ring-brand-500' : 'ring-white/10 hover:ring-white/20',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
-          'disabled:cursor-not-allowed disabled:bg-white/[0.02] disabled:text-ink-500',
+          abierto ? 'ring-2 ring-[var(--text-primary)]' : 'ring-[var(--ring-soft)] hover:ring-[var(--ring-strong)]',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text-primary)]',
+          'disabled:cursor-not-allowed disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)]',
         )}
       >
-        <span className={cn('truncate', vacia ? 'text-[var(--text-muted)]' : 'text-ink-100')}>
+        <span className={cn('truncate', vacia ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]')}>
           {seleccionada?.label || 'Elegir'}
         </span>
         <MdExpandMore
           className={cn(
             'h-5 w-5 shrink-0 text-[var(--text-muted)] transition-transform duration-200',
-            abierto && 'rotate-180 text-brand-300',
+            abierto && 'rotate-180 text-[var(--text-primary)]',
           )}
           aria-hidden
           focusable="false"
@@ -281,7 +281,7 @@ export function Select({
                   ? { bottom: window.innerHeight - posicion.top }
                   : { top: posicion.top }),
               }}
-              className="select-in z-[70] max-h-[280px] overflow-y-auto rounded-xl bg-[var(--surface-raised)] p-1 shadow-[0_18px_40px_-12px_rgb(0_0_0/0.75)] ring-1 ring-[var(--line-strong)] focus:outline-none"
+              className="select-in z-[70] max-h-[280px] overflow-y-auto rounded-xl bg-[var(--surface-raised)] p-1 shadow-[var(--shadow-lift)] ring-1 ring-[var(--line-strong)] focus:outline-none"
             >
               {opciones.map((opcion, indice) => {
                 const elegida = opcion.value === actual;
@@ -300,13 +300,13 @@ export function Select({
                       opcion.disabled
                         ? 'cursor-default text-[var(--text-muted)]'
                         : indice === activo
-                          ? 'bg-brand-500/15 text-ink-50'
-                          : 'text-ink-200',
+                          ? 'bg-brand-100 text-ink-950'
+                          : 'text-[var(--text-primary)]',
                     )}
                   >
                     <span className="truncate">{opcion.label}</span>
                     {elegida && !opcion.disabled ? (
-                      <MdCheck className="h-4 w-4 shrink-0 text-brand-300" aria-hidden focusable="false" />
+                      <MdCheck className="h-4 w-4 shrink-0 text-[var(--text-primary)]" aria-hidden focusable="false" />
                     ) : null}
                   </li>
                 );

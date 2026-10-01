@@ -199,10 +199,10 @@ export default async function ReportsPage({
                             );
                             return (
                               <Row key={ticket.id}>
-                                <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-ink-100">
+                                <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-[var(--text-primary)]">
                                   {ticket.code ?? '—'}
                                 </td>
-                                <td className="px-4 py-3 font-medium text-ink-100">
+                                <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                                   {ticket.plate ?? (
                                     <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
                                   )}
@@ -214,13 +214,13 @@ export default async function ReportsPage({
                                 <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
                                   {adentroAhora ? '—' : formatUpstreamDate(ticket.checkedOutAt)}
                                 </td>
-                                <td className="tnum whitespace-nowrap px-4 py-3 text-ink-100">
+                                <td className="tnum whitespace-nowrap px-4 py-3 text-[var(--text-primary)]">
                                   {minutos !== null ? permanencia(minutos) : '—'}
                                 </td>
                                 <td className="px-4 py-3 text-[var(--text-secondary)]">
                                   {ticketPaid(ticket) ? (paymentMethodLabel(ticket.paymentMethod) ?? '—') : '—'}
                                 </td>
-                                <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                                <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-[var(--text-primary)]">
                                   {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
                                 </td>
                                 <td className="py-3 pl-4 pr-5">

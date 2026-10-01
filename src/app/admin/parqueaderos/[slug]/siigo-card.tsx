@@ -83,7 +83,7 @@ export function SiigoCard(props: {
           </div>
 
           {!catalogs.ok ? (
-            <p className="rounded-lg bg-white/[0.03] px-3 py-2 text-[13px] leading-relaxed text-[var(--text-muted)] ring-1 ring-inset ring-white/8">
+            <p className="rounded-lg bg-[var(--fill-soft)] px-3 py-2 text-[13px] leading-relaxed text-[var(--text-muted)] ring-1 ring-inset ring-[var(--line-subtle)]">
               No pudimos traer las listas de SIIGO ({catalogs.message}). Revisa el usuario y la
               clave, o escribe los ids a mano.
             </p>
@@ -123,7 +123,7 @@ export function SiigoCard(props: {
             />
           </div>
 
-          <div className="space-y-2.5 rounded-xl bg-white/[0.02] px-4 py-3 ring-1 ring-inset ring-white/8">
+          <div className="space-y-2.5 rounded-xl bg-[var(--fill-soft)] px-4 py-3 ring-1 ring-inset ring-[var(--line-subtle)]">
             <Checkbox
               name="enabled"
               defaultChecked={props.enabled}

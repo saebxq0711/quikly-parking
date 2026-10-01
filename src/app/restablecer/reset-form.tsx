@@ -73,11 +73,11 @@ export function ResetForm({ token }: { token: string }) {
     return (
       <div className="text-center">
         <MdCheckCircle
-          className="mx-auto h-10 w-10 text-ok-400"
+          className="mx-auto h-10 w-10 text-ok-600"
           aria-hidden
           focusable="false"
         />
-        <p className="mt-3 text-sm font-medium text-ink-100">
+        <p className="mt-3 text-sm font-medium text-[var(--text-primary)]">
           Contrasena actualizada
         </p>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -117,7 +117,7 @@ export function ResetForm({ token }: { token: string }) {
       <p className="text-center text-xs text-[var(--text-muted)]">
         <Link
           href="/login"
-          className="transition-colors duration-150 hover:text-ink-200"
+          className="transition-colors duration-150 hover:text-[var(--text-primary)]"
         >
           Volver al inicio de sesion
         </Link>

@@ -129,7 +129,7 @@ export function StatusPill({
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${
-        ok ? 'bg-ok-500/12 text-ok-300 ring-ok-400/30' : 'bg-warn-500/12 text-warn-300 ring-warn-400/30'
+        ok ? 'bg-ok-50 text-ok-700 ring-ok-400/30' : 'bg-warn-100/60 text-warn-700 ring-warn-400/30'
       }`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-ok-400' : 'bg-warn-400'}`} />
@@ -158,7 +158,7 @@ export function TestButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 items-center gap-2 rounded-lg bg-white/[0.04] px-4 text-[13px] font-semibold text-ink-100 ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.09] hover:ring-white/20 disabled:opacity-60"
+      className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--surface-raised)] px-5 text-[13px] font-semibold text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)] disabled:opacity-60"
     >
       {pending ? (
         <span

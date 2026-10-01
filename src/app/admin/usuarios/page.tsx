@@ -85,20 +85,20 @@ export default async function UsersPage() {
                   <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium text-ink-100">
+                        <p className="truncate font-medium text-[var(--text-primary)]">
                           {user.name}
                         </p>
                         <span
                           className={
                             user.active
-                              ? 'rounded-full bg-ok-500/12 px-2 py-0.5 text-[11px] font-medium text-ok-300 ring-1 ring-inset ring-ok-400/30'
-                              : 'rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-ink-400 ring-1 ring-inset ring-white/15'
+                              ? 'rounded-full bg-ok-50 px-2 py-0.5 text-[11px] font-medium text-ok-700 ring-1 ring-inset ring-ok-400/30'
+                              : 'rounded-full bg-[var(--fill-soft-hover)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] ring-1 ring-inset ring-[var(--ring-soft)]'
                           }
                         >
                           {user.active ? 'Activo' : 'Inactivo'}
                         </span>
                         {user._count.sessions > 0 ? (
-                          <span className="rounded-full bg-brand-500/12 px-2 py-0.5 text-[11px] font-medium text-brand-200 ring-1 ring-inset ring-brand-400/30">
+                          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-ink-950 ring-1 ring-inset ring-brand-300">
                             Sesion abierta
                           </span>
                         ) : null}

@@ -21,8 +21,9 @@ import {
  * Navegacion lateral con estado activo real.
  *
  * Sin el indicador de seccion actual, en un panel con varias areas el usuario
- * pierde el sitio en cuanto navega dos veces. El acento marca la seleccion, que
- * es uno de los pocos usos permitidos del color de marca en modo Operar.
+ * pierde el sitio en cuanto navega dos veces. La seccion activa es una pastilla
+ * amarilla con texto negro sobre la barra negra: el unico amarillo de la barra,
+ * asi que el ojo la encuentra sin leer.
  */
 
 export type NavIcon =
@@ -91,10 +92,10 @@ export function SideNav({
             key={item.href}
             href={item.href}
             aria-current={isActive(item) ? 'page' : undefined}
-            className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-150 ${
               isActive(item)
-                ? 'bg-brand-500/15 text-brand-200'
-                : 'text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-ink-100'
+                ? 'bg-brand-500 text-ink-950'
+                : 'text-[var(--text-on-chrome-muted)] hover:bg-white/10 hover:text-white'
             }`}
           >
             <Icon name={item.icon} />
@@ -106,16 +107,16 @@ export function SideNav({
   }
 
   return (
-    <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-3">
+    <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
       {items.map((item) => (
         <Link
           key={item.href}
           href={item.href}
           aria-current={isActive(item) ? 'page' : undefined}
-          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-150 ${
+          className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors duration-150 ${
             isActive(item)
-              ? 'bg-brand-500/15 text-brand-200'
-              : 'text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-ink-100'
+              ? 'bg-brand-500 text-ink-950'
+              : 'text-[var(--text-on-chrome-muted)] hover:bg-white/10 hover:text-white'
           }`}
         >
           <Icon name={item.icon} />

@@ -114,7 +114,7 @@ export function ExitGate({
             />
 
             {error ? (
-              <p role="alert" className="mt-3 text-sm text-bad-400 day:text-bad-600">
+              <p role="alert" className="mt-3 text-sm text-bad-600 night:text-bad-300">
                 {error}
               </p>
             ) : null}
@@ -122,7 +122,7 @@ export function ExitGate({
             {/* La configuracion de la impresora vive detras de este mismo gesto oculto. */}
             <a
               href={`${pathname.replace(/\/pos(\/.*)?$/, '/pos')}/impresora`}
-              className="mt-4 inline-block text-sm font-medium text-brand-400 day:text-brand-700 transition-colors duration-150 hover:text-brand-300 day:text-brand-800"
+              className="mt-4 inline-block text-sm font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150"
             >
               Configurar la impresora del kiosco
             </a>
@@ -131,14 +131,14 @@ export function ExitGate({
               <button
                 type="button"
                 onClick={close}
-                className="h-11 flex-1 rounded-lg bg-[var(--fill-soft)] text-sm font-semibold text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)]"
+                className="h-11 flex-1 rounded-full bg-[var(--surface-raised)] text-sm font-semibold text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)]"
               >
                 Volver
               </button>
               <button
                 type="submit"
                 disabled={busy || password.length === 0}
-                className="h-11 flex-1 rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand-500 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)]"
+                className="h-11 flex-1 rounded-full bg-brand-500 text-sm font-semibold text-ink-950 transition-colors duration-150 hover:bg-brand-400 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)]"
               >
                 {busy ? 'Saliendo...' : 'Salir'}
               </button>

@@ -46,7 +46,7 @@ export function ExcelButton({ href, filename }: { href: string; filename: string
         type="button"
         onClick={descargar}
         disabled={generando}
-        className="inline-flex h-10 items-center gap-2 rounded-lg bg-ok-600 px-4 text-sm font-semibold text-white shadow-[0_8px_20px_-10px_rgb(16_185_129/0.7)] transition-colors duration-150 hover:bg-ok-500 disabled:opacity-70"
+        className="inline-flex h-11 items-center gap-2 rounded-full bg-ink-950 px-5 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-colors duration-150 hover:bg-ink-800 disabled:opacity-70"
       >
         {generando ? (
           <span
@@ -58,7 +58,7 @@ export function ExcelButton({ href, filename }: { href: string; filename: string
         )}
         {generando ? 'Generando Excel...' : 'Descargar Excel'}
       </button>
-      {mensaje ? <p className="text-xs text-bad-300">{mensaje}</p> : null}
+      {mensaje ? <p className="text-xs text-bad-700">{mensaje}</p> : null}
     </div>
   );
 }

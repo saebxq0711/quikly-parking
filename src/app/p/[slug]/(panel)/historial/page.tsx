@@ -166,10 +166,10 @@ export default async function HistoryPage({
                               />
                             </td>
                             {/* El CODIGO, nunca el id: el id es secuencial y dejaria deducir otros. */}
-                            <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
+                            <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
                               {ticket.code ?? <span className="text-[var(--text-muted)]">—</span>}
                             </td>
-                            <td className="px-4 py-3 font-medium text-ink-100">
+                            <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                               {ticket.plate ?? (
                                 <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
                               )}
@@ -183,7 +183,7 @@ export default async function HistoryPage({
                             <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
                               {adentro ? '—' : formatUpstreamDate(ticket.checkedOutAt)}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-ink-100">
+                            <td className="whitespace-nowrap px-4 py-3 text-[var(--text-primary)]">
                               {adentro ? (
                                 <LiveDuration since={entrada?.toISOString() ?? null} />
                               ) : minutos !== null ? (
@@ -196,8 +196,8 @@ export default async function HistoryPage({
                               <span
                                 className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${
                                   pago
-                                    ? 'bg-ok-500/12 text-ok-300 ring-ok-400/25'
-                                    : 'bg-white/[0.05] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
+                                    ? 'bg-ok-50 text-ok-700 ring-ok-400/25'
+                                    : 'bg-[var(--fill-soft)] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
                                 }`}
                               >
                                 {pago ? 'Si' : 'No'}
@@ -207,7 +207,7 @@ export default async function HistoryPage({
                               {/* Nova Parking deja "CASH" por defecto aun sin cobrar. */}
                               {pago ? (paymentMethodLabel(ticket.paymentMethod) ?? '—') : '—'}
                             </td>
-                            <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                            <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-[var(--text-primary)]">
                               {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
                             </td>
                             <td className="py-3 pl-4 pr-5">

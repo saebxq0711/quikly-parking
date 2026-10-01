@@ -26,10 +26,10 @@ export function PasswordInput({
         type={visible ? 'text' : 'password'}
         className={twMerge(
           clsx(
-            'block w-full rounded-lg border-0 bg-[var(--surface-sunken)] py-2.5 pl-3 pr-11 text-sm text-ink-100',
-            'ring-1 ring-inset ring-white/10 placeholder:text-[var(--text-muted)]',
-            'transition-shadow duration-150 hover:ring-white/20',
-            'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-500',
+            'block w-full rounded-lg border-0 bg-[var(--surface-sunken)] py-2.5 pl-3 pr-11 text-sm text-[var(--text-primary)]',
+            'ring-1 ring-inset ring-[var(--ring-soft)] placeholder:text-[var(--text-muted)]',
+            'transition-shadow duration-150 hover:ring-[var(--ring-strong)]',
+            'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--text-primary)]',
             className,
           ),
         )}
@@ -40,7 +40,7 @@ export function PasswordInput({
         aria-label={visible ? 'Ocultar contrasena' : 'Ver contrasena'}
         title={visible ? 'Ocultar contrasena' : 'Ver contrasena'}
         aria-pressed={visible}
-        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-[var(--text-muted)] transition-colors duration-150 hover:text-ink-100"
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--text-primary)]"
       >
         {visible ? (
           <MdVisibilityOff className="h-4.5 w-4.5" aria-hidden focusable="false" />

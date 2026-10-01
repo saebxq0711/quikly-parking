@@ -21,7 +21,7 @@ export function KioskLogoutButton({ userId, enLinea }: { userId: string; enLinea
       <input type="hidden" name="userId" value={userId} />
       <Boton disabled={!enLinea} />
       {estado ? (
-        <p className={`text-xs leading-relaxed ${estado.ok ? 'text-ok-300' : 'text-bad-300'}`}>
+        <p className={`text-xs leading-relaxed ${estado.ok ? 'text-ok-700' : 'text-bad-700'}`}>
           {estado.message}
         </p>
       ) : null}
@@ -35,7 +35,7 @@ function Boton({ disabled }: { disabled: boolean }) {
     <button
       type="submit"
       disabled={disabled || pending}
-      className="inline-flex h-9 items-center gap-2 rounded-lg px-3 text-[13px] font-semibold text-bad-300 ring-1 ring-inset ring-bad-400/30 transition-colors duration-150 hover:bg-bad-500/12 disabled:cursor-not-allowed disabled:text-[var(--text-muted)] disabled:ring-white/10 disabled:hover:bg-transparent"
+      className="inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold text-bad-700 ring-1 ring-inset ring-bad-400/30 transition-colors duration-150 hover:bg-bad-50 disabled:cursor-not-allowed disabled:text-[var(--text-muted)] disabled:ring-[var(--ring-soft)] disabled:hover:bg-transparent"
     >
       {pending ? (
         <span

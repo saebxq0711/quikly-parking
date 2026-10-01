@@ -82,7 +82,7 @@ export default async function PanelHomePage({
 
       {dashboard.ok ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Stat label="Vehiculos adentro" value={numero(dashboard.data.inside)} tone="accent" />
+          <Stat label="Vehículos adentro" value={numero(dashboard.data.inside)} tone="accent" />
           <Stat label="Entraron hoy" value={numero(dashboard.data.today)} />
           <Stat label="Entraron este mes" value={numero(dashboard.data.month)} />
           <Stat
@@ -96,7 +96,7 @@ export default async function PanelHomePage({
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card>
-          <SectionTitle title="Adentro ahora" href={`/p/${slug}/adentro`} link="Ver vehiculos" />
+          <SectionTitle title="Adentro ahora" href={`/p/${slug}/adentro`} link="Ver vehículos" />
           {inside.ok ? (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-5">
               {(
@@ -108,14 +108,14 @@ export default async function PanelHomePage({
                 ] as const
               ).map(([label, value]) => (
                 <div key={label}>
-                  <dt className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">{label}</dt>
-                  <dd className="tnum mt-1 text-2xl font-semibold text-ink-50">{numero(value)}</dd>
+                  <dt className="text-[13px] text-[var(--text-secondary)]">{label}</dt>
+                  <dd className="tnum mt-1 text-2xl font-semibold text-[var(--text-primary)]">{numero(value)}</dd>
                 </div>
               ))}
             </dl>
           ) : (
             <div className="p-5">
-              <SourceNotice result={inside} what="Vehiculos adentro" />
+              <SourceNotice result={inside} what="Vehículos adentro" />
             </div>
           )}
         </Card>
@@ -124,7 +124,7 @@ export default async function PanelHomePage({
           <SectionTitle title="Cajas" href={`/p/${slug}/cajas`} link="Ver movimientos" />
           {boxes.ok ? (
             <div className="p-5">
-              <p className="tnum text-2xl font-semibold text-ink-50">
+              <p className="tnum text-2xl font-semibold text-[var(--text-primary)]">
                 {openBoxes.length} de {boxes.data.length} abiertas
               </p>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -146,12 +146,12 @@ export default async function PanelHomePage({
           <SectionTitle title="Kiosco de pago hoy" href={`/p/${slug}/pagos`} link="Ver pagos" />
           <div className="grid grid-cols-2 gap-4 p-5">
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">Pagos</p>
-              <p className="tnum mt-1 text-2xl font-semibold text-ink-50">{kiosco._count}</p>
+              <p className="text-[13px] text-[var(--text-secondary)]">Pagos</p>
+              <p className="tnum mt-1 text-2xl font-semibold text-[var(--text-primary)]">{kiosco._count}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">Recaudado</p>
-              <p className="tnum mt-1 text-2xl font-semibold text-ink-50">
+              <p className="text-[13px] text-[var(--text-secondary)]">Recaudado</p>
+              <p className="tnum mt-1 text-2xl font-semibold text-[var(--text-primary)]">
                 {formatCOP(kiosco._sum.amount ?? 0)}
               </p>
             </div>
@@ -161,7 +161,7 @@ export default async function PanelHomePage({
 
       <div className="mt-4">
         <Card className="overflow-hidden">
-          <SectionTitle title="Ultimos movimientos" href={`/p/${slug}/historial`} link="Ver historial" />
+          <SectionTitle title="Últimos movimientos" href={`/p/${slug}/historial`} link="Ver historial" />
           {recientes.ok ? (
             recientes.data.rows.length === 0 ? (
               <p className="px-5 pb-5 text-sm text-[var(--text-secondary)]">Todavia no hay tiquetes.</p>
@@ -196,10 +196,10 @@ export default async function PanelHomePage({
                               label={ticket.plate ?? ticket.code ?? 'vehiculo'}
                             />
                           </td>
-                          <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
+                          <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
                             {ticket.code ?? '—'}
                           </td>
-                          <td className="px-4 py-3 font-medium text-ink-100">
+                          <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                             {ticket.plate ?? (
                               <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
                             )}
@@ -208,7 +208,7 @@ export default async function PanelHomePage({
                           <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
                             {formatUpstreamDate(ticket.checkedInAt)}
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-ink-100">
+                          <td className="whitespace-nowrap px-4 py-3 text-[var(--text-primary)]">
                             {adentro ? (
                               <LiveDuration since={entrada?.toISOString() ?? null} />
                             ) : minutos !== null ? (
@@ -220,7 +220,7 @@ export default async function PanelHomePage({
                           <td className="px-4 py-3 text-[var(--text-secondary)]">
                             {pago ? (paymentMethodLabel(ticket.paymentMethod) ?? 'Si') : 'Pendiente'}
                           </td>
-                          <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                          <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-[var(--text-primary)]">
                             {ticket.amount !== null ? formatCOP(ticket.amount) : '—'}
                           </td>
                           <td className="py-3 pl-4 pr-5">
@@ -235,7 +235,7 @@ export default async function PanelHomePage({
             )
           ) : (
             <div className="p-5">
-              <SourceNotice result={recientes} what="Ultimos movimientos" />
+              <SourceNotice result={recientes} what="Últimos movimientos" />
             </div>
           )}
         </Card>
@@ -247,10 +247,10 @@ export default async function PanelHomePage({
 function SectionTitle({ title, href, link }: { title: string; href: string; link: string }) {
   return (
     <div className="flex items-center justify-between gap-3 px-5 pt-5">
-      <h2 className="text-sm font-semibold text-ink-100">{title}</h2>
+      <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
       <Link
         href={href}
-        className="group inline-flex items-center gap-1 text-[13px] font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+        className="group inline-flex items-center gap-1 text-[13px] font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-[var(--text-primary)]"
       >
         {link}
         <MdArrowForward

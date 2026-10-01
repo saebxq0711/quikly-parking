@@ -144,10 +144,10 @@ export default async function InsidePage({
                                 size="wide"
                               />
                             </td>
-                            <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-ink-100">
+                            <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
                               {vehiculo.code ?? <span className="text-[var(--text-muted)]">—</span>}
                             </td>
-                            <td className="px-4 py-3 font-medium text-ink-100">
+                            <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                               {vehiculo.plate ?? (
                                 <span className="font-normal text-[var(--text-muted)]">Sin placa</span>
                               )}
@@ -158,7 +158,7 @@ export default async function InsidePage({
                             <td className="whitespace-nowrap px-4 py-3 text-[var(--text-secondary)]">
                               {formatUpstreamDate(vehiculo.checkedInAt)}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 font-medium text-ink-100">
+                            <td className="whitespace-nowrap px-4 py-3 font-medium text-[var(--text-primary)]">
                               <LiveDuration since={vehiculo.entradaIso} />
                             </td>
                             <td className="py-3 pl-4 pr-5">
@@ -196,8 +196,8 @@ function Badge({ tone, children }: { tone: 'ok' | 'warn'; children: React.ReactN
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${
         tone === 'ok'
-          ? 'bg-ok-500/12 text-ok-300 ring-ok-400/25'
-          : 'bg-warn-500/12 text-warn-300 ring-warn-400/25'
+          ? 'bg-ok-50 text-ok-700 ring-ok-400/25'
+          : 'bg-warn-100/60 text-warn-700 ring-warn-400/25'
       }`}
     >
       {children}

@@ -76,14 +76,14 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={alternar}
-      aria-label={esDia ? 'Cambiar a modo noche' : 'Cambiar a modo dia'}
-      title={esDia ? 'Modo noche' : 'Modo dia'}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--fill-soft)] text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)]"
+      aria-label={esDia ? 'Cambiar a modo noche' : 'Cambiar a modo día'}
+      title={esDia ? 'Modo noche' : 'Modo día'}
+      className="flex h-[3.2rem] w-[3.2rem] shrink-0 items-center justify-center rounded-full bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-[var(--shadow-card)] ring-1 ring-inset ring-[var(--line-subtle)] transition-colors duration-150 hover:bg-[var(--surface-raised-hover)] kland:h-11 kland:w-11"
     >
       {esDia ? (
-        <MdDarkMode className="h-5 w-5" aria-hidden focusable="false" />
+        <MdDarkMode className="h-6 w-6" aria-hidden focusable="false" />
       ) : (
-        <MdLightMode className="h-5 w-5" aria-hidden focusable="false" />
+        <MdLightMode className="h-6 w-6 text-brand-500" aria-hidden focusable="false" />
       )}
     </button>
   );

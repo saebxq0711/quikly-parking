@@ -1,168 +1,169 @@
 @import 'tailwindcss';
 
 /*
-  IDENTIDAD QUIKLY PARKING (Manual de Marca Quikly, secciones "Paleta de colores"
-  y "Tipografia") aplicada a los tres roles: superadmin, administrador y kiosco.
+  QUIKLY PARKING: AMARILLO, BLANCO Y NEGRO.
 
-  De la marca salen cuatro colores:
-    #b58fff  primario   — lavanda del logotipo. Es la ACCION en toda la plataforma.
-    #5CE1E6  primario   — aqua. Acompana, nunca compite: datos y acentos frios.
-    #85BB65  secundario — verde (linea Holding). Aqui es "aprobado / al dia".
-    #F7B500  secundario — ambar de la linea PARKING. Es el color propio de este
-                          producto: la marca, el dinero y lo que pide atencion.
+  Una sola tinta de marca, el amarillo #F7B500 de la linea Parking (documento
+  "LOGO PARKING COLORIMETRIA"), sobre blanco y negro. Pedido del dueno: nada mas.
 
-  Las escalas no son esos cuatro tonos sueltos sino la familia completa de cada
-  uno: el color de marca es claro y sobre blanco no da contraste para un boton,
-  asi que los pasos oscuros (600/700) existen para poder usarlos de verdad.
+  El kiosco se piensa como senaletica de parqueadero, no como app de pagos: el
+  amarillo NO es decoracion, marca el unico paso siguiente (el boton que hay que
+  tocar, el vehiculo elegido) y el dinero (el total). Si todo fuera amarillo, el
+  cliente no sabria donde tocar.
 
-  DOS TEMAS, UNA SOLA IDENTIDAD
-  -----------------------------
-  El kiosco de 27" vive a la intemperie: de dia le pega el sol y de noche es la
-  unica luz del parqueadero. Un solo tema no sirve para las dos cosas.
+  Reglas que no se negocian:
+    - Sobre amarillo, el texto es NEGRO. Blanco sobre #F7B500 no se lee (1,9:1).
+    - El amarillo no se usa como texto sobre blanco por la misma razon: cuando un
+      texto tiene que "ser de marca" va en negro con subrayado amarillo.
+    - Rojo y verde solo para resultados (rechazado / aprobado). El naranja de
+      advertencia esta lejos del amarillo a proposito: no se confunden.
 
-    dia    superficie blanca, texto casi negro. Es lo unico que se lee con el sol
-           de frente: el contraste maximo lo da el papel, no el brillo.
-    noche  superficie profunda violeta. Con poca luz una pantalla blanca de 27"
-           deslumbra y deja al cliente sin ver el teclado.
-
-  El kiosco los alterna solo por hora y deja cambiarlo a mano (`theme-toggle.tsx`).
-  La administracion se queda en el tema profundo: se opera bajo techo y sentado.
+  DOS TEMAS
+  ---------
+  Claro es el de siempre: administracion, superadmin, ingreso y el kiosco de
+  dia. Bajo el sol, el contraste maximo lo da el blanco con texto negro.
+  Oscuro existe solo para el kiosco de noche (`data-theme="night"`): una pantalla
+  blanca de 27" en un parqueadero a oscuras encandila. El amarillo es el mismo en
+  los dos; lo que se invierte es el fondo.
 */
 
 @theme {
-  /* --- Lavanda de marca: accion primaria, seleccion y foco. --------------- */
-  --color-brand-50: #f6f1ff;
-  --color-brand-100: #ede3ff;
-  --color-brand-200: #dccbff;
-  --color-brand-300: #c9adff;
-  --color-brand-400: #b58fff; /* color exacto del manual */
-  --color-brand-500: #9d6bff;
-  --color-brand-600: #8445f5;
-  --color-brand-700: #6d2fd4;
-  --color-brand-800: #5726a9;
-  --color-brand-900: #462382;
-  --color-brand-950: #2b0f5c;
+  /* --- Amarillo Parking. El 500 es el color exacto de la colorimetria. ---- */
+  --color-brand-50: #fffaeb;
+  --color-brand-100: #fff2c7;
+  --color-brand-200: #ffe48a;
+  --color-brand-300: #ffd44d;
+  --color-brand-400: #ffc524;
+  --color-brand-500: #f7b500;
+  --color-brand-600: #db9c00;
+  --color-brand-700: #a87700;
+  --color-brand-800: #7a5600;
+  --color-brand-900: #4a3400;
 
-  /* --- Aqua de marca: acentos frios, nunca una accion. -------------------- */
-  --color-aqua-100: #d3fbfd;
-  --color-aqua-200: #a8f4f8;
-  --color-aqua-300: #7eeaef;
-  --color-aqua-400: #5ce1e6; /* color exacto del manual */
-  --color-aqua-500: #2ec6cd;
-  --color-aqua-600: #189fa8;
-  --color-aqua-700: #167e87;
-  --color-aqua-800: #17646c;
+  /* --- Negros y grises. Neutros de verdad, sin tinte: la marca ya pone el
+         color, y un gris tibio al lado del amarillo se ve sucio. ----------- */
+  --color-ink-50: #f7f7f5;
+  --color-ink-100: #efefec;
+  --color-ink-200: #e2e2de;
+  --color-ink-300: #c9c9c4;
+  --color-ink-400: #a3a39e;
+  --color-ink-500: #7a7a75;
+  --color-ink-600: #5a5a56;
+  --color-ink-700: #3d3d3a;
+  --color-ink-800: #262624;
+  --color-ink-900: #171716;
+  --color-ink-950: #0b0b0b;
 
-  /* --- Ambar de la linea Parking: la marca, el dinero, el total a pagar. -- */
-  --color-gold-100: #fff0bf;
-  --color-gold-200: #ffe485;
-  --color-gold-300: #ffd44a;
-  --color-gold-400: #ffc21f;
-  --color-gold-500: #f7b500; /* color exacto del manual */
-  --color-gold-600: #d99400;
-  --color-gold-700: #a86f00;
-  --color-gold-800: #7e5403;
+  /* --- Estados. Solo para resultados y avisos, nunca como adorno. -------- */
+  --color-ok-50: #eaf7ee;
+  --color-ok-100: #cdefd6;
+  --color-ok-300: #7dd39a;
+  --color-ok-400: #3fb96b;
+  --color-ok-500: #1f9d55;
+  --color-ok-600: #16803f;
+  --color-ok-700: #12662f;
+  --color-warn-100: #ffe7cc;
+  --color-warn-300: #fdb36b;
+  --color-warn-400: #f7922b;
+  --color-warn-500: #e8780c;
+  --color-warn-600: #c25f06;
+  --color-warn-700: #9a4a05;
+  --color-bad-50: #fdecec;
+  --color-bad-100: #fbd5d5;
+  --color-bad-300: #f19c9c;
+  --color-bad-400: #e86464;
+  --color-bad-500: #dc3b3b;
+  --color-bad-600: #c02626;
+  --color-bad-700: #9b1c1c;
 
-  /* --- Neutros tintados de lavanda. Un gris puro al lado de la marca se ve
-         sucio; estos comparten su matiz y la acompanan. -------------------- */
-  --color-ink-50: #f8f7fc;
-  --color-ink-100: #f1eff8;
-  --color-ink-200: #e3dfee;
-  --color-ink-300: #cbc5dd;
-  --color-ink-400: #a49dbd;
-  --color-ink-500: #7d7598;
-  --color-ink-600: #5d5575;
-  --color-ink-700: #453e5a;
-  --color-ink-800: #2c2741;
-  --color-ink-900: #1a1629;
-  --color-ink-950: #0d0a17;
-
-  /* --- Semanticos. Vocabulario unico de estado en toda la aplicacion.
-         Verde y ambar salen de los secundarios de la marca; el rojo no existe
-         en el manual, asi que se eligio uno calido que convive con ellos. --- */
-  --color-ok-200: #cde9ba;
-  --color-ok-300: #b6dc9c;
-  --color-ok-400: #9acb7c;
-  --color-ok-500: #85bb65; /* secundario del manual */
-  --color-ok-600: #67a04a;
-  --color-ok-700: #4f7f39;
-  --color-warn-300: #ffd166;
-  --color-warn-400: #f7b500;
-  --color-warn-500: #e89600;
-  --color-warn-600: #bf7a00;
-  --color-bad-300: #f7a6a6;
-  --color-bad-400: #ef6d6d;
-  --color-bad-500: #e24a4a;
-  --color-bad-600: #c93434;
-
-  /* Poppins es la tipografia de la marca en digital (manual, "TIPOGRAFIA"). */
+  /* Poppins es la tipografia de la marca en digital (Manual de Marca Quikly). */
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 /*
-  TEMA PROFUNDO (por defecto: administracion, ingreso y kiosco de noche).
+  TEMA CLARO (por defecto).
 
-  Las superficies son violeta muy oscuro, no azul marino: comparten matiz con el
-  lavanda de marca. La barra lateral es una capa aparte para que la navegacion se
-  lea como cromo y no como contenido.
+  `--surface-page` es el fondo gris muy claro del area de trabajo del panel, donde
+  las tarjetas blancas se despegan sin sombras fuertes. El kiosco va sobre blanco
+  puro. `--surface-chrome` es la barra lateral: negra, con el logo en su version
+  negativa y la seccion activa en amarillo.
 
-  Los `--fill-*` y `--ring-*` son el relleno y el borde de los controles suaves.
-  Existen como variables —y no como `white/5` escrito en cada boton— porque en el
-  tema claro tienen que invertirse: alli lo suave es una sombra, no una luz.
+  Los `--fill-*` y `--ring-*` son el relleno y el borde de los controles suaves;
+  van por variable porque en el tema noche se invierten.
 */
 :root {
-  --surface-base: #0b0814;
-  --surface-chrome: #100c1c;
-  --surface-raised: #171126;
-  --surface-raised-hover: #1e1731;
-  --surface-sunken: #080511;
+  --surface-base: #ffffff;
+  --surface-page: #f5f5f2;
+  --surface-raised: #ffffff;
+  --surface-raised-hover: #fafaf8;
+  --surface-tile: #f1f1ee;
+  --surface-tile-hover: #e8e8e4;
+  --surface-sunken: #ffffff;
+  --surface-chrome: #0b0b0b;
 
-  --line-subtle: rgb(181 143 255 / 0.14);
-  --line-strong: rgb(181 143 255 / 0.28);
+  --line-subtle: rgb(11 11 11 / 0.08);
+  --line-strong: rgb(11 11 11 / 0.16);
 
-  --text-primary: #f5f2fb;
-  --text-secondary: #b3a9cc;
-  --text-muted: #8a80a6;
+  --text-primary: #0b0b0b;
+  --text-secondary: #45453f;
+  --text-muted: #66665f;
+  --text-on-chrome: #ffffff;
+  --text-on-chrome-muted: #a3a39e;
 
-  --fill-soft: rgb(255 255 255 / 0.05);
-  --fill-soft-hover: rgb(255 255 255 / 0.1);
-  --fill-strong: rgb(255 255 255 / 0.14);
-  --ring-soft: rgb(255 255 255 / 0.12);
-  --ring-strong: rgb(255 255 255 / 0.24);
+  --fill-soft: rgb(11 11 11 / 0.04);
+  --fill-soft-hover: rgb(11 11 11 / 0.08);
+  --fill-strong: rgb(11 11 11 / 0.12);
+  --ring-soft: rgb(11 11 11 / 0.12);
+  --ring-strong: rgb(11 11 11 / 0.26);
 
-  --focus-ring: var(--color-brand-400);
-  /* Sombra de tarjeta: sobre superficie oscura la sombra es profundidad real. */
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  /* El total a pagar va sobre un amarillo palido: es dinero, y el amarillo es
+     el color del dinero en toda la plataforma. */
+  --accent-soft: #fff6d6;
+  --accent-soft-line: rgb(247 181 0 / 0.45);
+
+  --focus-ring: #0b0b0b;
+  --shadow-card: 0 1px 2px rgb(11 11 11 / 0.05), 0 10px 28px -16px rgb(11 11 11 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(11 11 11 / 0.06), 0 18px 40px -18px rgb(11 11 11 / 0.32);
+
+  color-scheme: light;
 }
 
 /*
-  TEMA DIA (kiosco con sol). Blanco y texto casi negro: es la combinacion con mas
-  contraste que existe, y con el sol de frente el contraste es lo unico que salva
-  la lectura. Los grises secundarios son deliberadamente oscuros (>6:1 sobre
-  blanco): un gris medio elegante aqui desaparece a mediodia.
+  TEMA NOCHE (solo kiosco). Negro casi puro y el mismo amarillo. Los grises de
+  texto son claros de verdad: de noche el cliente esta a medio metro de una
+  pantalla que es la unica luz, y un gris medio se pierde.
 */
-[data-theme='day'] {
-  --surface-base: #ffffff;
-  --surface-chrome: #f6f4fb;
-  --surface-raised: #ffffff;
-  --surface-raised-hover: #f3effd;
-  --surface-sunken: #f4f1fa;
+[data-theme='night'] {
+  --surface-base: #0b0b0b;
+  --surface-page: #0b0b0b;
+  --surface-raised: #161615;
+  --surface-raised-hover: #1d1d1b;
+  --surface-tile: #1a1a18;
+  --surface-tile-hover: #242422;
+  --surface-sunken: #111110;
+  --surface-chrome: #000000;
 
-  --line-subtle: rgb(26 22 41 / 0.14);
-  --line-strong: rgb(26 22 41 / 0.3);
+  --line-subtle: rgb(255 255 255 / 0.1);
+  --line-strong: rgb(255 255 255 / 0.2);
 
-  --text-primary: #120e1e;
-  --text-secondary: #413a54;
-  --text-muted: #5d5573;
+  --text-primary: #f7f7f5;
+  --text-secondary: #c4c4be;
+  --text-muted: #96968f;
 
-  --fill-soft: rgb(18 14 30 / 0.05);
-  --fill-soft-hover: rgb(18 14 30 / 0.1);
-  --fill-strong: rgb(18 14 30 / 0.14);
-  --ring-soft: rgb(18 14 30 / 0.16);
-  --ring-strong: rgb(18 14 30 / 0.32);
+  --fill-soft: rgb(255 255 255 / 0.06);
+  --fill-soft-hover: rgb(255 255 255 / 0.1);
+  --fill-strong: rgb(255 255 255 / 0.14);
+  --ring-soft: rgb(255 255 255 / 0.14);
+  --ring-strong: rgb(255 255 255 / 0.28);
 
-  --focus-ring: var(--color-brand-700);
-  --shadow-card: 0 1px 2px rgb(26 22 41 / 0.08), 0 12px 28px -18px rgb(26 22 41 / 0.5);
+  --accent-soft: rgb(247 181 0 / 0.12);
+  --accent-soft-line: rgb(247 181 0 / 0.4);
+
+  --focus-ring: #f7b500;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px -16px rgb(0 0 0 / 0.8);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 18px 40px -18px rgb(0 0 0 / 0.9);
+
+  color-scheme: dark;
 }
 
 html,
@@ -177,18 +178,25 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Seleccion de texto y cursor en la paleta de la marca, no los del navegador. */
+::selection {
+  background: rgb(247 181 0 / 0.45);
+  color: inherit;
+}
+
+input,
+textarea {
+  caret-color: var(--color-brand-600);
+}
+
 /*
   TAMANO REAL DEL KIOSCO.
 
-  El kiosco del 122 es un monitor de 27" en vertical. Un pixel CSS ahi mide lo
-  mismo que en una tablet de 10", asi que la pantalla disenada para la tablet se
-  ve diminuta: el cliente esta de pie a medio metro y los botones le quedan del
-  tamano de un sello.
-
-  En vez de repetir cada clase con un tamano alternativo, se agranda la RAIZ: en
-  Tailwind casi todo (texto, alto, relleno, separaciones) esta en `rem`, asi que
-  subir la base escala la pantalla entera manteniendo las proporciones. Solo
-  aplica donde vive el kiosco (`.kiosk-root`), nunca en la administracion.
+  El kiosco del 122 es un monitor de 27" en vertical (1080x1920). Un pixel CSS
+  ahi mide lo mismo que en una tablet, asi que la pantalla pensada para tablet se
+  ve diminuta a medio metro. En vez de repetir cada clase con otro tamano, se
+  agranda la RAIZ: casi todo en Tailwind esta en `rem`, asi que crece la pantalla
+  entera manteniendo proporciones. Solo donde vive el kiosco (`.kiosk-root`).
 */
 @media (orientation: portrait) and (min-width: 820px) and (min-height: 1150px) {
   html:has(.kiosk-root) {
@@ -198,12 +206,11 @@ body {
 
 @media (orientation: portrait) and (min-width: 1000px) and (min-height: 1500px) {
   html:has(.kiosk-root) {
-    font-size: 26px;
+    font-size: 25px;
   }
 }
 
-/* Monitores grandes en horizontal (kiosco de mostrador): sube menos, porque ahi
-   el limite es la altura y no la distancia. */
+/* Monitores grandes en horizontal (kiosco de mostrador): sube menos. */
 @media (orientation: landscape) and (min-width: 1700px) and (min-height: 950px) {
   html:has(.kiosk-root) {
     font-size: 20px;
@@ -211,34 +218,17 @@ body {
 }
 
 /*
-  Variante `day:` — solo dentro del tema claro.
-
-  Casi todo se resuelve con las variables de superficie, pero no los tonos de
-  marca: un texto `brand-200` sobre superficie profunda es perfecto y sobre
-  blanco desaparece. Ahi hace falta decir el tono oscuro explicitamente.
+  Variante `night:` — solo dentro del tema noche del kiosco. Casi todo se
+  resuelve con las variables; esta variante es para los tonos de estado, que
+  cambian de paso: un verde oscuro que se lee sobre blanco desaparece en negro.
 */
-@custom-variant day (&:where([data-theme='day'], [data-theme='day'] *));
+@custom-variant night (&:where([data-theme='night'], [data-theme='night'] *));
 
-/*
-  Variante para kiosco en horizontal.
-
-  Un kiosco apaisado suele ser ancho pero bajo (1280x720, 1024x600). El
-  problema ahi no es el ancho sino la ALTURA: el teclado en pantalla mas el
-  campo mas los botones no caben en columna. Por eso la condicion mira la
-  altura y no un breakpoint de ancho — un iPad en horizontal y un monitor
-  panoramico corto necesitan el mismo tratamiento aunque midan muy distinto.
-*/
+/* Kiosco en horizontal: el limite es la ALTURA, no el ancho. */
 @custom-variant kland (@media (orientation: landscape) and (max-height: 860px));
-/* Alturas muy justas (600px y menos): se recorta todavia mas. */
 @custom-variant kshort (@media (orientation: landscape) and (max-height: 660px));
 
-/*
-  Cursor de mano en todo lo que se puede pulsar.
-
-  Tailwind v4 dejo de aplicar `cursor: pointer` a los botones —lo hacia en v3—,
-  asi que sin esto toda la interfaz se siente muerta: nada indica que sea
-  pulsable. Se excluye lo deshabilitado, que debe verse como lo que es.
-*/
+/* Cursor de mano en todo lo que se puede pulsar (Tailwind v4 dejo de ponerlo). */
 button:not(:disabled),
 [role='button']:not([aria-disabled='true']),
 summary,
@@ -252,8 +242,8 @@ button:disabled,
   cursor: not-allowed;
 }
 
-/* El punto de pago es tactil: sin seleccion accidental al tocar y sin el
-   retardo de 300 ms del doble tap. */
+/* El punto de pago es tactil: sin seleccion accidental y sin el retardo del
+   doble toque. */
 .touch-surface {
   -webkit-user-select: none;
   user-select: none;
@@ -261,16 +251,20 @@ button:disabled,
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Foco visible y consistente. Se dibuja por fuera para que nunca lo tape el
-   borde del propio control, y cambia de tono con el tema: en el claro el
-   lavanda claro no se veria. */
-:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: 0.5rem;
+/* Foco visible y consistente, por fuera del control. Negro en claro, amarillo
+   de noche: los dos se ven sobre cualquier superficie de su tema.
+
+   En la capa `base` a proposito: fuera de una capa, esta regla le ganaria a
+   cualquier utilidad de Tailwind (que viven en `utilities`) y los campos que
+   dibujan su propio anillo de foco quedarian con dos. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+    border-radius: 0.6rem;
+  }
 }
 
-/* Barras de desplazamiento acordes a la superficie. */
 * {
   scrollbar-color: var(--ring-strong) transparent;
   scrollbar-width: thin;
@@ -280,6 +274,18 @@ button:disabled,
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+}
+
+/* ------------------------------------------------------------------------
+   Iconos de vehiculo como MASCARA: el dibujo es la forma, el color lo pone
+   `currentColor`. Asi el mismo icono va negro en el mosaico, negro sobre el
+   amarillo del elegido y blanco de noche, sin una imagen por cada estado.
+   ------------------------------------------------------------------------ */
+.vehicle-glyph {
+  display: block;
+  background-color: currentColor;
+  -webkit-mask: var(--glyph) center / contain no-repeat;
+  mask: var(--glyph) center / contain no-repeat;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -292,11 +298,57 @@ button:disabled,
   }
 }
 
-/*
-  Un unico momento de movimiento autorizado en todo el producto: la espera del
-  datafono. Es el unico instante donde el usuario no puede hacer nada y
-  necesita saber que el sistema sigue vivo.
-*/
+/* ------------------------------------------------------------------------
+   EL MOMENTO DE MOVIMIENTO DEL KIOSCO: la espera del datafono.
+
+   Es el unico instante en que el cliente no puede hacer nada y necesita saber
+   que el sistema sigue vivo. Un arco amarillo da vueltas alrededor del icono del
+   vehiculo, como en la referencia. Todo lo demas entra quieto o casi quieto.
+   ------------------------------------------------------------------------ */
+@keyframes orbita {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.orbit {
+  animation: orbita 1.4s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+  transform-origin: 50% 50%;
+}
+
+/* El chulito del pago aprobado se dibuja, no aparece. */
+@keyframes trazo {
+  from {
+    stroke-dashoffset: var(--trazo, 48);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.draw-check {
+  stroke-dasharray: var(--trazo, 48);
+  stroke-dashoffset: var(--trazo, 48);
+  animation: trazo 520ms 180ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+/* El disco del resultado crece desde casi visible, nunca desde la nada. */
+@keyframes asentar {
+  from {
+    opacity: 0.4;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.settle {
+  animation: asentar 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Halo del punto "en vivo" (panel) y del aviso de impresion. */
 @keyframes halo {
   0% {
     transform: scale(0.85);
@@ -318,7 +370,7 @@ button:disabled,
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -326,10 +378,43 @@ button:disabled,
   }
 }
 
-/* Entrada de un paso del flujo. Corta y desde un estado ya visible, para que
-   no se perciba como una espera adicional. */
+/* Entrada de un paso del flujo: corta y desde casi visible, para que no se lea
+   como una espera mas. */
 .step-in {
-  animation: rise 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* La franja amarilla de la esquina entra deslizandose una sola vez: es el trazo
+   del logo, y llega como llega la marca, no parpadea. */
+@keyframes franja {
+  from {
+    transform: translate(12%, 12%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.swoosh-in {
+  animation: franja 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* El sedan de la bienvenida llega rodando desde la derecha, una vez. */
+@keyframes llegar {
+  from {
+    transform: translateX(14%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.drive-in {
+  animation: llegar 900ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ------------------------------------------------ Comprobante impreso -----
@@ -524,7 +609,7 @@ button:disabled,
   animation: brillo 1.4s ease-in-out infinite;
 }
 
-/* Barra de progreso de navegacion, en los dos colores de marca. */
+/* Barra de progreso de navegacion, en el amarillo de la marca. */
 .nav-progress {
   position: fixed;
   top: 0;
@@ -534,8 +619,8 @@ button:disabled,
   width: 0;
   opacity: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, #5ce1e6, #b58fff);
-  box-shadow: 0 0 10px rgb(181 143 255 / 0.6);
+  background: var(--color-brand-500);
+  box-shadow: 0 1px 6px rgb(247 181 0 / 0.55);
   transition:
     width 200ms ease,
     opacity 300ms ease;
@@ -564,8 +649,16 @@ button:disabled,
   .page-in,
   .receipt-in,
   .live-dot,
-  .skeleton::after {
+  .skeleton::after,
+  .orbit,
+  .swoosh-in,
+  .drive-in,
+  .settle {
     animation: none;
+  }
+  .draw-check {
+    animation: none;
+    stroke-dashoffset: 0;
   }
   .nav-progress,
   .nav-progress-on {

@@ -83,11 +83,11 @@ export default async function KiosksPage({ params }: { params: Promise<{ slug: s
             return (
               <Card key={kiosco.id} className="flex flex-col p-5">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/12 text-brand-200 ring-1 ring-inset ring-brand-400/25">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-ink-950 ring-1 ring-inset ring-brand-300">
                     <MdPointOfSale className="h-5 w-5" aria-hidden focusable="false" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold text-ink-50">{kiosco.name}</p>
+                    <p className="truncate text-[15px] font-semibold text-[var(--text-primary)]">{kiosco.name}</p>
                     <p className="truncate text-xs text-[var(--text-muted)]">
                       {usuario?.email ?? 'Sin usuario de acceso'}
                     </p>
@@ -95,10 +95,10 @@ export default async function KiosksPage({ params }: { params: Promise<{ slug: s
                   <span
                     className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${
                       !kiosco.active
-                        ? 'bg-white/[0.05] text-[var(--text-muted)] ring-white/10'
+                        ? 'bg-[var(--fill-soft)] text-[var(--text-muted)] ring-[var(--ring-soft)]'
                         : enLinea
-                          ? 'bg-ok-500/12 text-ok-300 ring-ok-400/30'
-                          : 'bg-white/[0.05] text-[var(--text-secondary)] ring-white/10'
+                          ? 'bg-ok-50 text-ok-700 ring-ok-400/30'
+                          : 'bg-[var(--fill-soft)] text-[var(--text-secondary)] ring-[var(--ring-soft)]'
                     }`}
                   >
                     <span
@@ -112,22 +112,22 @@ export default async function KiosksPage({ params }: { params: Promise<{ slug: s
 
                 <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <dt className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">Pagos hoy</dt>
-                    <dd className="tnum mt-1 text-xl font-semibold text-ink-50">{cobros?._count._all ?? 0}</dd>
+                    <dt className="text-[13px] text-[var(--text-secondary)]">Pagos hoy</dt>
+                    <dd className="tnum mt-1 text-xl font-semibold text-[var(--text-primary)]">{cobros?._count._all ?? 0}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">Recaudado hoy</dt>
-                    <dd className="tnum mt-1 text-xl font-semibold text-ink-50">
+                    <dt className="text-[13px] text-[var(--text-secondary)]">Recaudado hoy</dt>
+                    <dd className="tnum mt-1 text-xl font-semibold text-[var(--text-primary)]">
                       {formatCOP(cobros?._sum.amount ?? 0)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">Impresora</dt>
-                    <dd className="mt-1 text-ink-200">{kiosco.hasPrinter ? 'Si' : 'No, comprobante en pantalla'}</dd>
+                    <dt className="text-[13px] text-[var(--text-secondary)]">Impresora</dt>
+                    <dd className="mt-1 text-[var(--text-primary)]">{kiosco.hasPrinter ? 'Si' : 'No, comprobante en pantalla'}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">Ultimo ingreso</dt>
-                    <dd className="mt-1 text-ink-200">
+                    <dt className="text-[13px] text-[var(--text-secondary)]">Ultimo ingreso</dt>
+                    <dd className="mt-1 text-[var(--text-primary)]">
                       {usuario?.lastLoginAt ? formatDateTime(usuario.lastLoginAt) : 'Nunca'}
                     </dd>
                   </div>

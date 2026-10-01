@@ -2,7 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { MdLogout } from 'react-icons/md';
 
+/** Vive siempre sobre la barra negra del panel, lateral o superior en movil. */
 export function LogoutButton({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -19,13 +21,16 @@ export function LogoutButton({ compact = false }: { compact?: boolean }) {
     <button
       onClick={handleLogout}
       disabled={busy}
+      aria-label={compact ? 'Cerrar sesión' : undefined}
+      title={compact ? 'Cerrar sesión' : undefined}
       className={
         compact
-          ? 'shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100 disabled:opacity-50'
-          : 'w-full rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100 disabled:opacity-50'
+          ? 'shrink-0 rounded-full p-2 text-[var(--text-on-chrome-muted)] transition-colors duration-150 hover:bg-white/10 hover:text-white disabled:opacity-50'
+          : 'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium text-[var(--text-on-chrome-muted)] transition-colors duration-150 hover:bg-white/10 hover:text-white disabled:opacity-50'
       }
     >
-      {busy ? 'Saliendo...' : 'Cerrar sesion'}
+      <MdLogout className={compact ? 'h-5 w-5' : 'h-4.5 w-4.5 shrink-0'} aria-hidden focusable="false" />
+      {compact ? null : busy ? 'Saliendo...' : 'Cerrar sesión'}
     </button>
   );
 }

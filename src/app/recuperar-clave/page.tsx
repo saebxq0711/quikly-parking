@@ -16,7 +16,7 @@ export default function RecoverPage() {
     <main className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-xl font-semibold text-ink-50">
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">
             Recuperar contrasena
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
@@ -32,7 +32,7 @@ export default function RecoverPage() {
         <p className="mt-6 text-center text-sm">
           <Link
             href="/login"
-            className="font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+            className="font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-[var(--text-primary)]"
           >
             Volver a iniciar sesion
           </Link>

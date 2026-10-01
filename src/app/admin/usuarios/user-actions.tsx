@@ -51,13 +51,13 @@ export function UserActions({
           type="button"
           onClick={() => setCambiando((abierto) => !abierto)}
           aria-expanded={cambiando}
-          className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ring-1 ring-inset transition-colors duration-150 ${
+          className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 ring-inset transition-colors duration-150 ${
             cambiando
-              ? 'bg-brand-500/15 text-brand-200 ring-brand-400/30'
-              : 'text-[var(--text-secondary)] ring-white/10 hover:bg-white/[0.06] hover:text-ink-100'
+              ? 'bg-brand-500 text-ink-950 ring-brand-500'
+              : 'text-[var(--text-secondary)] ring-[var(--ring-soft)] hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)]'
           }`}
         >
-          Cambiar contrasena
+          Cambiar contraseña
         </button>
 
         {hasSession && allowLogout ? (
@@ -82,7 +82,7 @@ export function UserActions({
           action={resetAction}
           // Tras guardar se limpia, para no volver a enviar la misma contrasena.
           key={reset?.ok ? `ok-${reset.message}` : 'clave'}
-          className="page-in mt-3 grid gap-2 rounded-xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/10 sm:ml-auto sm:w-80"
+          className="page-in mt-3 grid gap-2 rounded-xl bg-[var(--fill-soft)] p-3 ring-1 ring-inset ring-[var(--ring-soft)] sm:ml-auto sm:w-80"
         >
           <input type="hidden" name="userId" value={userId} />
           <PasswordInput
@@ -129,15 +129,15 @@ function SmallButton({
   const { pending } = useFormStatus();
   const tones = {
     default:
-      'text-[var(--text-secondary)] ring-white/10 hover:bg-white/[0.06] hover:text-ink-100',
-    danger: 'text-bad-300 ring-bad-400/30 hover:bg-bad-500/12',
-    primary: 'bg-brand-600 text-white ring-brand-500 hover:bg-brand-500',
+      'text-[var(--text-secondary)] ring-[var(--ring-soft)] hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)]',
+    danger: 'text-bad-700 ring-bad-400/30 hover:bg-bad-50',
+    primary: 'bg-brand-500 text-ink-950 ring-brand-500 hover:bg-brand-400',
   };
   return (
     <button
       type="submit"
       disabled={pending}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium ring-1 ring-inset transition-colors duration-150 disabled:opacity-60 ${tones[tone]}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 ring-inset transition-colors duration-150 disabled:opacity-60 ${tones[tone]}`}
     >
       {pending ? (
         <span

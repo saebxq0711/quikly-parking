@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-01T00:00:00Z",
+  "title": "Design System: Quikly Parking",
+  "extensions": {
+    "colorMeta": {
+      "parking-yellow": { "role": "primary", "displayName": "Amarillo Parking", "canonical": "#f7b500", "tonalRamp": ["#4a3400", "#7a5600", "#a87700", "#db9c00", "#f7b500", "#ffc524", "#ffd44d", "#ffe48a", "#fff2c7", "#fffaeb"] },
+      "parking-yellow-hover": { "role": "primary", "displayName": "Amarillo Parking 400 (hover)", "canonical": "#ffc524" },
+      "parking-yellow-pressed": { "role": "primary", "displayName": "Amarillo Parking 600 (presión, cursor)", "canonical": "#db9c00" },
+      "parking-yellow-wash": { "role": "primary", "displayName": "Amarillo lavado (insignias en curso)", "canonical": "#fff2c7" },
+      "parking-yellow-edge": { "role": "primary", "displayName": "Borde amarillo de insignia", "canonical": "#ffd44d" },
+      "money-wash": { "role": "primary", "displayName": "Amarillo dinero", "canonical": "#fff6d6", "night": "rgb(247 181 0 / 0.12)", "line": "rgb(247 181 0 / 0.45)" },
+      "sign-black": { "role": "neutral", "displayName": "Negro letrero", "canonical": "#0b0b0b", "tonalRamp": ["#0b0b0b", "#171716", "#262624", "#3d3d3a", "#5a5a56", "#7a7a75", "#a3a39e", "#c9c9c4", "#e2e2de", "#efefec", "#f7f7f5"] },
+      "sign-black-hover": { "role": "neutral", "displayName": "Negro 800 (hover del botón confirmar)", "canonical": "#262624" },
+      "paper-white": { "role": "neutral", "displayName": "Blanco panel", "canonical": "#ffffff", "night": "#0b0b0b" },
+      "workspace-grey": { "role": "neutral", "displayName": "Gris área de trabajo", "canonical": "#f5f5f2" },
+      "tile-grey": { "role": "neutral", "displayName": "Gris mosaico", "canonical": "#f1f1ee", "night": "#1a1a18" },
+      "tile-grey-hover": { "role": "neutral", "displayName": "Gris mosaico hover", "canonical": "#e8e8e4", "night": "#242422" },
+      "line-grey": { "role": "neutral", "displayName": "Línea", "canonical": "#e2e2de" },
+      "text-secondary": { "role": "neutral", "displayName": "Texto secundario", "canonical": "#45453f", "night": "#c4c4be" },
+      "text-muted": { "role": "neutral", "displayName": "Texto atenuado", "canonical": "#66665f", "night": "#96968f" },
+      "chrome-text-muted": { "role": "neutral", "displayName": "Texto atenuado de la barra negra", "canonical": "#a3a39e" },
+      "night-raised": { "role": "neutral", "displayName": "Superficie elevada de noche", "canonical": "#161615" },
+      "night-tile": { "role": "neutral", "displayName": "Mosaico de noche", "canonical": "#1a1a18" },
+      "night-text": { "role": "neutral", "displayName": "Texto de noche", "canonical": "#f7f7f5" },
+      "night-text-secondary": { "role": "neutral", "displayName": "Texto secundario de noche", "canonical": "#c4c4be" },
+      "result-green": { "role": "status", "displayName": "Verde resultado", "canonical": "#1f9d55", "tonalRamp": ["#12662f", "#16803f", "#1f9d55", "#3fb96b", "#7dd39a", "#cdefd6", "#eaf7ee"] },
+      "result-green-text": { "role": "status", "displayName": "Texto verde", "canonical": "#16803f" },
+      "result-green-wash": { "role": "status", "displayName": "Lavado verde", "canonical": "#eaf7ee" },
+      "result-red": { "role": "status", "displayName": "Rojo resultado", "canonical": "#c02626", "tonalRamp": ["#9b1c1c", "#c02626", "#dc3b3b", "#e86464", "#f19c9c", "#fbd5d5", "#fdecec"] },
+      "result-red-text": { "role": "status", "displayName": "Texto rojo", "canonical": "#9b1c1c" },
+      "result-red-wash": { "role": "status", "displayName": "Lavado rojo", "canonical": "#fdecec" },
+      "caution-orange": { "role": "status", "displayName": "Naranja advertencia", "canonical": "#e8780c", "tonalRamp": ["#9a4a05", "#c25f06", "#e8780c", "#f7922b", "#fdb36b", "#ffe7cc"] },
+      "caution-orange-text": { "role": "status", "displayName": "Texto naranja", "canonical": "#9a4a05" },
+      "caution-orange-wash": { "role": "status", "displayName": "Lavado naranja", "canonical": "#ffe7cc" }
+    },
+    "typographyMeta": {
+      "kiosk-figure": { "displayName": "Cifra de kiosco", "purpose": "El total a pagar; COP en 1.6rem semibold al lado." },
+      "kiosk-plate": { "displayName": "Placa escrita", "purpose": "Campo de placa, código o documento del kiosco." },
+      "display": { "displayName": "Display", "purpose": "Títulos de paso del kiosco, centrados." },
+      "headline": { "displayName": "Headline", "purpose": "Título de página del panel." },
+      "kiosk-action": { "displayName": "Acción de kiosco", "purpose": "Botón principal del kiosco." },
+      "kiosk-body": { "displayName": "Cuerpo de kiosco", "purpose": "Subtítulos de paso, máximo 32rem." },
+      "title": { "displayName": "Title", "purpose": "Títulos de tarjeta del panel." },
+      "body": { "displayName": "Body", "purpose": "Descripciones y datos del panel." },
+      "label": { "displayName": "Label", "purpose": "Etiquetas de campo, cabeceras de tabla, navegación." }
+    },
+    "themes": [
+      { "name": "claro", "selector": ":root", "scope": "Admin, superadmin, ingreso, correos y kiosco de día." },
+      { "name": "noche", "selector": "[data-theme='night']", "scope": "Solo el kiosco. Mismo amarillo; fondos y grises invertidos; foco amarillo; variante night: para tonos de estado." }
+    ],
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px rgb(11 11 11 / 0.05), 0 10px 28px -16px rgb(11 11 11 / 0.22)", "night": "0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px -16px rgb(0 0 0 / 0.8)", "purpose": "Tarjetas del panel, InfoCard del kiosco, calendario desplegable." },
+      { "name": "lift", "value": "0 2px 4px rgb(11 11 11 / 0.06), 0 18px 40px -18px rgb(11 11 11 / 0.32)", "night": "0 2px 4px rgb(0 0 0 / 0.5), 0 18px 40px -18px rgb(0 0 0 / 0.9)", "purpose": "La tarjeta de ingreso." },
+      { "name": "num-key", "value": "0 1px 3px rgb(11 11 11 / 0.08)", "purpose": "Relieve de la tecla numérica blanca sobre su bandeja." },
+      { "name": "sedan-ground", "value": "drop-shadow(0 18px 22px rgb(11 11 11 / 0.18))", "purpose": "Sombra de suelo del sedán de bienvenida." },
+      { "name": "focus", "value": "outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 0.6rem", "purpose": "Foco visible: negro en claro, amarillo de noche." }
+    ],
+    "motion": [
+      { "name": "ease-enter", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Curva de entrada de pasos, franja, sedán y disco de resultado." },
+      { "name": "orbit", "value": "rotate 360deg 1.4s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite", "purpose": "Arco amarillo durante la espera del datáfono: el único movimiento continuo del kiosco." },
+      { "name": "draw-check", "value": "stroke-dashoffset 520ms 180ms cubic-bezier(0.65, 0, 0.35, 1)", "purpose": "El chulito del pago aprobado se dibuja." },
+      { "name": "settle", "value": "scale 0.82 -> 1, opacity 0.4 -> 1, 420ms ease-enter", "purpose": "Entrada del disco de resultado." },
+      { "name": "step-in", "value": "translateY 10px -> 0, 260ms ease-enter", "purpose": "Entrada de cada paso del kiosco." },
+      { "name": "swoosh-in", "value": "translate 12% -> 0, 700ms ease-enter, una vez", "purpose": "Entrada de la franja amarilla de la esquina." },
+      { "name": "drive-in", "value": "translateX 14% -> 0, 900ms 120ms ease-enter, una vez", "purpose": "El sedán llega rodando desde la derecha." },
+      { "name": "page-in", "value": "translateY 6px -> 0, 260ms cubic-bezier(0.2, 0.7, 0.2, 1)", "purpose": "Entrada de pantallas del panel." },
+      { "name": "press", "value": "scale 0.985 (botón), 0.98 (mosaico), 0.96 (tecla), 100-150ms", "purpose": "Respuesta táctil a la presión." }
+    ],
+    "breakpoints": [
+      { "name": "kiosk-portrait-md", "value": "(orientation: portrait) and (min-width: 820px) and (min-height: 1150px) -> root 21px" },
+      { "name": "kiosk-portrait-27in", "value": "(orientation: portrait) and (min-width: 1000px) and (min-height: 1500px) -> root 25px" },
+      { "name": "kiosk-landscape-large", "value": "(orientation: landscape) and (min-width: 1700px) and (min-height: 950px) -> root 20px" },
+      { "name": "kland", "value": "(orientation: landscape) and (max-height: 860px)" },
+      { "name": "kshort", "value": "(orientation: landscape) and (max-height: 660px)" },
+      { "name": "lg", "value": "1024px (barra lateral fija del panel)" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal del kiosco",
+      "kind": "button",
+      "refersTo": "kiosk-button-primary",
+      "description": "La acción principal: amarilla con texto negro, una por pantalla.",
+      "html": "<button class=\"ds-kiosk-primary\">Pagar con tarjeta</button>",
+      "css": ".ds-kiosk-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; width: 100%; min-height: 4.6rem; padding: 0 2rem; border: 0; border-radius: 1.1rem; background: #f7b500; color: #0b0b0b; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 1.45rem; font-weight: 700; transition: background-color 150ms, transform 150ms; cursor: pointer; } .ds-kiosk-primary:hover { background: #ffc524; } .ds-kiosk-primary:active { background: #db9c00; transform: scale(0.985); } .ds-kiosk-primary:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-kiosk-primary:disabled { background: rgb(11 11 11 / 0.12); color: #66665f; cursor: not-allowed; }"
+    },
+    {
+      "name": "Botón secundario del kiosco",
+      "kind": "button",
+      "refersTo": "kiosk-button-secondary",
+      "description": "Blanco con anillo, del mismo alto que la principal.",
+      "html": "<button class=\"ds-kiosk-secondary\">No es el mío</button>",
+      "css": ".ds-kiosk-secondary { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 4.6rem; padding: 0 1.5rem; border: 0; border-radius: 1.1rem; background: #ffffff; color: #0b0b0b; box-shadow: inset 0 0 0 2px rgb(11 11 11 / 0.12); font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 1.2rem; font-weight: 600; transition: box-shadow 150ms, transform 150ms; cursor: pointer; } .ds-kiosk-secondary:hover { box-shadow: inset 0 0 0 2px rgb(11 11 11 / 0.26); } .ds-kiosk-secondary:active { transform: scale(0.985); } .ds-kiosk-secondary:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; }"
+    },
+    {
+      "name": "Mosaico de vehículo",
+      "kind": "custom",
+      "refersTo": "kiosk-tile",
+      "description": "Mosaico de la bienvenida: gris en reposo, amarillo elegido.",
+      "html": "<div class=\"ds-tiles\"><button class=\"ds-tile ds-tile-on\"><svg viewBox=\"0 0 24 24\" width=\"72\" height=\"72\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z\"/></svg><span>Carro</span></button><button class=\"ds-tile\"><svg viewBox=\"0 0 24 24\" width=\"72\" height=\"72\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6.2l-2.2-2.3zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z\"/></svg><span>Bicicleta</span></button></div>",
+      "css": ".ds-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; max-width: 38rem; } .ds-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25rem; aspect-ratio: 1.22; border: 0; border-radius: 1.6rem; background: #f1f1ee; color: #0b0b0b; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 1.65rem; font-weight: 600; transition: background-color 150ms, transform 150ms; cursor: pointer; } .ds-tile:hover { background: #e8e8e4; } .ds-tile:active { background: #f7b500; transform: scale(0.98); } .ds-tile:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-tile-on, .ds-tile-on:hover { background: #f7b500; } .ds-tile-on:hover { background: #ffc524; }"
+    },
+    {
+      "name": "Total a pagar",
+      "kind": "card",
+      "refersTo": "total-block",
+      "description": "El dinero sobre amarillo pálido, la cifra a escala de letrero.",
+      "html": "<div class=\"ds-total\"><p class=\"ds-total-label\">Total a pagar</p><p class=\"ds-total-amount\">$ 6.500<span>COP</span></p></div>",
+      "css": ".ds-total { border-radius: 1.4rem; padding: 1.5rem 1.75rem; background: #fff6d6; box-shadow: inset 0 0 0 1px rgb(247 181 0 / 0.45); color: #0b0b0b; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-total-label { margin: 0; font-size: 1.25rem; font-weight: 500; } .ds-total-amount { margin: 0.25rem 0 0; font-size: 3.6rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; } .ds-total-amount span { margin-left: 0.75rem; font-size: 1.6rem; font-weight: 600; letter-spacing: normal; }"
+    },
+    {
+      "name": "Tarjeta de vehículo con placa",
+      "kind": "card",
+      "refersTo": "info-card",
+      "description": "Placa a escala de letrero, píldora amarilla del tipo y filas de datos.",
+      "html": "<div class=\"ds-info\"><div class=\"ds-info-head\"><p class=\"ds-plate\">ABC123</p><span class=\"ds-type\">Carro</span></div><dl class=\"ds-rows\"><div><dt>Hora de entrada</dt><dd>1 de oct · 3:23 p. m.</dd></div><div><dt>Tiempo de estadía</dt><dd>2 h 36 min</dd></div></dl></div>",
+      "css": ".ds-info { border-radius: 1.4rem; background: #ffffff; box-shadow: 0 0 0 1px rgb(11 11 11 / 0.08), 0 1px 2px rgb(11 11 11 / 0.05), 0 10px 28px -16px rgb(11 11 11 / 0.22); color: #0b0b0b; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-info-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.75rem; border-bottom: 1px solid rgb(11 11 11 / 0.08); } .ds-plate { margin: 0; font-size: 2.3rem; font-weight: 700; line-height: 1; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; } .ds-type { border-radius: 9999px; padding: 0.5rem 1rem; background: #f7b500; color: #0b0b0b; font-size: 1.125rem; font-weight: 600; } .ds-rows { margin: 0; padding: 0.5rem 1.75rem 1rem; } .ds-rows div { display: flex; justify-content: space-between; gap: 1.5rem; padding: 0.625rem 0; } .ds-rows dt { color: #45453f; font-size: 1.125rem; } .ds-rows dd { margin: 0; font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Botón del panel",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Píldora amarilla con texto negro; confirm en negro; secundario blanco con anillo.",
+      "html": "<div class=\"ds-row\"><button class=\"ds-btn ds-btn-primary\">Aplicar filtros</button><button class=\"ds-btn ds-btn-confirm\">Guardar</button><button class=\"ds-btn ds-btn-secondary\">Limpiar</button></div>",
+      "css": ".ds-row { display: flex; gap: 8px; } .ds-btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border: 0; border-radius: 9999px; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 600; transition: background-color 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-btn-primary { background: #f7b500; color: #0b0b0b; } .ds-btn-primary:hover { background: #ffc524; } .ds-btn-primary:active { background: #db9c00; } .ds-btn-confirm { background: #0b0b0b; color: #ffffff; } .ds-btn-confirm:hover { background: #262624; } .ds-btn-secondary { background: #ffffff; color: #0b0b0b; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); } .ds-btn-secondary:hover { background: #fafaf8; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.26); }"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Blanco con anillo fino; foco en anillo negro de 2px.",
+      "html": "<label class=\"ds-field\"><span>Correo electrónico</span><input class=\"ds-input\" placeholder=\"usuario@parqueadero.com\" /></label>",
+      "css": ".ds-field { display: block; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-field span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #0b0b0b; } .ds-input { display: block; width: 100%; padding: 10px 14px; border: 0; border-radius: 0.75rem; background: #ffffff; color: #0b0b0b; font-size: 14px; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); caret-color: #db9c00; transition: box-shadow 150ms; } .ds-input::placeholder { color: #66665f; } .ds-input:hover { box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.26); } .ds-input:focus { outline: none; box-shadow: inset 0 0 0 2px #0b0b0b; }"
+    },
+    {
+      "name": "Navegación lateral",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Barra negra; la sección activa es el único amarillo.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\">Resumen</a><a class=\"ds-nav-item ds-nav-on\" href=\"#\" aria-current=\"page\">Historial</a><a class=\"ds-nav-item\" href=\"#\">Cajas</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; width: 16rem; padding: 12px; background: #0b0b0b; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 0.75rem; color: #a3a39e; font-size: 13.5px; font-weight: 600; text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-nav-item:hover { background: rgb(255 255 255 / 0.1); color: #ffffff; } .ds-nav-item:focus-visible { outline: 2px solid #f7b500; outline-offset: 3px; } .ds-nav-on, .ds-nav-on:hover { background: #f7b500; color: #0b0b0b; }"
+    },
+    {
+      "name": "Insignias de estado",
+      "kind": "chip",
+      "refersTo": "badge-in-progress",
+      "description": "Píldoras de estado: amarillo lavado en curso, verde y rojo solo para resultado.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-b-run\">En el datáfono</span><span class=\"ds-badge ds-b-ok\">Aprobado</span><span class=\"ds-badge ds-b-bad\">Rechazado</span><span class=\"ds-badge ds-b-warn\">Expirado</span></div>",
+      "css": ".ds-badges { display: flex; gap: 8px; flex-wrap: wrap; } .ds-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 9999px; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; white-space: nowrap; } .ds-b-run { background: #fff2c7; color: #0b0b0b; box-shadow: inset 0 0 0 1px #ffd44d; } .ds-b-ok { background: #eaf7ee; color: #12662f; box-shadow: inset 0 0 0 1px rgb(31 157 85 / 0.25); } .ds-b-bad { background: #fdecec; color: #9b1c1c; box-shadow: inset 0 0 0 1px rgb(220 59 59 / 0.25); } .ds-b-warn { background: rgb(255 231 204 / 0.6); color: #9a4a05; box-shadow: inset 0 0 0 1px rgb(232 120 12 / 0.3); }"
+    },
+    {
+      "name": "Enlace de marca",
+      "kind": "custom",
+      "refersTo": "sign-black",
+      "description": "Texto negro con subrayado amarillo; el amarillo nunca es tinta.",
+      "html": "<a class=\"ds-link\" href=\"#\">Olvidé mi contraseña</a>",
+      "css": ".ds-link { font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #0b0b0b; text-decoration: underline; text-decoration-color: #f7b500; text-decoration-thickness: 2px; text-underline-offset: 4px; transition: text-decoration-color 150ms; } .ds-link:hover { text-decoration-color: #0b0b0b; } .ds-link:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; border-radius: 0.6rem; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Señalética de parqueadero",
+    "overview": "Quikly Parking se lee como un letrero de parqueadero, no como una app de pagos. Tres tintas y nada más: blanco, negro y el amarillo Parking (#F7B500 de la colorimetría oficial). El blanco es el panel por decisión, el negro es el texto y el marco, y el amarillo no decora: señala el único paso siguiente (el botón que hay que tocar, el vehículo elegido, la sección activa) y el dinero (el total). Si todo fuera amarillo, el cliente no sabría dónde tocar.\n\nEl kiosco (monitor táctil vertical de 27\", 1080×1920, de pie y a pleno sol) trabaja a escala de letrero: una decisión por pantalla, placa y total con cifras monumentales y tabulares, objetivos táctiles de 4.6rem de alto, mosaicos grises de esquina amplia y la franja curva amarilla del logo apoyada en la esquina inferior. De noche el mismo kiosco invierte el fondo a negro casi puro y conserva el mismo amarillo. El panel de administración y superadmin habla el mismo vocabulario con más densidad: área de trabajo gris muy clara, tarjetas blancas de sombra suave, barra lateral negra con el logo negativo y la sección activa como píldora amarilla.\n\nLos grises son neutros de verdad, sin tinte: la marca ya pone el color, y un gris tibio al lado del amarillo se ve sucio. Rojo y verde existen solo como resultado; el naranja de advertencia está lejos del amarillo a propósito.",
+    "keyCharacteristics": [
+      "Tres tintas: blanco, negro (#0b0b0b) y amarillo Parking; estados de resultado aparte.",
+      "El amarillo marca el siguiente paso, la selección y el dinero; nunca es fondo de adorno ni color de texto.",
+      "Cifras a escala de letrero con números tabulares (placa, total, cifras del panel).",
+      "Esquinas amplias y suaves; botones de kiosco anchos, botones del panel en píldora.",
+      "Profundidad casi plana: mosaicos planos, tarjetas con sombra ambiental muy ligera.",
+      "Un tema noche que existe solo en el kiosco."
+    ],
+    "rules": [
+      { "name": "The Texto Negro Rule", "body": "Sobre amarillo el texto y los íconos son siempre negros (`#0b0b0b`, ~11:1). Blanco sobre #F7B500 da 1,9:1 y no se usa nunca, ni en botones, ni en insignias, ni en el Excel.", "section": "colors" },
+      { "name": "The Amarillo No Es Tinta Rule", "body": "El amarillo no se usa como color de texto sobre blanco. Cuando un texto tiene que ser \"de marca\" (enlaces del panel y del ingreso) va en negro con subrayado amarillo de 2px separado 4px; en hover el subrayado pasa a negro.", "section": "colors" },
+      { "name": "The Siguiente Paso Rule", "body": "El amarillo sólido vive solo en la acción principal (una por pantalla), la selección y la navegación activa; el amarillo pálido, solo en el dinero (un bloque o una cifra accent por pantalla). Un amarillo apagado parece tocable, así que un botón principal deshabilitado pierde el amarillo y pasa a `--fill-strong` con texto atenuado.", "section": "colors" },
+      { "name": "The Resultado Rule", "body": "Verde y rojo solo dicen aprobado o rechazado; nunca adornan, nunca marcan selección. El naranja de advertencia no sustituye al amarillo ni el amarillo al naranja.", "section": "colors" },
+      { "name": "The Noche Del Kiosco Rule", "body": "El tema noche (`data-theme=\"night\"`) existe solo en el kiosco. Invierte fondos y grises por variables; el amarillo es el mismo; el foco pasa de negro a amarillo; los tonos de estado suben de paso con la variante `night:` (un verde que se lee sobre blanco desaparece en negro). Admin, superadmin, ingreso y correos son siempre claros.", "section": "colors" },
+      { "name": "The Logo Rule", "body": "Logo positivo (texto negro) sobre fondo claro, negativo (texto blanco, trazo amarillo) sobre negro: la barra lateral y la cabecera del panel usan el negativo; el kiosco alterna entre los dos según el tema.", "section": "colors" },
+      { "name": "The Letrero Rule", "body": "Lo que el cliente tiene que leer para decidir (placa, total) se escribe a escala de letrero y con números tabulares; toda cifra que se actualiza lleva `tnum` para que no baile.", "section": "typography" },
+      { "name": "The Raíz Que Crece Rule", "body": "El kiosco se dimensiona en `rem` y crece agrandando la raíz solo donde existe `.kiosk-root`: 21px en vertical desde 820×1150, 25px en vertical desde 1000×1500 (el monitor de 27\"), 20px en horizontal desde 1700×950. Nada del kiosco se fija en px.", "section": "typography" },
+      { "name": "The Tono Antes Que Sombra Rule", "body": "Lo que se toca en el kiosco se separa por tono (gris mosaico sobre blanco, amarillo cuando está elegido), no por sombra. La sombra es ambiental y solo despega tarjetas de datos.", "section": "elevation" },
+      { "name": "The Trazo En El Borde Rule", "body": "La franja amarilla es marca, no contenido: solo en un borde inferior, recortada por la pantalla, y una vez por vista.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do poner texto e íconos negros (#0b0b0b) sobre cualquier amarillo, en pantalla, en Excel y en correos.",
+      "Do escribir los enlaces en negro con subrayado amarillo de 2px separado 4px, que pasa a negro en hover.",
+      "Do reservar el amarillo sólido a una acción principal por pantalla, a la selección y a la navegación activa, y el amarillo pálido al dinero.",
+      "Do quitar el amarillo a un botón principal deshabilitado (`--fill-strong` con texto atenuado).",
+      "Do usar verde y rojo solo para aprobado y rechazado, y el naranja de advertencia (no el amarillo) para lo que pide atención.",
+      "Do resolver colores por las variables de superficie (`--surface-*`, `--text-*`, `--fill-*`, `--ring-*`) para que la pieza funcione en el tema noche, y subir de paso los tonos de estado con `night:`.",
+      "Do escribir el kiosco en `rem` y dejar que la raíz lo agrande en el monitor.",
+      "Do llevar `tnum` en toda cifra: placa, total, montos, tablas.",
+      "Do usar el logo positivo sobre claro y el negativo sobre negro."
+    ],
+    "donts": [
+      "Don't poner texto blanco sobre amarillo Parking (1,9:1).",
+      "Don't usar el amarillo como color de texto sobre blanco.",
+      "Don't usar el amarillo como fondo decorativo, ni repetir amarillo sólido en varias acciones de la misma pantalla.",
+      "Don't usar verde o rojo para marcar selección, navegación o adorno.",
+      "Don't acercar el naranja de advertencia al amarillo ni usar amarillo para advertir.",
+      "Don't aplicar el tema noche fuera del kiosco: panel, ingreso y correos son claros.",
+      "Don't usar grises con tinte cálido o frío visible junto al amarillo; los neutros son los de la escala `ink`.",
+      "Don't colocar la franja amarilla detrás de texto o de un control, ni fuera de un borde inferior.",
+      "Don't anidar tarjetas dentro de tarjetas en el panel.",
+      "Don't volver a introducir el morado del sistema anterior."
+    ]
+  }
+}

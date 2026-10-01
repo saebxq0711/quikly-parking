@@ -163,7 +163,7 @@ export default async function PaymentsPage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[54rem] text-sm">
               <thead>
-                <tr className="border-b border-[var(--line-subtle)] text-left text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+                <tr className="border-b border-[var(--line-subtle)] text-left text-[13px] text-[var(--text-secondary)]">
                   <th className="px-5 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Vehiculo</th>
                   <th className="px-4 py-3 font-medium">Placa / Tiquete</th>
@@ -179,20 +179,20 @@ export default async function PaymentsPage({
                 {payments.map((payment) => (
                   <tr
                     key={payment.id}
-                    className="transition-colors duration-100 hover:bg-white/[0.03]"
+                    className="transition-colors duration-100 hover:bg-[var(--fill-soft)]"
                   >
                     <td className="whitespace-nowrap px-5 py-3 text-[var(--text-secondary)]">
                       {formatDateTime(payment.createdAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="flex items-center gap-2 text-ink-200">
+                      <span className="flex items-center gap-2 text-[var(--text-primary)]">
                         <span className="h-4.5 w-4.5 shrink-0 text-[var(--text-muted)]">
                           <VehicleIcon type={payment.vehicleType} />
                         </span>
                         {VEHICLE_LABEL[payment.vehicleType] ?? payment.vehicleType}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-ink-100">
+                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                       {payment.plate ?? payment.ticketCode ?? payment.vehicleIdentifier}
                     </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">
@@ -204,7 +204,7 @@ export default async function PaymentsPage({
                     <td className="px-4 py-3 text-[var(--text-secondary)]">
                       {payment.paymentPoint?.name ?? '—'}
                     </td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                    <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-[var(--text-primary)]">
                       {formatCOP(payment.amount)}
                     </td>
                     <td className="px-4 py-3">
@@ -212,7 +212,7 @@ export default async function PaymentsPage({
                       {payment.status === 'APPROVED' &&
                       payment.parkingConfirmStatus &&
                       payment.parkingConfirmStatus !== 'CONFIRMED' ? (
-                        <span className="mt-1 block text-[11px] font-medium text-warn-300">
+                        <span className="mt-1 block text-[11px] font-medium text-warn-700">
                           Sin registrar en el parqueadero
                         </span>
                       ) : null}
@@ -254,10 +254,10 @@ function SummaryCard({
 }) {
   return (
     <Card className="px-5 py-4">
-      <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+      <p className="text-[13px] text-[var(--text-secondary)]">
         {label}
       </p>
-      <p className="tnum mt-1.5 text-2xl font-semibold tracking-tight text-ink-50">
+      <p className="tnum mt-1.5 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
         {value}
       </p>
       <p className="mt-0.5 text-xs text-[var(--text-muted)]">{hint}</p>

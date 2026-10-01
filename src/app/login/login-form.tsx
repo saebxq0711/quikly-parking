@@ -64,7 +64,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       className="space-y-4"
       noValidate
     >
-      <Field label="Correo electronico">
+      <Field label="Correo electrónico">
         <Input
           type="email"
           name="email"
@@ -77,7 +77,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
         />
       </Field>
 
-      <Field label="Contrasena">
+      <Field label="Contraseña">
         <PasswordInput
           name="password"
           autoComplete="current-password"
@@ -96,9 +96,9 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       <p className="pt-1 text-center text-sm">
         <Link
           href="/recuperar-clave"
-          className="font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+          className="font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-[var(--text-primary)]"
         >
-          Olvide mi contraseña
+          Olvidé mi contraseña
         </Link>
       </p>
     </form>

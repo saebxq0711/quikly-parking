@@ -47,7 +47,7 @@ export default async function TicketPage({
     <main className="flex min-h-dvh items-center justify-center bg-[var(--surface-base)] px-5 py-10">
       <div className="w-full max-w-sm text-center">
         <Image
-          src="/quikly-parking.png"
+          src="/quikly-parking-positivo.png"
           alt="Quikly Parking"
           width={783}
           height={269}
@@ -55,23 +55,23 @@ export default async function TicketPage({
           className="mx-auto h-8 w-auto"
         />
 
-        <h1 className="mt-7 text-lg font-semibold text-white">Tu tiquete</h1>
+        <h1 className="mt-7 text-lg font-semibold text-[var(--text-primary)]">Tu tiquete</h1>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           Muestralo en el punto de pago o en la salida.
         </p>
 
         {/* Placa blanca: un QR sobre fondo oscuro lo leen mal muchos escaneres. */}
         <div
-          className="mx-auto mt-6 w-64 max-w-full rounded-2xl bg-white p-4"
-          aria-label={`Codigo QR del tiquete ${codigo}`}
+          className="mx-auto mt-6 w-64 max-w-full rounded-2xl bg-white p-4 ring-1 ring-[var(--line-subtle)] shadow-[var(--shadow-card)]"
+          aria-label={`Código QR del tiquete ${codigo}`}
           role="img"
           dangerouslySetInnerHTML={{ __html: qr }}
         />
 
-        <p className="mt-6 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--text-muted)]">
-          Codigo
+        <p className="mt-6 text-sm font-medium text-[var(--text-secondary)]">
+          Código
         </p>
-        <p className="tnum mt-1 text-5xl font-bold tracking-[0.2em] text-white">{codigo}</p>
+        <p className="tnum mt-1 text-5xl font-bold tracking-[0.2em] text-[var(--text-primary)]">{codigo}</p>
 
         <SaveTicket code={codigo} />
 

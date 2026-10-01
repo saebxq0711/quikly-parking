@@ -17,18 +17,19 @@ type ButtonSize = 'sm' | 'md' | 'lg' | 'kiosk';
  * Todas las variantes traen hover, active y disabled: no se envia media tabla
  * de estados.
  *
- * El lavanda de marca se usa en el paso 600/700 y no en el 400 del manual: el
- * tono puro es un color claro, y un boton solido necesita sostener texto blanco
- * encima. Las variantes suaves van por variables (`--fill-*`, `--ring-*`) para
- * que el mismo boton funcione sobre superficie profunda y sobre blanco.
+ * La accion principal es amarilla con texto NEGRO, como la referencia: el
+ * amarillo Parking es claro y no sostiene texto blanco (1,9:1). Negro sobre
+ * #F7B500 da 11:1, que se lee hasta con el sol de frente. Las variantes suaves
+ * van por variables (`--fill-*`, `--ring-*`) para que el mismo boton funcione en
+ * claro y en el tema noche del kiosco.
  */
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700 day:hover:bg-brand-700 disabled:bg-brand-600/30 disabled:text-white/40',
+    'bg-brand-500 text-ink-950 hover:bg-brand-400 active:bg-brand-600 disabled:bg-[var(--fill-strong)] disabled:text-[var(--text-muted)]',
   confirm:
-    'bg-ok-600 text-white hover:bg-ok-500 active:bg-ok-600 day:bg-ok-700 day:hover:bg-ok-600 disabled:bg-ok-600/30 disabled:text-white/40',
+    'bg-ink-950 text-white hover:bg-ink-800 active:bg-ink-900 night:bg-brand-500 night:text-ink-950 night:hover:bg-brand-400 disabled:bg-[var(--fill-strong)] disabled:text-[var(--text-muted)]',
   secondary:
-    'bg-[var(--fill-soft)] text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)] active:bg-[var(--fill-strong)] disabled:text-[var(--text-muted)]',
+    'bg-[var(--surface-raised)] text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] hover:bg-[var(--surface-raised-hover)] hover:ring-[var(--ring-strong)] active:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)]',
   ghost:
     'text-[var(--text-secondary)] hover:bg-[var(--fill-soft)] hover:text-[var(--text-primary)] active:bg-[var(--fill-soft-hover)] disabled:text-[var(--text-muted)]',
   danger:
@@ -36,12 +37,12 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px] rounded-lg gap-1.5',
+  sm: 'h-8 px-3.5 text-[13px] rounded-full gap-1.5',
   // 44px: minimo tactil comodo para una interfaz administrativa.
-  md: 'h-11 px-4 text-sm rounded-lg gap-2',
-  lg: 'h-13 px-6 text-[15px] rounded-xl gap-2',
+  md: 'h-11 px-5 text-sm rounded-full gap-2',
+  lg: 'h-13 px-7 text-[15px] rounded-full gap-2',
   // El kiosco se opera de pie, a veces con guantes.
-  kiosk: 'min-h-16 px-8 text-lg rounded-2xl gap-3 kshort:min-h-14',
+  kiosk: 'min-h-18 px-8 text-xl rounded-2xl gap-3 kshort:min-h-14',
 };
 
 export function Button({
@@ -82,7 +83,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'rounded-xl bg-[var(--surface-raised)] ring-1 ring-[var(--line-subtle)]',
+        'rounded-2xl bg-[var(--surface-raised)] ring-1 ring-[var(--line-subtle)]',
         'shadow-[var(--shadow-card)]',
         className,
       )}
@@ -135,7 +136,7 @@ export function Field({
       </span>
       {children}
       {error ? (
-        <span className="mt-1.5 block text-[13px] text-bad-400">{error}</span>
+        <span className="mt-1.5 block text-[13px] text-bad-600 night:text-bad-400">{error}</span>
       ) : hint ? (
         <span className="mt-1.5 block text-[13px] leading-relaxed text-[var(--text-muted)]">
           {hint}
@@ -146,11 +147,11 @@ export function Field({
 }
 
 const CONTROL = [
-  'block w-full rounded-lg border-0 bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)]',
+  'block w-full rounded-xl border-0 bg-[var(--surface-sunken)] px-3.5 py-2.5 text-sm text-[var(--text-primary)]',
   'ring-1 ring-inset ring-[var(--ring-soft)] placeholder:text-[var(--text-muted)]',
   'transition-shadow duration-150',
   'hover:ring-[var(--ring-strong)]',
-  'focus:ring-2 focus:ring-inset focus:ring-brand-500 focus:outline-none day:focus:ring-brand-700',
+  'focus:ring-2 focus:ring-inset focus:ring-[var(--text-primary)] focus:outline-none',
   'disabled:opacity-60 disabled:text-[var(--text-muted)]',
 ].join(' ');
 
@@ -174,8 +175,8 @@ export function Checkbox({
       <input
         type="checkbox"
         className={cn(
-          'h-4 w-4 rounded border-0 bg-[var(--surface-sunken)] text-brand-500',
-          'ring-1 ring-inset ring-[var(--ring-strong)] focus:ring-2 focus:ring-brand-500',
+          'h-4 w-4 rounded border-0 bg-[var(--surface-sunken)] accent-brand-500',
+          'ring-1 ring-inset ring-[var(--ring-strong)] focus:ring-2 focus:ring-[var(--text-primary)]',
           className,
         )}
         {...props}
@@ -197,17 +198,17 @@ export function Alert({
   children: React.ReactNode;
 }) {
   const tones = {
-    info: 'bg-brand-500/10 text-brand-200 ring-brand-400/25 day:text-brand-800 day:ring-brand-600/30',
-    success: 'bg-ok-500/10 text-ok-300 ring-ok-400/25 day:text-ok-700 day:ring-ok-600/35',
-    warning: 'bg-warn-500/10 text-warn-300 ring-warn-400/25 day:text-warn-600 day:ring-warn-500/40',
-    error: 'bg-bad-500/10 text-bad-300 ring-bad-400/25 day:text-bad-600 day:ring-bad-500/35',
+    info: 'bg-[var(--accent-soft)] text-[var(--text-primary)] ring-[var(--accent-soft-line)]',
+    success: 'bg-ok-50 text-ok-700 ring-ok-500/30 night:bg-ok-500/10 night:text-ok-300',
+    warning: 'bg-warn-100/60 text-warn-700 ring-warn-500/35 night:bg-warn-500/10 night:text-warn-300',
+    error: 'bg-bad-50 text-bad-700 ring-bad-500/30 night:bg-bad-500/10 night:text-bad-300',
   } as const;
 
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
       className={cn(
-        'rounded-lg px-4 py-3 text-[13px] leading-relaxed ring-1 ring-inset',
+        'rounded-xl px-4 py-3 text-[13px] leading-relaxed ring-1 ring-inset',
         tones[tone],
       )}
     >
@@ -232,15 +233,15 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 };
 
 const STATUS_STYLE: Record<PaymentStatus, string> = {
-  PENDING: 'bg-white/[0.06] text-ink-300 ring-white/15',
-  INITIATED: 'bg-brand-500/12 text-brand-200 ring-brand-400/30',
-  IN_PROGRESS: 'bg-brand-500/12 text-brand-200 ring-brand-400/30',
-  APPROVED: 'bg-ok-500/12 text-ok-300 ring-ok-400/30',
-  DECLINED: 'bg-bad-500/12 text-bad-300 ring-bad-400/30',
-  FAILED: 'bg-bad-500/12 text-bad-300 ring-bad-400/30',
-  TIMEOUT: 'bg-warn-500/12 text-warn-300 ring-warn-400/30',
-  CANCELLED: 'bg-white/[0.06] text-ink-400 ring-white/15',
-  REFUNDED: 'bg-warn-500/12 text-warn-300 ring-warn-400/30',
+  PENDING: 'bg-ink-100 text-ink-700 ring-ink-200',
+  INITIATED: 'bg-brand-100 text-ink-950 ring-brand-300',
+  IN_PROGRESS: 'bg-brand-100 text-ink-950 ring-brand-300',
+  APPROVED: 'bg-ok-50 text-ok-700 ring-ok-500/25',
+  DECLINED: 'bg-bad-50 text-bad-700 ring-bad-500/25',
+  FAILED: 'bg-bad-50 text-bad-700 ring-bad-500/25',
+  TIMEOUT: 'bg-warn-100/60 text-warn-700 ring-warn-500/30',
+  CANCELLED: 'bg-ink-100 text-ink-600 ring-ink-200',
+  REFUNDED: 'bg-warn-100/60 text-warn-700 ring-warn-500/30',
 };
 
 export function StatusBadge({ status }: { status: PaymentStatus }) {

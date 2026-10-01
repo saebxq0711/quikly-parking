@@ -92,7 +92,7 @@ export function SaveTicket({ code }: { code: string }) {
         type="button"
         onClick={guardar}
         disabled={estado === 'generando'}
-        className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 text-base font-semibold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:opacity-60"
+        className="inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-brand-500 px-5 text-base font-semibold text-ink-950 transition-colors duration-150 hover:bg-brand-400 active:bg-brand-700 disabled:opacity-60"
       >
         {estado === 'guardado' ? (
           <MdCheck className="h-5 w-5" aria-hidden focusable="false" />
@@ -106,7 +106,7 @@ export function SaveTicket({ code }: { code: string }) {
             : 'Guardar en el celular'}
       </button>
       {estado === 'error' ? (
-        <p role="alert" className="mt-2 text-sm text-bad-400">
+        <p role="alert" className="mt-2 text-sm text-bad-600">
           No se pudo guardar. Tomale una captura a esta pantalla.
         </p>
       ) : null}

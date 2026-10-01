@@ -24,14 +24,14 @@ export default async function ResetPage({
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Image
-            src="/quikly-parking.png"
+            src="/quikly-parking-positivo.png"
             alt="Quikly Parking"
             width={783}
             height={269}
             priority
             className="mx-auto h-14 w-auto"
           />
-          <h1 className="mt-5 text-xl font-semibold text-white">
+          <h1 className="mt-5 text-xl font-semibold text-[var(--text-primary)]">
             Elige tu nueva contrasena
           </h1>
         </div>
@@ -47,7 +47,7 @@ export default async function ResetPage({
               </p>
               <Link
                 href="/recuperar-clave"
-                className="mt-4 inline-block text-sm font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+                className="mt-4 inline-block text-sm font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-[var(--text-primary)]"
               >
                 Solicitar un enlace nuevo
               </Link>
