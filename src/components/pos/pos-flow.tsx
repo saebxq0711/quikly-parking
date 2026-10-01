@@ -633,11 +633,12 @@ export function PosFlow({
 /* ------------------------------------------------------------ Paso 1: tipo */
 
 /**
- * Bienvenida: cuatro mosaicos y el sedan llegando por la esquina.
+ * Bienvenida: cuatro mosaicos iguales y el sedan llegando por la esquina.
  *
- * El carro sale en amarillo porque es el vehiculo que mas sale de un
- * parqueadero: el mosaico que mas gente va a tocar es el que el ojo encuentra
- * primero. Los demas se encienden en amarillo al tocarlos.
+ * Ningun vehiculo viene marcado: los cuatro esperan igual, y el amarillo aparece
+ * solo cuando el cliente pasa por encima (en un PC) o lo toca. Al tocarlo, el
+ * mosaico se queda amarillo un instante antes de pasar al siguiente paso: es la
+ * confirmacion de "esto elegiste", que en una pantalla tactil no da el cursor.
  */
 function SelectType({
   vehicles,
@@ -647,6 +648,14 @@ function SelectType({
   onSelect: (vehicle: PosVehicle) => void;
 }) {
   const columns = vehicles.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 kland:grid-cols-4';
+  const [elegido, setElegido] = useState<VehicleType | null>(null);
+
+  function elegir(vehicle: PosVehicle) {
+    if (elegido) return;
+    setElegido(vehicle.vehicleType);
+    // Lo justo para ver el amarillo; mas, y se siente lento.
+    setTimeout(() => onSelect(vehicle), 180);
+  }
 
   return (
     <div className="step-in relative mx-auto flex w-full max-w-[38rem] flex-1 flex-col kland:max-w-5xl">
@@ -656,15 +665,16 @@ function SelectType({
 
       <div className={`mt-12 grid gap-5 kland:mt-6 kland:gap-4 ${columns}`}>
         {vehicles.map((vehicle) => {
-          const destacado = vehicle.vehicleType === 'CAR';
+          const activo = elegido === vehicle.vehicleType;
           return (
             <button
               key={vehicle.vehicleType}
-              onClick={() => onSelect(vehicle)}
-              className={`group flex aspect-[1.22] flex-col items-center justify-center gap-5 rounded-[1.6rem] transition-[background-color,transform,box-shadow] duration-150 active:scale-[0.98] active:bg-brand-500 active:text-ink-950 kland:aspect-auto kland:min-h-36 kland:gap-3 kshort:min-h-28 ${
-                destacado
-                  ? 'bg-brand-500 text-ink-950 hover:bg-brand-400'
-                  : 'bg-[var(--surface-tile)] text-[var(--text-primary)] hover:bg-[var(--surface-tile-hover)]'
+              onClick={() => elegir(vehicle)}
+              aria-pressed={activo}
+              className={`group flex aspect-[1.22] flex-col items-center justify-center gap-5 rounded-[1.6rem] transition-[background-color,transform,color] duration-150 hover:bg-brand-500 hover:text-ink-950 active:scale-[0.97] active:bg-brand-600 active:text-ink-950 kland:aspect-auto kland:min-h-36 kland:gap-3 kshort:min-h-28 ${
+                activo
+                  ? 'scale-[0.98] bg-brand-500 text-ink-950'
+                  : 'bg-[var(--surface-tile)] text-[var(--text-primary)]'
               }`}
             >
               <VehicleIcon
@@ -680,24 +690,26 @@ function SelectType({
       </div>
 
       {/*
-        La escena de la bienvenida: el trazo amarillo de la marca abajo a la
-        izquierda y el sedan entrando por la derecha, cortado por el borde como en
-        la referencia. Decorativo: no se anuncia a lectores de pantalla. En
-        horizontal no cabe y se omite; los mosaicos son lo que importa.
+        La escena de la bienvenida, como en la referencia: una franja amarilla a
+        cada lado, la de la izquierda subiendo desde la esquina y la de la derecha
+        en arco detras del sedan, que entra por la derecha cortado por el borde.
+        Decorativo: no se anuncia a lectores de pantalla. En horizontal no cabe y
+        se omite; los mosaicos son lo que importa.
       */}
-      <div aria-hidden="true" className="pointer-events-none relative mt-auto h-[19rem] kland:hidden">
+      <div aria-hidden="true" className="pointer-events-none relative mt-auto h-[21rem] kland:hidden">
         <BrandSwoosh
           corner="bottom-left"
-          className="swoosh-in absolute -bottom-7 -left-16 h-[20rem] w-[20rem] text-brand-500"
+          className="swoosh-in absolute -bottom-7 -left-16 h-[19rem] w-[19rem] text-brand-500"
         />
+        <BrandSwoosh className="swoosh-in absolute -bottom-12 -right-20 h-[27rem] w-[27rem] text-brand-500" />
         <Image
           src="/kiosco/sedan.webp"
           alt=""
-          width={1352}
-          height={673}
+          width={1400}
+          height={1005}
           priority
           unoptimized
-          className="drive-in absolute -bottom-3 -right-[9rem] w-[37rem] max-w-none drop-shadow-[0_18px_22px_rgb(11_11_11/0.18)]"
+          className="drive-in absolute -bottom-6 -right-[6.5rem] w-[30rem] max-w-none drop-shadow-[0_22px_18px_rgb(11_11_11/0.22)]"
         />
       </div>
     </div>

@@ -317,12 +317,12 @@ Casi plano, con una sombra ambiental suave para separar tarjetas blancas del gri
 
 Esquinas amplias y suaves en todo el sistema, más amplias cuanto más grande y más táctil es la pieza: mosaico de vehículo (1.6rem), tarjetas, total y campo de placa del kiosco (1.4rem), botones de kiosco (1.1rem), teclas (0.9rem); en el panel, tarjetas (1rem), campos, avisos y elementos de navegación (0.75rem) y botones e insignias en píldora completa. El foco es un contorno de 2px por fuera del control, separado 3px, con radio 0.6rem.
 
-La forma de firma es **la franja**: el trazo curvo amarillo que subraya la "Q" del logo, dibujado como un cuarto de anillo con las puntas sesgadas y coloreado por `currentColor`. Vive siempre en una esquina inferior, recortada por el borde de la pantalla (12rem en los pasos, 20rem en la bienvenida, también en el ingreso), entra deslizándose una sola vez y nunca va detrás de texto ni de un control.
+La forma de firma es **la franja**: el trazo curvo amarillo que subraya la "Q" del logo, dibujado como un cuarto de anillo con las puntas sesgadas y coloreado por `currentColor`. Vive siempre en una esquina inferior, recortada por el borde de la pantalla (12rem en los pasos; en la bienvenida, dos: una a la izquierda y otra en arco detrás del sedán, a la derecha; también en el ingreso), entra deslizándose una sola vez y nunca va detrás de texto ni de un control.
 
 Los íconos de vehículo son siluetas negras macizas de trazo redondeado, del mismo juego y la misma caja (560×560), pintadas como máscara CSS: la forma la pone la imagen y el color `currentColor`, así que el mismo ícono va negro en el mosaico, negro sobre amarillo y blanco de noche. El resto de la iconografía es Material Symbols (`react-icons/md`) en todo el producto.
 
 ### Named Rules
-**The Trazo En El Borde Rule.** La franja amarilla es marca, no contenido: solo en un borde inferior, recortada por la pantalla, y una vez por vista.
+**The Trazo En El Borde Rule.** La franja amarilla es marca, no contenido: solo en un borde inferior, recortada por la pantalla; una por vista, salvo la bienvenida, que lleva una a cada lado del sedán como la referencia.
 
 ## Components
 
@@ -337,7 +337,7 @@ Anchos, firmes, de un solo vocabulario: si el botón de guardar se ve distinto e
 
 ### Mosaico de vehículo (firma del kiosco)
 - **Estilo:** proporción 1.22, esquina 1.6rem, ícono de vehículo de 4.4rem sobre etiqueta 1.65rem semibold.
-- **Estados:** reposo gris mosaico; hover gris mosaico hover; presión amarillo Parking con texto negro y escala 0.98. El mosaico del carro (el vehículo que más sale) se presenta ya en amarillo como selección por defecto; los demás se encienden en amarillo al tocarlos.
+- **Estados:** los cuatro iguales en reposo (gris mosaico), ninguno preseleccionado; hover amarillo Parking con texto negro; al pulsar, amarillo más oscuro con escala 0.97, y el elegido se queda amarillo 180 ms antes de avanzar.
 
 ### Total a pagar
 Bloque amarillo dinero con borde amarillo translúcido, esquina 1.4rem, etiqueta 1.25rem medium y la cifra de kiosco debajo. El mismo tratamiento, más denso, es la `Stat` accent del panel: una por pantalla.
