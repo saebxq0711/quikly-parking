@@ -17,6 +17,7 @@ import {
 } from 'react-icons/md';
 import { VehicleIcon } from '@/components/vehicle-icon';
 import { BrandSwoosh } from '@/components/brand-swoosh';
+import { WelcomeScene } from './welcome-scene';
 import { formatCOP, formatDuration } from '@/components/ui';
 import type { PaymentDTO } from '@/lib/payments/serialize';
 import type { InvoiceDocumentDTO, InvoicePrintDTO } from '@/lib/billing/invoice-print';
@@ -620,12 +621,14 @@ export function PosFlow({
 
       {/*
         La franja amarilla de la esquina: el trazo del logo llevado al borde. En
-        la bienvenida la dibuja la propia escena (detras del sedan), asi que aqui
-        solo va en los demas pasos.
+        la bienvenida va la escena completa (las dos franjas y el sedan, en
+        `welcome-scene.tsx`); en los demas pasos, solo esta.
       */}
-      {step !== 'type' ? (
+      {step === 'type' ? (
+        <WelcomeScene />
+      ) : (
         <BrandSwoosh className="swoosh-in pointer-events-none absolute -bottom-8 -right-8 -z-10 h-[12rem] w-[12rem] text-brand-500 kland:h-32 kland:w-32" />
-      ) : null}
+      )}
     </main>
   );
 }
@@ -633,7 +636,8 @@ export function PosFlow({
 /* ------------------------------------------------------------ Paso 1: tipo */
 
 /**
- * Bienvenida: cuatro mosaicos iguales y el sedan llegando por la esquina.
+ * Bienvenida: cuatro mosaicos iguales. La escena de abajo (franjas y sedan) la
+ * pinta `WelcomeScene` a todo el ancho de la pantalla, detras del contenido.
  *
  * Ningun vehiculo viene marcado: los cuatro esperan igual, y el amarillo aparece
  * solo cuando el cliente pasa por encima (en un PC) o lo toca. Al tocarlo, el
@@ -689,29 +693,6 @@ function SelectType({
         })}
       </div>
 
-      {/*
-        La escena de la bienvenida, como en la referencia: una franja amarilla a
-        cada lado, la de la izquierda subiendo desde la esquina y la de la derecha
-        en arco detras del sedan, que entra por la derecha cortado por el borde.
-        Decorativo: no se anuncia a lectores de pantalla. En horizontal no cabe y
-        se omite; los mosaicos son lo que importa.
-      */}
-      <div aria-hidden="true" className="pointer-events-none relative mt-auto h-[21rem] kland:hidden">
-        <BrandSwoosh
-          corner="bottom-left"
-          className="swoosh-in absolute -bottom-7 -left-16 h-[19rem] w-[19rem] text-brand-500"
-        />
-        <BrandSwoosh className="swoosh-in absolute -bottom-12 -right-20 h-[27rem] w-[27rem] text-brand-500" />
-        <Image
-          src="/kiosco/sedan.webp"
-          alt=""
-          width={1400}
-          height={1005}
-          priority
-          unoptimized
-          className="drive-in absolute -bottom-6 -right-[6.5rem] w-[30rem] max-w-none drop-shadow-[0_22px_18px_rgb(11_11_11/0.22)]"
-        />
-      </div>
     </div>
   );
 }

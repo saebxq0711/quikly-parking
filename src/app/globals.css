@@ -401,6 +401,21 @@ button:disabled,
   animation: franja 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes franja-izquierda {
+  from {
+    transform: translate(-12%, 12%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.swoosh-in-left {
+  animation: franja-izquierda 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* El sedan de la bienvenida llega rodando desde la derecha, una vez. */
 @keyframes llegar {
   from {
@@ -652,6 +667,7 @@ button:disabled,
   .skeleton::after,
   .orbit,
   .swoosh-in,
+  .swoosh-in-left,
   .drive-in,
   .settle {
     animation: none;

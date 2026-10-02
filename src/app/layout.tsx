@@ -32,14 +32,21 @@ export const viewport: Viewport = {
   // El punto de pago corre en pantallas tactiles fijas; el zoom accidental
   // desalinea la interfaz. Se mantiene `user-scalable` por accesibilidad.
   maximumScale: 5,
-  themeColor: '#b58fff',
+  themeColor: '#0b0b0b',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-CO" className={poppins.variable}>
+    /*
+      `suppressHydrationWarning`: en el kiosco, el script de dia/noche
+      (`theme-script.ts`) pone `data-theme` en <html> ANTES de que React monte,
+      para que de noche no haya un fogonazo blanco. Es intencional, asi que el
+      atributo distinto entre servidor y navegador no es un error. Solo silencia
+      los atributos de esta etiqueta; el resto de la pagina sigue vigilado.
+    */
+    <html lang="es-CO" className={poppins.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <NavigationProgress />
         {children}
