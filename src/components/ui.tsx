@@ -45,6 +45,25 @@ const BUTTON_SIZES: Record<ButtonSize, string> = {
   kiosk: 'min-h-18 px-8 text-xl rounded-2xl gap-3 kshort:min-h-14',
 };
 
+/**
+ * Las clases de un boton, para un enlace que se comporta como boton (navegar a
+ * "Nuevo parqueadero" es un `<a>`, no un `<button>`, pero se tiene que ver igual).
+ */
+export function buttonClassName(
+  variant: ButtonVariant = 'primary',
+  size: ButtonSize = 'md',
+  className?: string,
+): string {
+  return cn(
+    'inline-flex items-center justify-center font-semibold',
+    'transition-[background-color,box-shadow,color] duration-150',
+    'disabled:cursor-not-allowed',
+    BUTTON_VARIANTS[variant],
+    BUTTON_SIZES[size],
+    className,
+  );
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -54,19 +73,7 @@ export function Button({
   variant?: ButtonVariant;
   size?: ButtonSize;
 }) {
-  return (
-    <button
-      className={cn(
-        'inline-flex items-center justify-center font-semibold',
-        'transition-[background-color,box-shadow,color] duration-150',
-        'disabled:cursor-not-allowed',
-        BUTTON_VARIANTS[variant],
-        BUTTON_SIZES[size],
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <button className={buttonClassName(variant, size, className)} {...props} />;
 }
 
 /* -------------------------------------------------------------- Superficie */

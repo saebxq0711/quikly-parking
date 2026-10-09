@@ -83,6 +83,22 @@ typography:
     fontSize: "13px"
     fontWeight: 500
     lineHeight: 1.4
+  directory-title:
+    fontFamily: "Poppins, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "20px"
+    fontWeight: 700
+    lineHeight: 1.4
+    letterSpacing: "-0.01em"
+  badge:
+    fontFamily: "Poppins, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "12px"
+    fontWeight: 500
+    lineHeight: 1.5
+  micro:
+    fontFamily: "Poppins, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+    lineHeight: 1.5
 rounded:
   key: "0.9rem"
   kiosk-button: "1.1rem"
@@ -212,6 +228,29 @@ components:
     textColor: "{colors.result-red-text}"
     rounded: "{rounded.pill}"
     padding: "4px 10px"
+  button-panel-sm:
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 14px"
+    height: "32px"
+  filter-chip:
+    backgroundColor: "{colors.paper-white}"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 14px"
+    height: "36px"
+  filter-chip-active:
+    backgroundColor: "{colors.sign-black}"
+    textColor: "{colors.paper-white}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 14px"
+    height: "36px"
+  avatar:
+    textColor: "{colors.sign-black}"
+    rounded: "{rounded.pill}"
+    size: "40px"
 ---
 
 # Design System: Quikly Parking
@@ -264,6 +303,10 @@ Una sola tinta de marca sobre blanco y negro neutros, con verde, rojo y naranja 
 
 **The Siguiente Paso Rule.** El amarillo sólido vive solo en la acción principal (una por pantalla), la selección y la navegación activa; el amarillo pálido, solo en el dinero (un bloque o una cifra accent por pantalla). Un amarillo apagado parece tocable, así que un botón principal deshabilitado pierde el amarillo y pasa a `--fill-strong` con texto atenuado.
 
+**The Guardar En Negro Rule.** En una pantalla con varios formularios (la ficha de un parqueadero), cada "Guardar" va en `confirm` negro con texto blanco; el amarillo sólido queda para la única acción principal de la pantalla (Nuevo parqueadero, Nuevo usuario, Crear parqueadero). Un amarillo por formulario deja de decir cuál es la acción principal.
+
+**The Preparación Rule.** Lo que está listo o falta en un sitio habla con dos tonos y siempre con su ícono: verde resultado con chulito para listo, naranja advertencia con admiración para lo que falta. Nunca amarillo: un punto pendiente en amarillo parece un botón.
+
 **The Resultado Rule.** Verde y rojo solo dicen aprobado o rechazado; nunca adornan, nunca marcan selección. El naranja de advertencia no sustituye al amarillo ni el amarillo al naranja.
 
 **The Noche Del Kiosco Rule.** El tema noche (`data-theme="night"`) existe solo en el kiosco. Invierte fondos y grises por variables; el amarillo es el mismo; el foco pasa de negro a amarillo; los tonos de estado suben de paso con la variante `night:` (un verde que se lee sobre blanco desaparece en negro). Admin, superadmin, ingreso y correos son siempre claros.
@@ -287,10 +330,15 @@ Una sola tinta de marca sobre blanco y negro neutros, con verde, rojo y naranja 
 - **Cuerpo de kiosco** (400, 1.25rem, 1.375): subtítulos de paso, máximo 32rem de ancho; los datos de `InfoRow` en 1.125rem.
 - **Title** (600, 15px): títulos de tarjeta del panel (14px en tarjetas con tabla).
 - **Body** (400, 14px, 1.625): descripciones del panel, máximo 42rem.
-- **Label** (500, 13px): etiquetas de campo, cabeceras de tabla, navegación (13.5px semibold). Insignias en 12px y 11px medium.
+- **Título de sitio** (directory-title, 700, 20px, -0.01em): el nombre de cada parqueadero en la cabecera de su bloque del directorio.
+- **Label** (500, 13px): etiquetas de campo, cabeceras de tabla, botones y filtros pequeños, navegación e índice de secciones (13.5px semibold).
+- **Badge** (500, 12px): insignias de estado (`StatusBadge`, estado del sitio) y conteos tabulares junto a un título ("Equipo 2", "Todos 4").
+- **Micro** (600, 11px): insignias densas dentro de tarjetas (estado de Redeban, datáfono, impresora) e iniciales del avatar pequeño; los chips de fila ("Tu cuenta", "Sesión abierta") lo usan en 500.
 
 ### Named Rules
 **The Letrero Rule.** Lo que el cliente tiene que leer para decidir (placa, total) se escribe a escala de letrero y con números tabulares; toda cifra que se actualiza lleva `tnum` para que no baile.
+
+**The Once Píxeles Rule.** 11px solo vive dentro de una píldora o un círculo (insignia, chip, iniciales); nunca en un párrafo ni en una pista de campo. El texto corrido del panel no baja de 12px.
 
 **The Raíz Que Crece Rule.** El kiosco se dimensiona en `rem` y crece agrandando la raíz solo donde existe `.kiosk-root`: 21px en vertical desde 820×1150, 25px en vertical desde 1000×1500 (el monitor de 27"), 20px en horizontal desde 1700×950. Nada del kiosco se fija en px.
 
@@ -299,6 +347,8 @@ Una sola tinta de marca sobre blanco y negro neutros, con verde, rojo y naranja 
 **Kiosco.** Una columna centrada de 36rem (38rem en la bienvenida) sobre el alto completo de la pantalla. Cada paso (`KioskStep`) centra su contenido en vertical con 2rem entre bloques y deja abajo la fila de "Atrás"; así el monitor vertical no amontona todo arriba. Cabecera de 2rem de margen lateral: logo a la izquierda, parqueadero y botón de tema a la derecha. La bienvenida coloca el título al ~6vh, una rejilla 2×2 de mosaicos con 1.25rem de separación y, en el tercio inferior, la escena del sedán plateado recortado por el borde derecho sobre la franja amarilla. En horizontal manda la altura: las variantes `kland:` (alto ≤ 860px) abren la columna a 64rem, pasan la rejilla a 4 columnas y omiten la escena; `kshort:` (alto ≤ 660px) compacta tamaños.
 
 **Panel.** Barra lateral negra fija de 16rem a la altura de la pantalla desde `lg`; bajo `lg`, cabecera negra pegajosa en dos filas (marca y cuenta arriba, navegación en píldoras con desplazamiento lateral abajo). El área de trabajo es gris claro con relleno 16px / 24px / 40px según ancho. Tarjetas de una sola profundidad: no se anidan paneles dentro de paneles. Cabeceras de tarjeta con 20px × 16px y divisor fino.
+
+**Directorio y ficha (superadmin).** El directorio apila un bloque por sitio a ancho completo (24px entre bloques): cabecera con 24px de relleno, el riel de preparación debajo y, desde `md`, dos columnas separadas por un divisor (Equipo y Kioscos), cerrando con una franja de pie en `--fill-soft`. La ficha usa una rejilla de dos columnas desde `lg` (índice de 13.5rem y contenido), con el índice pegajoso a 2rem del borde superior; bajo `lg` el índice pasa a una franja de píldoras desplazable de lado y NO pegajosa, porque la cabecera negra del panel ya lo es. Cada sección de la ficha es una tarjeta anclada con `scroll-mt` de 2rem. Los formularios largos se parten en secciones: título y explicación en una columna de 15rem a la izquierda y los campos a la derecha (una sola columna bajo `lg`), con 28px de alto por sección y divisor fino entre ellas.
 
 ## Elevation & Depth
 
@@ -331,7 +381,8 @@ Anchos, firmes, de un solo vocabulario: si el botón de guardar se ve distinto e
 - **Shape:** kiosco con esquina amplia (1.1rem), ancho completo y 4.6rem de alto; panel en píldora (44px en `md`, 32px en `sm`, 52px en `lg`).
 - **Primary:** amarillo Parking con texto negro bold. Hover sube a parking-yellow-hover, presión a parking-yellow-pressed y escala 0.985 en el kiosco. Deshabilitado: sin amarillo, `--fill-strong` con texto atenuado.
 - **Secondary:** blanco con anillo interior (2px en kiosco, 1px en panel) de `--ring-soft` que pasa a `--ring-strong` en hover; mismo alto que el principal.
-- **Confirm:** negro con texto blanco en claro, amarillo con texto negro de noche.
+- **Confirm:** negro con texto blanco en claro, amarillo con texto negro de noche. Es el guardar de toda pantalla con varios formularios (ver The Guardar En Negro Rule), con su "Cancelar" o acción secundaria al lado; en 32px es también la acción de una fila ("Atender").
+- **Pequeño (sm, 32px):** píldora de 13px semibold para acciones de fila y de tarjeta ("Configurar", "Editar", "Gestionar", "Probar conexión"); casi siempre secundario.
 - **Ghost / Danger:** ghost sin fondo con texto secundario; danger en rojo resultado con texto blanco, solo para acciones destructivas.
 - **Atrás:** en el kiosco no es botón sino enlace quieto abajo a la izquierda (flecha + "Atrás", 1.25rem semibold), con fondo `--fill-soft` solo en hover.
 
@@ -366,6 +417,29 @@ Dos bloques que se distinguen por superficie: números como teclas blancas en re
 ### Avisos e insignias
 Avisos en lavado de su tono con anillo translúcido y texto del paso oscuro (rojo para errores, naranja para lo que pide atención); el aviso informativo usa el amarillo dinero con texto negro. Insignias de estado en píldora 12px medium: gris para pendiente o cancelado, amarillo lavado con texto negro para en curso, verde, rojo o naranja para el resultado.
 
+### Riel de preparación (firma del superadmin)
+Seis puntos en fila que se envuelve (Empresa, Sistema, Kioscos, Datáfono, Facturación, Equipo), cada uno una píldora de 12.5px medium que enlaza con su sección exacta de la ficha. A la izquierda de cada etiqueta, un círculo de estado de 20px: listo es lavado verde con chulito verde y anillo verde translúcido, sobre una píldora blanca de anillo `--line-subtle` y texto secundario; pendiente es naranja advertencia sólido con admiración blanca, sobre una píldora de lavado naranja (caution-orange-wash al 60 %) con anillo naranja translúcido y texto caution-orange-text. El índice de la ficha repite exactamente los mismos círculos y el mismo estado.
+
+### Estado del sitio
+Insignia en píldora de 12px medium junto al nombre del sitio y en la cabecera de su ficha: "Listo para operar" en lavado verde con chulito, "Falta 1 punto" / "Faltan N puntos" en naranja con admiración, "Inactivo" en gris. Dentro de cada tarjeta de la ficha, una insignia micro de 11px semibold con punto de 6px dice el estado de esa sección ("Listo", "Completos", "1 activo", o lo que falta).
+
+### Índice de secciones
+En escritorio, una lista vertical pegajosa de ítems de 13.5px con su círculo de estado; la sección que se está leyendo se marca como píldora blanca con sombra de tarjeta y texto semibold (no amarillo: el amarillo de la vista ya es la navegación activa). En el celular, la misma lista como píldoras blancas con anillo, desplazable de lado.
+
+### Bloque editable
+Una sección lista se LEE: lista de dos columnas con etiqueta de 13px atenuada y valor de 14px medium (tabular si es número, código o fecha), y debajo un "Editar" secundario pequeño con ícono de lápiz. Al abrirla, el formulario aparece en el mismo lugar con "Cerrar sin guardar" en ghost. Una sección pendiente llega ya abierta. Un dato que falta se escribe "Falta" en caution-orange-text.
+
+### Directorio de personas
+Las personas se agrupan en tarjetas por sitio (y una de super administradores), con el título del grupo en 15px semibold, su conteo de 12px y un enlace de marca "Ver parqueadero". Cada fila: avatar, nombre en 14px semibold con sus chips, correo completo (nunca recortado) y rol con último ingreso en 13px atenuado. Encima: buscador en píldora de 44px y filtros de rol como chips de 36px, el elegido en negro con texto blanco y conteo al 70%.
+- **Avatar:** círculo de 40px (32px en el directorio de parqueaderos) en gris `--fill-soft-hover` con dos iniciales semibold en negro; atenuado si la persona está inactiva. Las iniciales salen solo de palabras que empiezan por letra ("Administrador Parqueadero 122" da "AP"). Un usuario de kiosco lleva el ícono de punto de pago en el mismo círculo. Nunca fotos.
+- **Gestionar:** las acciones de una persona no abren un modal: un botón pequeño "Gestionar" con chevron despliega un panel dentro de la propia fila (`--fill-soft`, esquina 0.75rem, anillo fino) con sus acciones. Solo una fila abierta a la vez; la propia cuenta lleva "Mi contraseña" en vez de "Gestionar".
+
+### Aviso que espera respuesta
+Cuando alguien está esperando algo (solicitudes de contraseña), el aviso va antes que todo lo demás de la pantalla: tarjeta de esquina 1rem en lavado naranja (caution-orange-wash al 60 %) con anillo naranja translúcido, círculo naranja sólido de 32px con ícono blanco, título en 15px semibold caution-orange-text y una fila por solicitud con "Atender" (confirm pequeño) y "Descartar" (secundario pequeño). Solo existe mientras hay solicitudes.
+
+### Campos que faltan
+En un sitio que ya existe, un campo obligatorio vacío lleva anillo naranja de 2px (caution-orange claro, más oscuro en hover) y una pista "Falta: va impreso en el comprobante." en caution-orange-text medium. Los ejemplos de los campos son honestos y empiezan por "Ej.:" ("Ej.: 900123456-7", "Ej.: Calle 15 # 10-20"); cuando no hay ejemplo honesto, la pista dice dónde encontrar el dato ("Como aparece en el RUT").
+
 ### Disco de resultado
 Círculo de 6.4rem en el lavado del resultado con el glifo en su tono: verde con chulito que se dibuja (520ms), rojo con equis, naranja con admiración. Entra asentándose desde 0.82 de escala y 40% de opacidad, nunca desde la nada.
 
@@ -389,6 +463,12 @@ Un solo momento de movimiento continuo en el kiosco: la espera del datáfono, un
 - **Do** escribir el kiosco en `rem` y dejar que la raíz lo agrande en el monitor.
 - **Do** llevar `tnum` en toda cifra: placa, total, montos, tablas.
 - **Do** usar el logo positivo sobre claro y el negativo sobre negro.
+- **Do** guardar en `confirm` negro cuando la pantalla tiene varios formularios, y dejar el amarillo a su única acción principal.
+- **Do** decir listo y pendiente con verde y naranja más su ícono (chulito, admiración), y enlazar cada punto pendiente con el lugar donde se arregla.
+- **Do** mostrar como resumen de solo lectura con "Editar" lo que ya está listo, y abierto lo que falta.
+- **Do** gestionar una fila desplegándola en su sitio, no en un modal.
+- **Do** marcar el campo obligatorio vacío con anillo naranja y "Falta", y escribir los ejemplos con "Ej.:".
+- **Do** representar a las personas con dos iniciales en un círculo gris.
 
 ### Don't:
 - **Don't** poner texto blanco sobre amarillo Parking (1,9:1).
@@ -401,3 +481,6 @@ Un solo momento de movimiento continuo en el kiosco: la espera del datáfono, un
 - **Don't** colocar la franja amarilla detrás de texto o de un control, ni fuera de un borde inferior.
 - **Don't** anidar tarjetas dentro de tarjetas en el panel.
 - **Don't** volver a introducir el morado del sistema anterior.
+- **Don't** usar amarillo para un estado pendiente ni para marcar la sección que se lee en el índice.
+- **Don't** usar 11px fuera de una píldora o un círculo.
+- **Don't** poner fotos ni ilustraciones de personas que no tenemos.

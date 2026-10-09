@@ -2,19 +2,20 @@
 
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { Card, CardHeader, formatDateTime } from '@/components/ui';
+import { MdLockReset } from 'react-icons/md';
+import { formatDateTime } from '@/components/ui';
 import { dismissResetRequest } from '../actions';
 
 /**
  * Solicitudes de contrasena olvidada.
  *
- * El sistema no envia correos, asi que estas solicitudes son el canal real: la
- * persona las registra desde el login y aparecen aqui. Se resuelven con
- * "Restablecer clave" sobre su usuario, o se descartan si no procede.
+ * Es lo unico de Usuarios que alguien esta esperando, por eso va primero y en el
+ * tono de aviso. Se resuelven yendo a la persona ("Atender" abre su fila con
+ * "Cambiar contrasena" a la mano) o se descartan si no proceden.
  *
  * Una solicitud cuyo correo no corresponde a ningun usuario tambien aparece: a
- * quien la envio no se le confirma nada —eso le diria a un atacante que correos
- * existen— pero el administrador si debe poder verla.
+ * quien la envio no se le confirma nada (eso le diria a un atacante que correos
+ * existen), pero el administrador si debe poder verla.
  */
 export function ResetRequests({
   requests,
@@ -30,37 +31,55 @@ export function ResetRequests({
   const [, dismissAction] = useActionState(dismissResetRequest, null);
 
   return (
-    <Card>
-      <CardHeader
-        title={`Solicitudes de contrasena (${requests.length})`}
-        description="Cambiale la contrasena al usuario desde la lista y entregasela por tu canal habitual."
-      />
-      <ul className="divide-y divide-[var(--line-subtle)]">
+    <section
+      aria-labelledby="solicitudes"
+      className="overflow-hidden rounded-2xl bg-warn-100/60 ring-1 ring-inset ring-warn-400/40"
+    >
+      <header className="flex items-start gap-3 px-5 pt-4">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warn-500 text-white">
+          <MdLockReset className="h-4.5 w-4.5" aria-hidden focusable="false" />
+        </span>
+        <div>
+          <h2 id="solicitudes" className="text-[15px] font-semibold text-warn-700">
+            {requests.length === 1
+              ? '1 persona pidió una contraseña nueva'
+              : `${requests.length} personas pidieron una contraseña nueva`}
+          </h2>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-warn-700/90">
+            Cámbiasela desde su fila y entrégasela por tu canal habitual. Después descarta la solicitud.
+          </p>
+        </div>
+      </header>
+      <ul className="mt-3 divide-y divide-warn-400/25 border-t border-warn-400/25">
         {requests.map((request) => (
-          <li
-            key={request.id}
-            className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
-          >
+          <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                {request.email}
+                {request.userName ?? request.email}
               </p>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-[13px] text-[var(--text-secondary)]">
+                {request.userName ? `${request.email} · ` : 'No corresponde a ningún usuario · '}
                 {formatDateTime(request.createdAt)}
-                {request.userName
-                  ? ` · ${request.userName}`
-                  : ' · no corresponde a ningun usuario'}
               </p>
             </div>
-
-            <form action={dismissAction}>
-              <input type="hidden" name="requestId" value={request.id} />
-              <DismissButton />
-            </form>
+            <div className="flex items-center gap-2">
+              {request.userId ? (
+                <a
+                  href={`#usuario-${request.userId}`}
+                  className="inline-flex h-8 items-center rounded-full bg-ink-950 px-3.5 text-[13px] font-semibold text-white transition-colors duration-150 hover:bg-ink-800"
+                >
+                  Atender
+                </a>
+              ) : null}
+              <form action={dismissAction}>
+                <input type="hidden" name="requestId" value={request.id} />
+                <DismissButton />
+              </form>
+            </div>
           </li>
         ))}
       </ul>
-    </Card>
+    </section>
   );
 }
 
@@ -70,9 +89,9 @@ function DismissButton() {
     <button
       type="submit"
       disabled={pending}
-      className="shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] disabled:opacity-50"
+      className="inline-flex h-8 items-center rounded-full bg-[var(--surface-raised)] px-3.5 text-[13px] font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:text-[var(--text-primary)] hover:ring-[var(--ring-strong)] disabled:opacity-50"
     >
-      {pending ? '...' : 'Descartar'}
+      {pending ? '…' : 'Descartar'}
     </button>
   );
 }

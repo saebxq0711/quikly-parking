@@ -16,6 +16,8 @@ export function ActionForm({
   submitLabel,
   children,
   onSuccessReset = true,
+  submitVariant = 'primary',
+  secondaryAction,
 }: {
   action: (
     prev: ActionResult | null,
@@ -24,6 +26,13 @@ export function ActionForm({
   submitLabel: string;
   children: React.ReactNode;
   onSuccessReset?: boolean;
+  /**
+   * `confirm` (negro) cuando la pantalla tiene varios formularios: el amarillo es
+   * para la UNICA accion principal de cada pantalla (DESIGN.md, The Siguiente Paso Rule).
+   */
+  submitVariant?: 'primary' | 'confirm';
+  /** Accion secundaria junto al boton de enviar (por ejemplo, Cancelar). */
+  secondaryAction?: React.ReactNode;
 }) {
   const [state, formAction] = useActionState(action, null);
 
@@ -40,15 +49,22 @@ export function ActionForm({
         <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert>
       ) : null}
 
-      <SubmitButton label={submitLabel} />
+      {secondaryAction ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <SubmitButton label={submitLabel} variant={submitVariant} />
+          {secondaryAction}
+        </div>
+      ) : (
+        <SubmitButton label={submitLabel} variant={submitVariant} />
+      )}
     </form>
   );
 }
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({ label, variant }: { label: string; variant: 'primary' | 'confirm' }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} aria-busy={pending}>
+    <Button type="submit" variant={variant} disabled={pending} aria-busy={pending}>
       {pending ? (
         <span
           className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-[-3px]"

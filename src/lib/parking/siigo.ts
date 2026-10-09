@@ -325,3 +325,26 @@ export function isSiigoCredentialError(error: unknown): boolean {
     (error.detail as { credencialesRechazadas?: boolean } | undefined)?.credencialesRechazadas === true
   );
 }
+
+/** Resultado de comprobar las credenciales de SIIGO de un parqueadero. */
+export type SiigoCredentialCheck = 'ok' | 'rejected' | 'unknown' | 'missing';
+
+/**
+ * Comprueba en vivo que SIIGO acepte el usuario y la clave de este parqueadero.
+ *
+ * Existe porque "configurado" no es "funciona": el 122 tenia todo guardado y la
+ * preparacion decia "Listo" mientras SIIGO rechazaba la clave y ninguna factura
+ * salia. Un solo pedido liviano con limite de 5 s; si SIIGO no responde a tiempo
+ * se devuelve `unknown` y no se marca nada: lo lento no es lo mismo que lo malo.
+ */
+export async function checkSiigoCredentials(parkingLotId: string): Promise<SiigoCredentialCheck> {
+  const values = await getCredentials({ provider: 'SIIGO', parkingLotId });
+  if (!values.username || !values.accessKey) return 'missing';
+  try {
+    const client = await siigoClientFor(parkingLotId);
+    await conLimite(client.get<unknown>('/v1/document-types?type=FV'), 5_000);
+    return 'ok';
+  } catch (error) {
+    return isSiigoCredentialError(error) ? 'rejected' : 'unknown';
+  }
+}

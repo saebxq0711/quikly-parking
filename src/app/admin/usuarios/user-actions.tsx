@@ -45,8 +45,8 @@ export function UserActions({
   }
 
   return (
-    <div className="w-full sm:w-auto">
-      <div className="flex flex-wrap gap-2 sm:justify-end">
+    <div className="w-full">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setCambiando((abierto) => !abierto)}
@@ -63,7 +63,7 @@ export function UserActions({
         {hasSession && allowLogout ? (
           <form action={logoutAction}>
             <input type="hidden" name="userId" value={userId} />
-            <SmallButton label="Cerrar sesion" pendingLabel="Cerrando..." />
+            <SmallButton label="Cerrar sesión" pendingLabel="Cerrando…" />
           </form>
         ) : null}
 
@@ -82,34 +82,34 @@ export function UserActions({
           action={resetAction}
           // Tras guardar se limpia, para no volver a enviar la misma contrasena.
           key={reset?.ok ? `ok-${reset.message}` : 'clave'}
-          className="page-in mt-3 grid gap-2 rounded-xl bg-[var(--fill-soft)] p-3 ring-1 ring-inset ring-[var(--ring-soft)] sm:ml-auto sm:w-80"
+          className="page-in mt-3 grid max-w-sm gap-2 rounded-xl bg-[var(--surface-raised)] p-3 ring-1 ring-inset ring-[var(--ring-soft)]"
         >
           <input type="hidden" name="userId" value={userId} />
           <PasswordInput
             name="password"
             required
             minLength={10}
-            placeholder="Nueva contrasena"
+            placeholder="Nueva contraseña"
             autoComplete="new-password"
-            aria-label="Nueva contrasena"
+            aria-label="Nueva contraseña"
           />
           <PasswordInput
             name="confirmPassword"
             required
             minLength={10}
-            placeholder="Repite la contrasena"
+            placeholder="Repite la contraseña"
             autoComplete="new-password"
-            aria-label="Repite la contrasena"
+            aria-label="Repite la contraseña"
           />
-          <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
-            Minimo 10 caracteres, con mayusculas, minusculas y un numero.
+          <p className="text-[12px] leading-relaxed text-[var(--text-muted)]">
+            Mínimo 10 caracteres, con mayúsculas, minúsculas y un número.
           </p>
-          <SmallButton label="Guardar contrasena" pendingLabel="Guardando..." tone="primary" />
+          <SmallButton label="Guardar contraseña" pendingLabel="Guardando…" tone="confirm" />
         </form>
       ) : null}
 
       {feedback ? (
-        <div className="mt-3 sm:ml-auto sm:w-80">
+        <div className="mt-3 max-w-sm">
           <Alert tone={feedback.ok ? 'success' : 'error'}>{feedback.message}</Alert>
         </div>
       ) : null}
@@ -124,7 +124,7 @@ function SmallButton({
 }: {
   label: string;
   pendingLabel: string;
-  tone?: 'default' | 'danger' | 'primary';
+  tone?: 'default' | 'danger' | 'primary' | 'confirm';
 }) {
   const { pending } = useFormStatus();
   const tones = {
@@ -132,6 +132,7 @@ function SmallButton({
       'text-[var(--text-secondary)] ring-[var(--ring-soft)] hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)]',
     danger: 'text-bad-700 ring-bad-400/30 hover:bg-bad-50',
     primary: 'bg-brand-500 text-ink-950 ring-brand-500 hover:bg-brand-400',
+    confirm: 'bg-ink-950 text-white ring-ink-950 hover:bg-ink-800',
   };
   return (
     <button

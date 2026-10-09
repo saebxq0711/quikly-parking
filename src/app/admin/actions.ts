@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
@@ -138,9 +139,10 @@ export async function createParkingLot(
   const parsed = parkingLotSchema.safeParse(parkingLotFields(formData));
   if (!parsed.success) return fail(parsed.error.issues[0].message);
 
+  let slug: string;
   try {
     const lot = await db.parkingLot.create({ data: parkingLotData(parsed.data) });
-
+    slug = lot.slug;
 
     await recordAudit({
       action: AuditAction.PARKING_LOT_CREATED,
@@ -152,7 +154,6 @@ export async function createParkingLot(
     });
 
     revalidatePath('/admin/parqueaderos');
-    return ok(`Parqueadero "${lot.name}" creado. Entra a su ficha para agregar sus kioscos de pago.`);
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -163,6 +164,10 @@ export async function createParkingLot(
     console.error('[admin] error creando parqueadero', error);
     return fail('No fue posible crear el parqueadero.');
   }
+
+  // Fuera del try: `redirect` funciona lanzando, y el catch lo tomaria por un error.
+  // Se llega a la ficha nueva, que es donde sigue la configuracion.
+  redirect(`/admin/parqueaderos/${slug}?creado=1`);
 }
 
 const parkingLotUpdateSchema = parkingLotSchema.extend({
@@ -539,10 +544,10 @@ export async function saveSiigoConfig(
       if (isSiigoCredentialError(error)) {
         if (enabled) {
           return fail(
-            'No se guardo: SIIGO rechazo el usuario, la clave de acceso o el identificador de la aplicacion.',
+            'No se guardó: SIIGO rechazó el usuario, la clave de acceso o el identificador de la aplicación.',
           );
         }
-        aviso = 'SIIGO rechazo el usuario o la clave: revisalos antes de activarla.';
+        aviso = 'SIIGO rechazó el usuario o la clave: revísalos antes de activarla.';
       } else {
         aviso = 'No se pudo verificar con SIIGO en este momento; usa "Probar facturacion" mas tarde.';
       }
@@ -924,6 +929,8 @@ export async function createUser(
     });
 
     revalidatePath('/admin/usuarios');
+
+    revalidatePath('/admin/parqueaderos', 'layout');
     return ok(`Usuario ${created.email} creado.`);
   } catch (error) {
     if (
@@ -968,6 +975,8 @@ export async function toggleUserActive(
   });
 
   revalidatePath('/admin/usuarios');
+
+  revalidatePath('/admin/parqueaderos', 'layout');
   return ok(updated.active ? 'Usuario activado.' : 'Usuario desactivado.');
 }
 
@@ -1068,6 +1077,8 @@ export async function resetUserPassword(
   });
 
   revalidatePath('/admin/usuarios');
+
+  revalidatePath('/admin/parqueaderos', 'layout');
   return ok(
     `Contrasena de ${target.email} cambiada. Entregasela por tu canal habitual; sus sesiones abiertas se cerraron.`,
   );
@@ -1086,6 +1097,8 @@ export async function dismissResetRequest(
   });
 
   revalidatePath('/admin/usuarios');
+
+  revalidatePath('/admin/parqueaderos', 'layout');
   return ok('Solicitud descartada.');
 }
 
