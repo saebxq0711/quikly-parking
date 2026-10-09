@@ -187,8 +187,12 @@ export default async function PanelHomePage({
                           <td className="py-2 pl-5 pr-4">
                             <VehiclePhoto
                               src={ticket.photo}
+                              exitSrc={ticket.exitPhoto}
                               slug={slug}
                               label={ticket.plate ?? ticket.code ?? 'vehiculo'}
+                              enteredAt={entrada?.toISOString() ?? null}
+                              exitedAt={parseUpstreamDate(ticket.checkedOutAt)?.toISOString() ?? null}
+                              inside={adentro}
                             />
                           </td>
                           <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">

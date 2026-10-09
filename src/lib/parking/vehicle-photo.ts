@@ -26,7 +26,7 @@ import { novaClientFor } from './config';
  * proxy sirva para pedir cualquier otra ruta del sistema del parqueadero.
  */
 export function esRutaDeFoto(src: string): boolean {
-  if (/^\/api\/parking\/ticket\/\d+\/foto\/$/.test(src)) return true;
+  if (/^\/api\/parking\/ticket\/\d+\/foto\/(\?tipo=(entrada|salida))?$/.test(src)) return true;
   return src.startsWith('/media/') && !src.includes('..');
 }
 

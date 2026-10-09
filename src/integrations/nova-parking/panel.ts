@@ -88,6 +88,11 @@ export interface NovaTicketRow {
    * el unico que conoce el tunel y el token.
    */
   photo: string | null;
+  /**
+   * Foto de la camara de salida, cuando el sistema la tomo (desde el
+   * 2026-10-09). Los tiquetes que salieron antes no la tienen ni la van a tener.
+   */
+  exitPhoto: string | null;
   /** Segunda camara: el plano cerrado de la placa, cuando existe. */
   platePhoto: string | null;
 }
@@ -338,15 +343,32 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
   const vehicle = item.vehicle_type;
 
   /*
-    Fotos de la entrada. Nova Parking las guarda en dos campos del tiquete
-    (`front_image`, `plate_image`) y ademas en una lista aparte (`images`) que
-    usan las instalaciones con varias camaras. Se mira primero el campo propio y
-    despues la lista, igual que hace su propio buscador de tiquetes.
+    Fotos. Nova Parking las guarda en dos campos del tiquete (`front_image`,
+    `plate_image`) y en una lista aparte (`images`). Desde el 2026-10-09 cada
+    foto de la lista dice si es de entrada o de salida (`image_type`: ENTRY /
+    EXIT; las viejas quedaron todas en ENTRY). El orden de la lista no esta
+    garantizado: se filtra por tipo, nunca por posicion.
+
+    Cada una se pide por su tipo (`?tipo=entrada` / `?tipo=salida`), y la de
+    salida solo si el tiquete dice tenerla: asi no se gasta una peticion en un
+    404 seguro.
   */
   const galeria = list(item.images).flatMap((foto) =>
-    isDict(foto) ? [str(foto.image)].filter(Boolean) : [],
-  ) as string[];
-  const photo = ticketPhotoPath(id, str(item.front_image) ?? galeria[0] ?? null);
+    isDict(foto) && str(foto.image)
+      ? [{ ruta: str(foto.image) as string, tipo: str(foto.image_type)?.toUpperCase() ?? null }]
+      : [],
+  );
+  const conTipo = galeria.some((foto) => foto.tipo !== null);
+  const entradaOriginal =
+    str(item.front_image) ?? galeria.find((foto) => foto.tipo !== 'EXIT')?.ruta ?? null;
+  const tieneSalida = galeria.some((foto) => foto.tipo === 'EXIT');
+
+  const photo = conTipo && entradaOriginal && /^\d+$/.test(id)
+    ? `/api/parking/ticket/${id}/foto/?tipo=entrada`
+    : ticketPhotoPath(id, entradaOriginal);
+  const exitPhoto = tieneSalida && /^\d+$/.test(id)
+    ? `/api/parking/ticket/${id}/foto/?tipo=salida`
+    : null;
 
   return [
     {
@@ -367,6 +389,7 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
       chargedBy: paid?.responsible ?? null,
       paidAt: paid?.at ?? null,
       photo,
+      exitPhoto,
       platePhoto: str(item.plate_image),
     } satisfies NovaTicketRow,
   ];

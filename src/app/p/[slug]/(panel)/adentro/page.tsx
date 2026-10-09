@@ -142,6 +142,8 @@ export default async function InsidePage({
                                 slug={slug}
                                 label={vehiculo.plate ?? vehiculo.code ?? 'vehiculo'}
                                 size="wide"
+                                enteredAt={vehiculo.entradaIso}
+                                inside
                               />
                             </td>
                             <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
