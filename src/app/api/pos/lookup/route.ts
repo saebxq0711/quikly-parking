@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireRole('PUNTO_PAGO');
 
-    consumeRateLimit({ key: `lookup:${user.id}`, limit: 40, windowMs: 60_000 });
+    await consumeRateLimit({ key: `lookup:${user.id}`, limit: 40, windowMs: 60_000 });
 
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) {

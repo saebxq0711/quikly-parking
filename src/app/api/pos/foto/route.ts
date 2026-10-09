@@ -1,5 +1,7 @@
+import { AppError } from '@/lib/errors';
 import { requireRole, scopeToParkingLot } from '@/lib/auth/guards';
 import { respuestaDeFoto } from '@/lib/parking/vehicle-photo';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -17,9 +19,14 @@ export async function GET(request: Request) {
   try {
     const user = await requireRole('PUNTO_PAGO');
     const parkingLotId = scopeToParkingLot(user);
+    // Una foto por cliente; el limite corta a quien la use para sondear el tunel.
+    await consumeRateLimit({ key: `foto-pos:${user.id}`, limit: 30, windowMs: 60_000 });
     const src = new URL(request.url).searchParams.get('src') ?? '';
     return await respuestaDeFoto(parkingLotId, src);
-  } catch {
+  } catch (error) {
+    if (error instanceof AppError && error.code === 'RATE_LIMITED') {
+      return new Response(null, { status: 429, headers: { 'Retry-After': '60' } });
+    }
     // Sin sesion valida no se dice si la foto existe o no.
     return new Response(null, { status: 404 });
   }

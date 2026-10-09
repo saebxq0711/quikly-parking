@@ -125,7 +125,11 @@ export function toErrorResponse(error: unknown, context?: string) {
     }
     return NextResponse.json(
       { error: { code: error.code, message: error.publicMessage } },
-      { status: error.status },
+      {
+        status: error.status,
+        // Le dice a un cliente bien hecho cuando volver, en vez de reintentar ya.
+        headers: error.code === 'RATE_LIMITED' ? { 'Retry-After': '60' } : undefined,
+      },
     );
   }
 

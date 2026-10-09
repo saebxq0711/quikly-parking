@@ -1,5 +1,6 @@
 import { AppError, scrubSecrets } from '@/lib/errors';
 import { env } from '@/lib/env';
+import { beforeUpstreamRead, cachedRead, recordUpstreamResult } from './guard';
 import { asAmount, normalizeCheckout, normalizeTicket } from './normalize';
 import type { NovaCheckout, NovaTicket } from './types';
 
@@ -19,6 +20,11 @@ export interface NovaParkingConfig {
   baseUrl: string;
   token?: string | null;
   timeoutMs?: number;
+  /**
+   * Parqueadero al que pertenece: agrupa el limite de lecturas y el
+   * cortacircuito (`guard.ts`). Sin el se agrupa por la URL.
+   */
+  parkingLotId?: string | null;
 }
 
 interface RequestOptions {
@@ -36,11 +42,13 @@ export class NovaParkingClient {
   private readonly baseUrl: string;
   private readonly token: string | null;
   private readonly timeoutMs: number;
+  private readonly guardKey: string;
 
   constructor(config: NovaParkingConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, '');
     this.token = config.token ?? null;
     this.timeoutMs = config.timeoutMs ?? env.NOVA_PARKING_TIMEOUT_MS;
+    this.guardKey = config.parkingLotId ?? this.baseUrl;
   }
 
   private async request<T = unknown>(options: RequestOptions): Promise<T> {
@@ -59,6 +67,11 @@ export class NovaParkingClient {
     // Ver docs/REQUERIMIENTOS_EDIER.md seccion 3.
     if (this.token) headers['X-Platform-Token'] = this.token;
 
+    // Las lecturas pasan por el limite y el cortacircuito; confirmar un pago nunca.
+    if ((options.method ?? 'GET') === 'GET') {
+      await beforeUpstreamRead(this.guardKey, options.operation);
+    }
+
     let response: Response;
     try {
       response = await fetch(url, {
@@ -69,6 +82,7 @@ export class NovaParkingClient {
         cache: 'no-store',
       });
     } catch (error) {
+      recordUpstreamResult(this.guardKey, true);
       const isTimeout =
         error instanceof Error &&
         (error.name === 'TimeoutError' || error.name === 'AbortError');
@@ -81,6 +95,9 @@ export class NovaParkingClient {
         },
       );
     }
+
+    // 5xx (y el 530 de Cloudflare con el tunel caido) = su servidor esta mal.
+    recordUpstreamResult(this.guardKey, response.status >= 500);
 
     if (response.status === 404) {
       throw new AppError('NOT_FOUND', {
@@ -172,7 +189,11 @@ export class NovaParkingClient {
     operation: string,
     timeoutMs?: number,
   ): Promise<T> {
-    return this.request<T>({ method: 'GET', path, query, operation, timeoutMs });
+    // El panel con varias pestañas y su refresco pedia lo mismo una y otra vez.
+    const llave = `${this.guardKey}|${path}|${JSON.stringify(query)}`;
+    return cachedRead(llave, () =>
+      this.request<T>({ method: 'GET', path, query, operation, timeoutMs }),
+    );
   }
 
   /**
@@ -191,6 +212,8 @@ export class NovaParkingClient {
       throw new AppError('NOT_FOUND', { detail: { operation: 'media', path } });
     }
 
+    await beforeUpstreamRead(this.guardKey, 'media');
+
     let response: Response;
     try {
       response = await fetch(new URL(this.baseUrl + path), {
@@ -202,12 +225,14 @@ export class NovaParkingClient {
         cache: 'no-store',
       });
     } catch (error) {
+      recordUpstreamResult(this.guardKey, true);
       throw new AppError('UPSTREAM_UNAVAILABLE', {
         detail: { operation: 'media', path },
         cause: error,
       });
     }
 
+    recordUpstreamResult(this.guardKey, response.status >= 500);
     const contentType = response.headers.get('content-type') ?? '';
     /*
       Un 404 aqui casi siempre significa que `/media/` sigue cerrado en el tunel

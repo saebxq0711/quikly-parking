@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     // Un documento por intento, y con limite: sin esto la pantalla seria una
     // forma de comprobar que documentos existen en la base.
-    consumeRateLimit({ key: `customer:${user.id}`, limit: 30, windowMs: 60_000 });
+    await consumeRateLimit({ key: `customer:${user.id}`, limit: 30, windowMs: 60_000 });
 
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) {

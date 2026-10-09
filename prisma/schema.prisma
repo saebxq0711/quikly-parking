@@ -594,3 +594,56 @@ model AuditLog {
   @@index([action, createdAt])
   @@map("audit_logs")
 }
+
+// ---------------------------------------------------------------------------
+// Seguridad: limitador compartido, IPs bloqueadas y eventos
+// ---------------------------------------------------------------------------
+
+/// Contadores del limitador de peticiones. Viven en la base y no en memoria
+/// porque en Vercel cada instancia tiene su propia memoria: un limite en memoria
+/// se multiplica por el numero de instancias y un atacante lo esquiva.
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("rate_limit_buckets")
+}
+
+/// IP bloqueada, por el sistema (comportamiento malicioso) o por el SuperAdmin.
+/// La fila se conserva al desbloquear: `offenses` hace que cada reincidencia
+/// dure mas.
+model BlockedIp {
+  ip           String   @id
+  reason       String
+  /// Bloqueada mientras `permanent` o `blockedUntil` sea futuro.
+  blockedUntil DateTime
+  permanent    Boolean  @default(false)
+  offenses     Int      @default(1)
+  /// true = lo decidio el sistema; false = el SuperAdmin.
+  automatic    Boolean  @default(true)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([blockedUntil])
+  @@map("blocked_ips")
+}
+
+/// Rastro de lo que hizo saltar las defensas: limites superados, rutas de
+/// escaneo, origen no permitido, bloqueos. Se depura a los 90 dias.
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  ip        String?
+  /// RATE_LIMIT, TRAP, BAD_AGENT, BAD_ORIGIN, LOGIN_FAILED, BLOCKED, UNBLOCKED...
+  kind      String
+  path      String?
+  detail    String?
+  userId    String?
+
+  @@index([createdAt])
+  @@index([ip, createdAt])
+  @@map("security_events")
+}

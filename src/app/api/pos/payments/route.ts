@@ -56,7 +56,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireRole('PUNTO_PAGO');
-    consumeRateLimit({ key: `pay:${user.id}`, limit: 20, windowMs: 60_000 });
+    await consumeRateLimit({ key: `pay:${user.id}`, limit: 20, windowMs: 60_000 });
 
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) {
@@ -114,6 +114,7 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const user = await requireRole('PUNTO_PAGO');
+    await consumeRateLimit({ key: `pago-vivo:${user.id}`, limit: 30, windowMs: 60_000 });
     const parkingLotId = scopeToParkingLot(user);
     const point = await getPaymentPoint(user, parkingLotId);
 

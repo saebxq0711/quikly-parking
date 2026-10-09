@@ -26,6 +26,7 @@ import {
   vestirFila,
   type Columna,
 } from '@/lib/reports/excel-style';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 /** El volcado de tiquetes por el tunel tarda ~12 s: con 10 s la descarga se cortaba. */
@@ -97,6 +98,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   // 404 y no 403: no se confirma que exista un parqueadero ajeno.
   if (!lot || user.role !== 'ADMIN_PARQUEADERO' || user.parkingLotId !== lot.id) {
     return fallo(404, 'No encontrado.');
+  }
+
+  // Cada reporte recorre todo el historial del sistema del parqueadero: pesado para el.
+  try {
+    await consumeRateLimit({ key: `reporte:${user.id}`, limit: 6, windowMs: 60_000 });
+  } catch {
+    return fallo(429, 'Ya pediste varios reportes seguidos. Espera un minuto.');
   }
 
   const url = new URL(request.url);

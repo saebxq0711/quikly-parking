@@ -4,14 +4,15 @@ import { requireRole, scopeToParkingLot } from '@/lib/auth/guards';
 import { AppError, toErrorResponse } from '@/lib/errors';
 import { refreshPaymentStatus } from '@/lib/payments/service';
 import { serializePayment } from '@/lib/payments/serialize';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 /**
  * Sondeo del estado del cobro.
  *
  * El manual de SIPConnector (Anexo 3) pide que la iteracion NO sea inferior a
- * tres segundos; la interfaz consulta cada 3 s. Aqui no se impone un limite de
- * frecuencia estricto porque cada consulta de mas solo golpea a Nova Parking,
- * pero el intervalo del cliente esta fijado en `PaymentWaiting`.
+ * tres segundos; la interfaz consulta cada 3 s (20 por minuto). El limite de 90
+ * por minuto deja holgura para dos pestañas y corta un bucle desbocado, que si
+ * no golpearia la red de pagos por cada consulta.
  */
 export async function GET(
   _request: Request,
@@ -19,6 +20,7 @@ export async function GET(
 ) {
   try {
     const user = await requireRole('PUNTO_PAGO');
+    await consumeRateLimit({ key: `estado-pago:${user.id}`, limit: 90, windowMs: 60_000 });
     const { id } = await params;
 
     const existing = await db.payment.findUnique({
