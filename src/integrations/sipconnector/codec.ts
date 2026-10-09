@@ -266,3 +266,29 @@ export function maskCard(value: string | null): string | null {
   if (digits.length < 4) return null;
   return `**** ${digits.slice(-4)}`;
 }
+
+/**
+ * Motivo de una transaccion NO aprobada, en palabras para el cliente del kiosco.
+ *
+ * Antes toda no aprobada decia "rechazada por el banco emisor", y no era cierto:
+ * en las pruebas del 2026-10-09 el datafono mostraba "no se recibio respuesta
+ * del host" (no logro hablar con el autorizador) y el kiosco culpaba al banco.
+ * La respuesta del Anexo 2 permite distinguir los casos sin adivinar:
+ *
+ *  - Tarjeta sin leer: el numero de la tarjeta llega en ceros (`000000**0000`).
+ *  - Sin respuesta del autorizador: no hay codigo de aprobacion, el recibo llega
+ *    vacio o en ceros y no hay franquicia. Nadie decidio sobre la compra.
+ *  - Lo demas: el autorizador respondio y no aprobo.
+ */
+export function declineReason(result: SipTransactionResult): string {
+  const enCeros = (valor: string | null) => !valor || /^0+$/.test(valor);
+  const tarjeta = (result.bin ?? result.cardName ?? '').replace(/\s/g, '');
+
+  if (/^0+\*+0+$/.test(tarjeta)) {
+    return 'El datáfono no pudo leer la tarjeta. Inténtalo de nuevo o usa otra tarjeta.';
+  }
+  if (!result.approvalCode && enCeros(result.receiptNumber) && !result.franchise) {
+    return 'El datáfono no obtuvo respuesta del banco, así que no se cobró nada. Intenta de nuevo en un momento.';
+  }
+  return 'Tu banco no aprobó la transacción. Puedes intentar con otra tarjeta.';
+}
