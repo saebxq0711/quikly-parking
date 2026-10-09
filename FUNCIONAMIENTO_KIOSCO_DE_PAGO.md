@@ -221,9 +221,11 @@ un vehículo ajeno, y de eso nadie se entera hasta que la barrera no abre. En la
 foto el cliente reconoce su carro en un segundo — mucho antes de alcanzar a leer
 una placa en la pantalla.
 
-Mientras el sistema del parqueadero no publique sus fotos (hoy `/media/` está
-cerrada en el túnel, ver `REQUERIMIENTOS_PANEL_ADMIN.md` 4.6) el paso se queda
-igual, con los datos del tiquete en grande: placa o código, tipo, hora de
+La foto la publica el sistema del parqueadero en
+`/api/parking/ticket/<id>/foto/`, con token (desde el 2026-10-09). Nuestro
+servidor la trae y la reenvía por `/api/pos/foto`; el navegador nunca habla con
+el túnel. Si un tiquete no tiene foto, o el sistema no responde, el paso se
+queda igual, con los datos del tiquete en grande: placa o código, tipo, hora de
 entrada y permanencia. **El paso no se salta cuando falta la foto:** la
 confirmación es el punto, la foto es la ayuda.
 

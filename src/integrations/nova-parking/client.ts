@@ -208,7 +208,8 @@ export class NovaParkingClient {
    * llega por la URL de una peticion y nadie va a usarla para pedir otra cosa.
    */
   async media(path: string): Promise<{ bytes: ArrayBuffer; contentType: string }> {
-    if (!path.startsWith('/media/') || path.includes('..')) {
+    const rutaDeFoto = /^\/api\/parking\/ticket\/\d+\/foto\/$/.test(path);
+    if (!rutaDeFoto && (!path.startsWith('/media/') || path.includes('..'))) {
       throw new AppError('NOT_FOUND', { detail: { operation: 'media', path } });
     }
 
@@ -218,7 +219,10 @@ export class NovaParkingClient {
     try {
       response = await fetch(new URL(this.baseUrl + path), {
         headers: {
-          Accept: 'image/*',
+          // Todo tipo y no solo imagenes: su vista de fotos es de Django REST
+          // Framework y, con `image/*`, la negociacion de contenido responde 406
+          // aunque la imagen exista. Que sea una imagen se comprueba abajo.
+          Accept: '*/*',
           ...(this.token ? { 'X-Platform-Token': this.token } : {}),
         },
         signal: AbortSignal.timeout(this.timeoutMs),

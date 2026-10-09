@@ -14,14 +14,19 @@ import { novaClientFor } from './config';
  * resuelve COMO se trae. La validacion de la ruta se repite en los dos sitios a
  * proposito; es la que impide que esto se convierta en un proxy abierto.
  *
- * PENDIENTE DEL OTRO LADO: hoy `/media/` esta cerrada en el tunel a proposito,
- * asi que esto responde 404 hasta que Nova Parking publique esa ruta con token
- * (REQUERIMIENTOS_PANEL_ADMIN.md 4.6). Las pantallas lo muestran como "sin
- * foto" en vez de romperse.
+ * Desde el 2026-10-09 Nova Parking publica la foto de cada tiquete en
+ * `/api/parking/ticket/<id>/foto/`, con token; `/media/` sigue cerrada en el
+ * tunel. Sin foto o sin conexion, las pantallas muestran "sin foto" en vez de
+ * romperse.
  */
 
-/** Rutas aceptables: las que Nova Parking pone en sus propios tiquetes. */
+/**
+ * Rutas aceptables: la foto de un tiquete por su id (la que publica el tunel) o
+ * la ruta `/media/` que trae el tiquete. Nada mas: esto es lo que impide que el
+ * proxy sirva para pedir cualquier otra ruta del sistema del parqueadero.
+ */
 export function esRutaDeFoto(src: string): boolean {
+  if (/^\/api\/parking\/ticket\/\d+\/foto\/$/.test(src)) return true;
   return src.startsWith('/media/') && !src.includes('..');
 }
 
