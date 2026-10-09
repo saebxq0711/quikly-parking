@@ -7,6 +7,7 @@ import { Alert, Card, CardHeader, Checkbox, Field, Input, Select } from '@/compo
 import type { SiigoCatalogs, SiigoOption } from '@/lib/parking/siigo';
 import { saveSiigoConfig, testSiigo } from '../../actions';
 import { StatusPill, TestButton } from './redeban-card';
+import { EditableBlock } from '@/components/admin/editable-block';
 
 /**
  * Facturacion electronica de ESTE parqueadero.
@@ -34,15 +35,32 @@ export function SiigoCard(props: {
   defaultCustomerName: string;
   sendStamp: boolean;
   sendMail: boolean;
+  /** SIIGO rechazo hoy el usuario o la clave guardados. */
+  credentialsRejected: boolean;
 }) {
   const { catalogs } = props;
+  const lista = props.missing.length === 0 && !props.credentialsRejected && props.enabled;
+  const nombre = (opciones: SiigoOption[] | undefined, valor: string) =>
+    (catalogs.ok && opciones?.find((opcion) => opcion.value === valor)?.label) || valor || 'Falta';
+  const siNo = (valor: boolean) => (valor ? 'Sí' : 'No');
 
   return (
     <Card>
       <CardHeader
-        title="Facturacion SIIGO"
+        title="Facturación SIIGO"
         description="Cada pago aprobado se factura solo, por el valor cobrado."
-        action={<StatusPill ok={props.missing.length === 0} />}
+        action={
+          <StatusPill
+            ok={lista}
+            pendingLabel={
+              props.missing.length > 0
+                ? 'Falta configurar'
+                : props.credentialsRejected
+                  ? 'Credenciales rechazadas'
+                  : 'Apagada'
+            }
+          />
+        }
       />
 
       <div className="space-y-5 p-5">
@@ -50,11 +68,28 @@ export function SiigoCard(props: {
           <Alert tone="warning" title="Falta configurar">
             {props.missing.join(', ')}.
           </Alert>
-        ) : (
-          <TestSiigo parkingLotId={props.parkingLotId} />
-        )}
+        ) : props.credentialsRejected ? (
+          <Alert tone="warning" title="SIIGO rechaza las credenciales">
+            Ninguna factura sale hasta corregirlo. En Siigo Nube, entra a Alianzas → Mi credencial API,
+            copia la clave de acceso vigente y pégala abajo en &ldquo;Clave de acceso&rdquo;.
+          </Alert>
+        ) : null}
 
-        <ActionForm action={saveSiigoConfig} submitLabel="Guardar facturacion" onSuccessReset={false}>
+        <EditableBlock
+          defaultOpen={!lista}
+          aside={props.missing.length === 0 ? <TestSiigo parkingLotId={props.parkingLotId} /> : null}
+          summary={[
+            { label: 'Usuario de SIIGO', value: props.username || 'Falta', missing: !props.username },
+            { label: 'Clave de acceso', value: props.hasAccessKey ? 'Guardada' : 'Falta', missing: !props.hasAccessKey },
+            { label: 'Comprobante de factura', value: nombre(catalogs.ok ? catalogs.documents : undefined, props.documentId), tabular: true },
+            { label: 'Vendedor', value: nombre(catalogs.ok ? catalogs.sellers : undefined, props.sellerId), tabular: true },
+            { label: 'Forma de pago', value: nombre(catalogs.ok ? catalogs.paymentTypes : undefined, props.paymentTypeId), tabular: true },
+            { label: 'Servicio', value: nombre(catalogs.ok ? catalogs.products : undefined, props.itemCode), tabular: true },
+            { label: 'Facturar cada pago', value: siNo(props.enabled), missing: !props.enabled },
+            { label: 'Envío a la DIAN · al correo', value: `${siNo(props.sendStamp)} · ${siNo(props.sendMail)}` },
+          ]}
+        >
+        <ActionForm submitVariant="confirm" action={saveSiigoConfig} submitLabel="Guardar facturación" onSuccessReset={false}>
           <input type="hidden" name="parkingLotId" value={props.parkingLotId} />
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -71,7 +106,7 @@ export function SiigoCard(props: {
             </Field>
             <Field
               label="Clave de acceso (access key)"
-              hint={props.hasAccessKey ? 'Guardada. Dejala vacia para conservarla.' : undefined}
+              hint={props.hasAccessKey ? 'Guardada. Déjala vacía para conservarla.' : undefined}
             >
               <Input
                 name="accessKey"
@@ -82,10 +117,12 @@ export function SiigoCard(props: {
             </Field>
           </div>
 
+          {/* Si SIIGO rechazo la clave, eso ya lo dice el aviso de arriba: aqui solo que los ids van a mano. */}
           {!catalogs.ok ? (
-            <p className="rounded-lg bg-[var(--fill-soft)] px-3 py-2 text-[13px] leading-relaxed text-[var(--text-muted)] ring-1 ring-inset ring-[var(--line-subtle)]">
-              No pudimos traer las listas de SIIGO ({catalogs.message}). Revisa el usuario y la
-              clave, o escribe los ids a mano.
+            <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
+              {props.credentialsRejected
+                ? 'Mientras SIIGO no acepte la clave no hay listas para elegir: los ids se escriben a mano.'
+                : `No se pudieron traer las listas de SIIGO (${catalogs.message.replace(/\.$/, '')}). Escribe los ids a mano.`}
             </p>
           ) : null}
 
@@ -123,11 +160,11 @@ export function SiigoCard(props: {
             />
           </div>
 
-          <div className="space-y-2.5 rounded-xl bg-[var(--fill-soft)] px-4 py-3 ring-1 ring-inset ring-[var(--line-subtle)]">
+          <div className="space-y-2.5 border-t border-[var(--line-subtle)] pt-4">
             <Checkbox
               name="enabled"
               defaultChecked={props.enabled}
-              label="Facturar automaticamente cada pago aprobado"
+              label="Facturar automáticamente cada pago aprobado"
             />
             <Checkbox name="sendStamp" defaultChecked={props.sendStamp} label="Enviar la factura a la DIAN" />
             <Checkbox
@@ -136,7 +173,7 @@ export function SiigoCard(props: {
               label="Enviar la factura al correo del cliente"
             />
             <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
-              El envio a la DIAN va con un comprobante marcado &ldquo;electronica&rdquo;. Al guardar se
+              El envío a la DIAN va con un comprobante marcado &ldquo;electrónica&rdquo;. Al guardar se
               verifica todo con SIIGO.
             </p>
           </div>
@@ -146,10 +183,10 @@ export function SiigoCard(props: {
               <Input name="itemDescription" defaultValue={props.itemDescription} />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Direccion del servicio">
+              <Field label="Dirección del servicio">
                 <Input name="baseUrl" required defaultValue={props.baseUrl} spellCheck={false} autoComplete="off" />
               </Field>
-              <Field label="Identificador de la aplicacion" hint="Letras y numeros.">
+              <Field label="Identificador de la aplicacion" hint="Letras y números.">
                 <Input name="partnerId" required defaultValue={props.partnerId} spellCheck={false} autoComplete="off" />
               </Field>
             </div>
@@ -169,6 +206,7 @@ export function SiigoCard(props: {
             </div>
           </Advanced>
         </ActionForm>
+        </EditableBlock>
       </div>
     </Card>
   );
@@ -226,7 +264,7 @@ function TestSiigo({ parkingLotId }: { parkingLotId: string }) {
   return (
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="parkingLotId" value={parkingLotId} />
-      <TestButton label="Probar facturacion" />
+      <TestButton label="Probar facturación" />
       {state ? <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert> : null}
     </form>
   );

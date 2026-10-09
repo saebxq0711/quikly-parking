@@ -24,7 +24,7 @@ import { getVehicleRule, novaClientFor } from '../parking/config';
 import { redebanClientFor } from '../parking/redeban';
 import type { OperablePoint } from '../parking/payment-point';
 import type { NovaCheckout } from '@/integrations/nova-parking/types';
-import { maskCard } from '@/integrations/sipconnector/codec';
+import { declineReason, maskCard } from '@/integrations/sipconnector/codec';
 import {
   vehicleTypeIdForConfirm,
   vehicleTypeIdForQuote,
@@ -685,7 +685,7 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
         ? 'El valor aprobado no coincide con el valor cobrado. Requiere revision.'
         : result.approved
           ? null
-          : 'La transaccion fue rechazada por el banco emisor.',
+          : declineReason(result),
       providerRaw: scrubSecrets({ respuesta: state.raw }) as object,
     },
   });

@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ActionForm } from '@/components/action-form';
 import { Advanced } from '@/components/advanced';
-import { Alert, Field, Input, Select } from '@/components/ui';
+import { Alert, Field, Input, Select, buttonClassName } from '@/components/ui';
 import { SIP_NETWORKS } from '@/integrations/sipconnector/codes';
 import { saveRedebanConfig, testRedeban } from '../../actions';
 
@@ -46,12 +46,12 @@ export function RedebanForm({
         <TestConnection parkingLotId={parkingLotId} paymentPointId={paymentPointId} />
       )}
 
-      <ActionForm action={saveRedebanConfig} submitLabel="Guardar datafono" onSuccessReset={false}>
+      <ActionForm submitVariant="confirm" action={saveRedebanConfig} submitLabel="Guardar datáfono" onSuccessReset={false}>
         <input type="hidden" name="parkingLotId" value={parkingLotId} />
         <input type="hidden" name="paymentPointId" value={paymentPointId} />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Codigo unico" hint="Con sus ceros a la izquierda.">
+          <Field label="Código único" hint="Con sus ceros a la izquierda.">
             <Input
               name="codigoUnico"
               required
@@ -62,7 +62,7 @@ export function RedebanForm({
               autoComplete="off"
             />
           </Field>
-          <Field label="Codigo del datafono">
+          <Field label="Código del datáfono">
             <Input
               name="codigoTerminal"
               required
@@ -82,7 +82,7 @@ export function RedebanForm({
               autoComplete="off"
             />
           </Field>
-          <Field label="Clave" hint={hasPassword ? 'Guardada. Dejala vacia para conservarla.' : undefined}>
+          <Field label="Clave" hint={hasPassword ? 'Guardada. Déjala vacía para conservarla.' : undefined}>
             <Input
               name="clave"
               type="password"
@@ -93,7 +93,7 @@ export function RedebanForm({
         </div>
 
         <Advanced>
-          <Field label="Ambiente del servicio" hint="Pruebas y produccion tienen direcciones distintas.">
+          <Field label="Ambiente del servicio" hint="Pruebas y producción tienen direcciones distintas.">
             <Input
               name="baseUrl"
               required
@@ -146,7 +146,7 @@ function TestConnection({ parkingLotId, paymentPointId }: { parkingLotId: string
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="parkingLotId" value={parkingLotId} />
       <input type="hidden" name="paymentPointId" value={paymentPointId} />
-      <TestButton label="Probar datafono" />
+      <TestButton label="Probar datáfono" />
       {state ? <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert> : null}
     </form>
   );
@@ -158,7 +158,8 @@ export function TestButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--surface-raised)] px-5 text-[13px] font-semibold text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:ring-[var(--ring-strong)] disabled:opacity-60"
+      // El mismo boton secundario pequeno que "Editar": van uno al lado del otro.
+      className={buttonClassName('secondary', 'sm', 'px-4')}
     >
       {pending ? (
         <span
@@ -166,7 +167,7 @@ export function TestButton({ label }: { label: string }) {
           aria-hidden="true"
         />
       ) : null}
-      {pending ? 'Probando...' : label}
+      {pending ? 'Probando…' : label}
     </button>
   );
 }

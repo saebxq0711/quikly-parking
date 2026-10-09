@@ -83,7 +83,7 @@ export class SiigoClient {
       const rechazo = response.status >= 400 && response.status < 500 && response.status !== 429;
       throw new AppError('UPSTREAM_UNAVAILABLE', {
         publicMessage: rechazo
-          ? 'SIIGO rechazo el usuario o la clave de acceso de este parqueadero.'
+          ? 'SIIGO rechazó el usuario o la clave de acceso de este parqueadero.'
           : 'El servicio de facturacion no respondio. Se reintentara.',
         detail: { status: response.status, credencialesRechazadas: rechazo },
       });

@@ -1,60 +1,79 @@
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth/guards';
 import { PageHeader } from '@/components/app-shell';
-import { Alert, Card, CardHeader, EmptyState, formatDateTime } from '@/components/ui';
-import { UserForm } from './user-form';
-import { UserActions } from './user-actions';
+import { UsersWorkspace, type DirectoryUser, type DirectoryGroup } from './users-workspace';
 import { ResetRequests } from './reset-requests';
 
 export const metadata = { title: 'Usuarios' };
 
-const ROLE_LABEL = {
-  SUPERADMIN: 'Super administrador',
-  ADMIN_PARQUEADERO: 'Administrador',
-  PUNTO_PAGO: 'Punto de pago',
-} as const;
-
 /**
- * Administracion de usuarios.
+ * Usuarios de la plataforma, agrupados por el parqueadero al que pertenecen.
  *
- * Ademas de crearlos, es desde aqui donde se resuelven las dos cosas que no
- * puede hacer el propio usuario: restablecer una contrasena olvidada y cerrar
- * la sesion de un punto de pago a distancia — el kiosco esta de cara al publico
- * y no tiene un boton de salida a la vista.
+ * Antes era una sola lista con los tres roles mezclados y los botones en un lugar
+ * distinto en cada fila. Ahora cada persona aparece dentro de su sitio, se busca
+ * por nombre o correo, se filtra por rol, y se gestiona desplegando su fila.
+ * Las solicitudes de contrasena van primero: son lo unico de esta pantalla que
+ * alguien esta esperando.
  */
 export default async function UsersPage() {
   const actor = await requireRole('SUPERADMIN');
+  const ahora = new Date();
 
   const [users, lots, requests] = await Promise.all([
     db.user.findMany({
       orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-      include: {
-        parkingLot: { select: { name: true } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        lastLoginAt: true,
+        parkingLotId: true,
         paymentPoint: { select: { name: true } },
-        // Solo las sesiones vivas: las cerradas o vencidas no son "sesion abierta".
-        _count: {
-          select: { sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } } },
-        },
+        _count: { select: { sessions: { where: { revokedAt: null, expiresAt: { gt: ahora } } } } },
       },
     }),
     db.parkingLot.findMany({
-      where: { active: true },
       orderBy: { name: 'asc' },
-      select: { id: true, name: true },
+      select: { id: true, name: true, slug: true, active: true },
     }),
     db.passwordResetRequest.findMany({
       where: { resolvedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 20,
-      include: { user: { select: { id: true, email: true, name: true } } },
+      include: { user: { select: { id: true, name: true } } },
     }),
   ]);
+
+  const directorio: DirectoryUser[] = users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    active: user.active,
+    hasSession: user._count.sessions > 0,
+    lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+    lotId: user.parkingLotId,
+    kioskName: user.paymentPoint?.name ?? null,
+    isSelf: user.id === actor.id,
+  }));
+
+  const grupos: DirectoryGroup[] = [
+    { id: 'superadmin', title: 'Super administradores', subtitle: 'Configuran toda la plataforma', href: null },
+    ...lots.map((lot) => ({
+      id: lot.id,
+      title: lot.name,
+      subtitle: lot.active ? `Administradores y kioscos de ${lot.name}` : 'Parqueadero inactivo',
+      href: `/admin/parqueaderos/${lot.slug}#equipo`,
+    })),
+  ];
 
   return (
     <>
       <PageHeader
         title="Usuarios"
-        description="Cada usuario pertenece a un parqueadero, salvo el super administrador."
+        description={`${users.length} ${users.length === 1 ? 'persona' : 'personas'} con acceso. Cada una pertenece a un parqueadero, salvo los super administradores.`}
       />
 
       {requests.length > 0 ? (
@@ -71,88 +90,11 @@ export default async function UsersPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
-        <Card className="overflow-hidden">
-          {users.length === 0 ? (
-            <EmptyState
-              title="No hay usuarios"
-              description="Crea el primero con el formulario de la derecha."
-            />
-          ) : (
-            <ul className="divide-y divide-[var(--line-subtle)]">
-              {users.map((user) => (
-                <li key={user.id} className="px-5 py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium text-[var(--text-primary)]">
-                          {user.name}
-                        </p>
-                        <span
-                          className={
-                            user.active
-                              ? 'rounded-full bg-ok-50 px-2 py-0.5 text-[11px] font-medium text-ok-700 ring-1 ring-inset ring-ok-400/30'
-                              : 'rounded-full bg-[var(--fill-soft-hover)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] ring-1 ring-inset ring-[var(--ring-soft)]'
-                          }
-                        >
-                          {user.active ? 'Activo' : 'Inactivo'}
-                        </span>
-                        {user._count.sessions > 0 ? (
-                          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-ink-950 ring-1 ring-inset ring-brand-300">
-                            Sesion abierta
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <p className="mt-1 truncate text-xs text-[var(--text-muted)]">
-                        {user.email}
-                      </p>
-                      <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-                        {ROLE_LABEL[user.role]}
-                        {user.parkingLot ? ` · ${user.parkingLot.name}` : ''}
-                        {user.paymentPoint ? ` · kiosco ${user.paymentPoint.name}` : ''}
-                        {' · '}
-                        {user.lastLoginAt
-                          ? `ultimo ingreso ${formatDateTime(user.lastLoginAt)}`
-                          : 'nunca ha ingresado'}
-                      </p>
-                    </div>
-
-                    <UserActions
-                      userId={user.id}
-                      active={user.active}
-                      hasSession={user._count.sessions > 0}
-                      isSelf={user.id === actor.id}
-                      allowLogout={user.role !== 'PUNTO_PAGO'}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="h-fit">
-            <CardHeader
-              title="Nuevo usuario"
-              description="Entregale su correo y su contrasena por tu canal habitual."
-            />
-            <div className="p-5">
-              <UserForm
-                parkingLots={lots.map((lot) => ({ id: lot.id, name: lot.name }))}
-              />
-            </div>
-          </Card>
-
-          <Alert tone="info" title="Sobre los kioscos">
-            Los usuarios de kiosco se crean en la ficha de cada parqueadero, junto con su
-            kiosco. La pantalla no tiene un boton de salida a la vista, para que ningun
-            cliente la deje fuera de servicio: su sesion la cierra a distancia el administrador
-            del parqueadero, desde su panel en Kioscos.
-          </Alert>
-        </div>
-      </div>
+      <UsersWorkspace
+        users={directorio}
+        groups={grupos}
+        parkingLots={lots.filter((lot) => lot.active).map((lot) => ({ id: lot.id, name: lot.name }))}
+      />
     </>
   );
 }

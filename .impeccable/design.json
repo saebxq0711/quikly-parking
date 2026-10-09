@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-01T00:00:00Z",
+  "generatedAt": "2026-10-09T00:00:00Z",
   "title": "Design System: Quikly Parking",
   "extensions": {
     "colorMeta": {
@@ -43,7 +43,10 @@
       "kiosk-body": { "displayName": "Cuerpo de kiosco", "purpose": "Subtítulos de paso, máximo 32rem." },
       "title": { "displayName": "Title", "purpose": "Títulos de tarjeta del panel." },
       "body": { "displayName": "Body", "purpose": "Descripciones y datos del panel." },
-      "label": { "displayName": "Label", "purpose": "Etiquetas de campo, cabeceras de tabla, navegación." }
+      "label": { "displayName": "Label", "purpose": "Etiquetas de campo, cabeceras de tabla, botones y filtros pequeños, navegación." },
+      "directory-title": { "displayName": "Título de sitio", "purpose": "Nombre de cada parqueadero en la cabecera de su bloque del directorio." },
+      "badge": { "displayName": "Badge", "purpose": "Insignias de estado y conteos tabulares junto a un título." },
+      "micro": { "displayName": "Micro", "purpose": "Solo dentro de una píldora o un círculo: insignias densas en tarjetas, chips de fila (500), iniciales del avatar pequeño. Nunca en párrafos." }
     },
     "themes": [
       { "name": "claro", "selector": ":root", "scope": "Admin, superadmin, ingreso, correos y kiosco de día." },
@@ -156,6 +159,62 @@
       "description": "Texto negro con subrayado amarillo; el amarillo nunca es tinta.",
       "html": "<a class=\"ds-link\" href=\"#\">Olvidé mi contraseña</a>",
       "css": ".ds-link { font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #0b0b0b; text-decoration: underline; text-decoration-color: #f7b500; text-decoration-thickness: 2px; text-underline-offset: 4px; transition: text-decoration-color 150ms; } .ds-link:hover { text-decoration-color: #0b0b0b; } .ds-link:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; border-radius: 0.6rem; }"
+    },
+    {
+      "name": "Riel de preparación",
+      "kind": "custom",
+      "refersTo": "badge",
+      "description": "Seis puntos de preparación de un sitio; cada uno enlaza con su sección de la ficha. Verde con chulito listo, naranja con admiración pendiente; nunca amarillo.",
+      "html": "<ul class=\"ds-rail\"><li><a class=\"ds-rp ds-rp-warn\" href=\"#\"><span class=\"ds-dot ds-dot-warn\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"19\" r=\"2\"/><path d=\"M10 3h4v12h-4z\"/></svg></span>Empresa</a></li><li><a class=\"ds-rp\" href=\"#\"><span class=\"ds-dot ds-dot-ok\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z\"/></svg></span>Sistema</a></li><li><a class=\"ds-rp\" href=\"#\"><span class=\"ds-dot ds-dot-ok\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z\"/></svg></span>Kioscos</a></li><li><a class=\"ds-rp ds-rp-warn\" href=\"#\"><span class=\"ds-dot ds-dot-warn\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"19\" r=\"2\"/><path d=\"M10 3h4v12h-4z\"/></svg></span>Facturación</a></li></ul>",
+      "css": ".ds-rail { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-rp { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 9999px; background: #ffffff; color: #45453f; font-size: 12.5px; font-weight: 500; text-decoration: none; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.08); transition: box-shadow 150ms, color 150ms; } .ds-rp:hover { color: #0b0b0b; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.26); } .ds-rp:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-rp-warn { color: #9a4a05; background: rgb(255 231 204 / 0.6); box-shadow: inset 0 0 0 1px rgb(247 146 43 / 0.4); } .ds-rp-warn:hover { color: #9a4a05; background: #ffe7cc; box-shadow: inset 0 0 0 1px rgb(247 146 43 / 0.4); } .ds-dot { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 9999px; flex-shrink: 0; } .ds-dot-ok { background: #eaf7ee; color: #12662f; box-shadow: inset 0 0 0 1px rgb(63 185 107 / 0.4); } .ds-dot-warn { background: #e8780c; color: #ffffff; }"
+    },
+    {
+      "name": "Estado del sitio",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Insignia junto al nombre del sitio: listo en verde, lo que falta en naranja, inactivo en gris.",
+      "html": "<div class=\"ds-ls-row\"><span class=\"ds-ls ds-ls-ok\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z\"/></svg>Listo para operar</span><span class=\"ds-ls ds-ls-warn\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"19\" r=\"2\"/><path d=\"M10 3h4v12h-4z\"/></svg>Faltan 2 puntos</span><span class=\"ds-ls ds-ls-off\">Inactivo</span></div>",
+      "css": ".ds-ls-row { display: flex; flex-wrap: wrap; gap: 8px; } .ds-ls { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; white-space: nowrap; } .ds-ls-ok { background: #eaf7ee; color: #12662f; box-shadow: inset 0 0 0 1px rgb(63 185 107 / 0.4); } .ds-ls-warn { color: #9a4a05; background: rgb(255 231 204 / 0.6); box-shadow: inset 0 0 0 1px rgb(247 146 43 / 0.4); } .ds-ls-off { background: rgb(11 11 11 / 0.08); color: #66665f; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); }"
+    },
+    {
+      "name": "Índice de secciones",
+      "kind": "nav",
+      "refersTo": "label",
+      "description": "Índice pegajoso de la ficha con el mismo estado del riel; la sección que se lee es una píldora blanca con sombra, no amarilla. En el celular, franja de píldoras no pegajosa.",
+      "html": "<nav class=\"ds-idx\"><a class=\"ds-idx-i ds-idx-on\" href=\"#\" aria-current=\"location\"><span class=\"ds-dot ds-dot-warn\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"19\" r=\"2\"/><path d=\"M10 3h4v12h-4z\"/></svg></span>Empresa</a><a class=\"ds-idx-i\" href=\"#\"><span class=\"ds-dot ds-dot-ok\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z\"/></svg></span>Sistema</a><a class=\"ds-idx-i\" href=\"#\"><span class=\"ds-dot ds-dot-ok\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z\"/></svg></span>Kioscos</a></nav>",
+      "css": ".ds-idx { display: flex; flex-direction: column; gap: 2px; width: 13.5rem; padding: 12px; background: #f5f5f2; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-idx-i { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 0.75rem; color: #45453f; font-size: 13.5px; text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-idx-i:hover { background: rgb(11 11 11 / 0.04); color: #0b0b0b; } .ds-idx-i:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-idx-on, .ds-idx-on:hover { background: #ffffff; color: #0b0b0b; font-weight: 600; box-shadow: 0 0 0 1px rgb(11 11 11 / 0.08), 0 1px 2px rgb(11 11 11 / 0.05), 0 10px 28px -16px rgb(11 11 11 / 0.22); } .ds-dot { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 9999px; flex-shrink: 0; } .ds-dot-ok { background: #eaf7ee; color: #12662f; box-shadow: inset 0 0 0 1px rgb(63 185 107 / 0.4); } .ds-dot-warn { background: #e8780c; color: #ffffff; }"
+    },
+    {
+      "name": "Fila de persona con Gestionar",
+      "kind": "custom",
+      "refersTo": "avatar",
+      "description": "Iniciales en círculo gris, correo completo, chips de 11px y Gestionar que despliega las acciones dentro de la fila, sin modal.",
+      "html": "<div class=\"ds-person\"><span class=\"ds-av\">AP</span><div class=\"ds-pi\"><p class=\"ds-pn\">Administrador Parqueadero 122 <span class=\"ds-chip\"><span class=\"ds-live\"></span>Sesión abierta</span></p><p class=\"ds-pm\">admin@parqueadero122.co</p><p class=\"ds-pm\">Administrador · último ingreso 17/09/26, 9:41 a. m.</p></div><button class=\"ds-manage\" aria-expanded=\"false\">Gestionar<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z\"/></svg></button></div>",
+      "css": ".ds-person { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: #ffffff; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-av { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 9999px; background: rgb(11 11 11 / 0.08); color: #0b0b0b; font-size: 13px; font-weight: 600; letter-spacing: 0.025em; } .ds-pi { flex: 1; min-width: 0; } .ds-pn { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 600; color: #0b0b0b; } .ds-pm { margin: 0; font-size: 13px; color: #66665f; word-break: break-all; } .ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 9999px; background: rgb(11 11 11 / 0.04); color: #0b0b0b; font-size: 11px; font-weight: 500; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); } .ds-live { width: 6px; height: 6px; border-radius: 9999px; background: #1f9d55; } .ds-manage { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 0; border-radius: 9999px; background: transparent; color: #45453f; font-family: inherit; font-size: 13px; font-weight: 500; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); cursor: pointer; transition: background-color 150ms, color 150ms; } .ds-manage:hover { background: rgb(11 11 11 / 0.08); color: #0b0b0b; } .ds-manage:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-manage[aria-expanded=true] { background: rgb(11 11 11 / 0.08); color: #0b0b0b; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.26); }"
+    },
+    {
+      "name": "Filtros de rol",
+      "kind": "chip",
+      "refersTo": "filter-chip-active",
+      "description": "Chips de 36px; el elegido en negro con texto blanco y conteo al 70%.",
+      "html": "<div class=\"ds-filters\"><button class=\"ds-f ds-f-on\" aria-pressed=\"true\">Todos <span>4</span></button><button class=\"ds-f\" aria-pressed=\"false\">Administradores <span>1</span></button><button class=\"ds-f\" aria-pressed=\"false\">Kioscos <span>1</span></button></div>",
+      "css": ".ds-filters { display: flex; flex-wrap: wrap; gap: 6px; } .ds-f { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 9999px; background: #ffffff; color: #45453f; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 500; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); cursor: pointer; transition: color 150ms, box-shadow 150ms; } .ds-f span { font-size: 12px; color: #66665f; font-variant-numeric: tabular-nums; } .ds-f:hover { color: #0b0b0b; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.26); } .ds-f:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-f-on, .ds-f-on:hover { background: #0b0b0b; color: #ffffff; box-shadow: inset 0 0 0 1px #0b0b0b; } .ds-f-on span { color: rgb(255 255 255 / 0.7); }"
+    },
+    {
+      "name": "Aviso que espera respuesta",
+      "kind": "card",
+      "refersTo": "caution-orange",
+      "description": "Solicitudes de contraseña: va antes que todo en la pantalla y solo existe si hay solicitudes. Atender en confirm pequeño, Descartar secundario.",
+      "html": "<section class=\"ds-wait\"><header><span class=\"ds-wait-ic\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"19\" r=\"2\"/><path d=\"M10 3h4v12h-4z\"/></svg></span><div><h2>2 personas pidieron una contraseña nueva</h2><p>Cámbiasela desde su fila y entrégasela por tu canal habitual.</p></div></header><div class=\"ds-wait-row\"><div><p class=\"ds-wn\">Super Administrador</p><p class=\"ds-wm\">superadmin@puntodepago.co · 2/09/26, 10:25 a. m.</p></div><div class=\"ds-wa\"><a class=\"ds-sm ds-sm-confirm\" href=\"#\">Atender</a><button class=\"ds-sm ds-sm-sec\">Descartar</button></div></div></section>",
+      "css": ".ds-wait { border-radius: 1rem; overflow: hidden; background: rgb(255 231 204 / 0.6); box-shadow: inset 0 0 0 1px rgb(247 146 43 / 0.4); font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-wait header { display: flex; gap: 12px; padding: 16px 20px 12px; } .ds-wait-ic { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 9999px; background: #e8780c; color: #ffffff; } .ds-wait h2 { margin: 0; font-size: 15px; font-weight: 600; color: #9a4a05; } .ds-wait header p { margin: 2px 0 0; font-size: 13px; color: #9a4a05; } .ds-wait-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid rgb(247 146 43 / 0.25); } .ds-wn { margin: 0; font-size: 14px; font-weight: 500; color: #0b0b0b; } .ds-wm { margin: 0; font-size: 13px; color: #45453f; } .ds-wa { display: flex; gap: 8px; } .ds-sm { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 0; border-radius: 9999px; font-family: inherit; font-size: 13px; text-decoration: none; cursor: pointer; transition: background-color 150ms, box-shadow 150ms; } .ds-sm:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; } .ds-sm-confirm { background: #0b0b0b; color: #ffffff; font-weight: 600; } .ds-sm-confirm:hover { background: #262624; } .ds-sm-sec { background: #ffffff; color: #45453f; font-weight: 500; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); } .ds-sm-sec:hover { color: #0b0b0b; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.26); }"
+    },
+    {
+      "name": "Sección de formulario con campo que falta",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Título y explicación a la izquierda, campos a la derecha; el obligatorio vacío lleva anillo naranja y Falta; ejemplos con Ej.:; guardar en confirm.",
+      "html": "<section class=\"ds-fs\"><div><h3>Empresa</h3><p>Sale en el comprobante y en la factura. Escríbela tal como aparece en el RUT.</p></div><div class=\"ds-fs-f\"><label class=\"ds-fl\"><span>NIT</span><input class=\"ds-fi ds-fi-miss\" placeholder=\"Ej.: 900123456-7\" /><em>Falta. Con dígito de verificación.</em></label><button class=\"ds-save\">Guardar datos</button></div></section>",
+      "css": ".ds-fs { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 16px 40px; padding: 28px 0; background: #ffffff; font-family: Poppins, ui-sans-serif, system-ui, sans-serif; } .ds-fs h3 { margin: 0; font-size: 15px; font-weight: 600; color: #0b0b0b; } .ds-fs p { margin: 6px 0 0; font-size: 13px; line-height: 1.625; color: #45453f; } .ds-fs-f { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; } .ds-fl { display: block; width: 100%; } .ds-fl span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #0b0b0b; } .ds-fl em { display: block; margin-top: 6px; font-style: normal; font-size: 13px; font-weight: 500; color: #9a4a05; } .ds-fi { display: block; width: 100%; padding: 10px 14px; border: 0; border-radius: 0.75rem; background: #ffffff; color: #0b0b0b; font-family: inherit; font-size: 14px; box-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.12); caret-color: #db9c00; transition: box-shadow 150ms; } .ds-fi::placeholder { color: #66665f; } .ds-fi:focus { outline: none; box-shadow: inset 0 0 0 2px #0b0b0b; } .ds-fi-miss { box-shadow: inset 0 0 0 2px #f7922b; } .ds-fi-miss:hover { box-shadow: inset 0 0 0 2px #e8780c; } .ds-fi-miss:focus { box-shadow: inset 0 0 0 2px #0b0b0b; } .ds-save { height: 44px; padding: 0 20px; border: 0; border-radius: 9999px; background: #0b0b0b; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 150ms; } .ds-save:hover { background: #262624; } .ds-save:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 3px; }"
     }
   ],
   "narrative": {
@@ -178,6 +237,9 @@
       { "name": "The Logo Rule", "body": "Logo positivo (texto negro) sobre fondo claro, negativo (texto blanco, trazo amarillo) sobre negro: la barra lateral y la cabecera del panel usan el negativo; el kiosco alterna entre los dos según el tema.", "section": "colors" },
       { "name": "The Letrero Rule", "body": "Lo que el cliente tiene que leer para decidir (placa, total) se escribe a escala de letrero y con números tabulares; toda cifra que se actualiza lleva `tnum` para que no baile.", "section": "typography" },
       { "name": "The Raíz Que Crece Rule", "body": "El kiosco se dimensiona en `rem` y crece agrandando la raíz solo donde existe `.kiosk-root`: 21px en vertical desde 820×1150, 25px en vertical desde 1000×1500 (el monitor de 27\"), 20px en horizontal desde 1700×950. Nada del kiosco se fija en px.", "section": "typography" },
+      { "name": "The Guardar En Negro Rule", "body": "En una pantalla con varios formularios (la ficha de un parqueadero), cada \"Guardar\" va en `confirm` negro con texto blanco; el amarillo sólido queda para la única acción principal de la pantalla (Nuevo parqueadero, Nuevo usuario, Crear parqueadero). Un amarillo por formulario deja de decir cuál es la acción principal.", "section": "colors" },
+      { "name": "The Preparación Rule", "body": "Lo que está listo o falta en un sitio habla con dos tonos y siempre con su ícono: verde resultado con chulito para listo, naranja advertencia con admiración para lo que falta. Nunca amarillo: un punto pendiente en amarillo parece un botón.", "section": "colors" },
+      { "name": "The Once Píxeles Rule", "body": "11px solo vive dentro de una píldora o un círculo (insignia, chip, iniciales); nunca en un párrafo ni en una pista de campo. El texto corrido del panel no baja de 12px.", "section": "typography" },
       { "name": "The Tono Antes Que Sombra Rule", "body": "Lo que se toca en el kiosco se separa por tono (gris mosaico sobre blanco, amarillo cuando está elegido), no por sombra. La sombra es ambiental y solo despega tarjetas de datos.", "section": "elevation" },
       { "name": "The Trazo En El Borde Rule", "body": "La franja amarilla es marca, no contenido: solo en un borde inferior, recortada por la pantalla, y una vez por vista.", "section": "shapes" }
     ],
@@ -190,7 +252,13 @@
       "Do resolver colores por las variables de superficie (`--surface-*`, `--text-*`, `--fill-*`, `--ring-*`) para que la pieza funcione en el tema noche, y subir de paso los tonos de estado con `night:`.",
       "Do escribir el kiosco en `rem` y dejar que la raíz lo agrande en el monitor.",
       "Do llevar `tnum` en toda cifra: placa, total, montos, tablas.",
-      "Do usar el logo positivo sobre claro y el negativo sobre negro."
+      "Do usar el logo positivo sobre claro y el negativo sobre negro.",
+      "Do guardar en `confirm` negro cuando la pantalla tiene varios formularios, y dejar el amarillo a su única acción principal.",
+      "Do decir listo y pendiente con verde y naranja más su ícono (chulito, admiración), y enlazar cada punto pendiente con el lugar donde se arregla.",
+      "Do mostrar como resumen de solo lectura con \"Editar\" lo que ya está listo, y abierto lo que falta.",
+      "Do gestionar una fila desplegándola en su sitio, no en un modal.",
+      "Do marcar el campo obligatorio vacío con anillo naranja y \"Falta\", y escribir los ejemplos con \"Ej.:\".",
+      "Do representar a las personas con dos iniciales en un círculo gris."
     ],
     "donts": [
       "Don't poner texto blanco sobre amarillo Parking (1,9:1).",
@@ -202,7 +270,10 @@
       "Don't usar grises con tinte cálido o frío visible junto al amarillo; los neutros son los de la escala `ink`.",
       "Don't colocar la franja amarilla detrás de texto o de un control, ni fuera de un borde inferior.",
       "Don't anidar tarjetas dentro de tarjetas en el panel.",
-      "Don't volver a introducir el morado del sistema anterior."
+      "Don't volver a introducir el morado del sistema anterior.",
+      "Don't usar amarillo para un estado pendiente ni para marcar la sección que se lee en el índice.",
+      "Don't usar 11px fuera de una píldora o un círculo.",
+      "Don't poner fotos ni ilustraciones de personas que no tenemos."
     ]
   }
 }

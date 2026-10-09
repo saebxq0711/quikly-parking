@@ -5,6 +5,7 @@ import { ActionForm } from '@/components/action-form';
 import { Alert, Card, CardHeader, Checkbox, Field, Input } from '@/components/ui';
 import { setParkingTestMode, testNovaConnection, updateParkingConnection } from '../../actions';
 import { StatusPill, TestButton } from './redeban-card';
+import { EditableBlock } from '@/components/admin/editable-block';
 
 /**
  * Conexion con el sistema de ESTE parqueadero: su dominio y su token.
@@ -29,7 +30,7 @@ export function ConnectionCard({
     <Card>
       <CardHeader
         title="Sistema del parqueadero"
-        description="El servidor del parqueadero: de ahi salen el vehiculo y el valor a cobrar."
+        description="El servidor del parqueadero: de ahí salen el vehículo y el valor a cobrar."
         action={<StatusPill ok={listo} />}
       />
 
@@ -41,16 +42,23 @@ export function ConnectionCard({
           </Alert>
         ) : null}
 
-        {listo && !testMode ? <TestConnection parkingLotId={parkingLotId} /> : null}
-
-        <ActionForm
+        <EditableBlock
+          defaultOpen={!listo}
+          aside={listo && !testMode ? <TestConnection parkingLotId={parkingLotId} /> : null}
+          summary={[
+            { label: 'Dirección del sistema', value: baseUrl ?? 'Falta', missing: !baseUrl, tabular: Boolean(baseUrl) },
+            { label: 'Token de acceso', value: hasOwnToken ? 'Guardado' : 'Falta', missing: !hasOwnToken },
+            { label: 'Modo', value: testMode ? 'Pruebas (sistema simulado)' : 'Real' },
+          ]}
+        >
+        <ActionForm submitVariant="confirm"
           action={updateParkingConnection}
-          submitLabel="Guardar conexion"
+          submitLabel="Guardar conexión"
           onSuccessReset={false}
         >
           <input type="hidden" name="parkingLotId" value={parkingLotId} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Direccion del sistema" hint="Con https://">
+            <Field label="Dirección del sistema" hint="Con https://">
               <Input
                 name="novaBaseUrl"
                 defaultValue={baseUrl ?? ''}
@@ -61,12 +69,12 @@ export function ConnectionCard({
             </Field>
             <Field
               label="Token de acceso"
-              hint={hasOwnToken ? 'Guardado. Dejalo vacio para conservarlo.' : 'Lo entrega quien opera ese sistema.'}
+              hint={hasOwnToken ? 'Guardado. Déjalo vacío para conservarlo.' : 'Lo entrega quien opera ese sistema.'}
             >
               <Input
                 name="platformToken"
                 type="password"
-                placeholder={hasOwnToken ? '••••••••' : 'Pega aqui el token'}
+                placeholder={hasOwnToken ? '••••••••' : 'Pega aquí el token'}
                 autoComplete="new-password"
               />
             </Field>
@@ -74,7 +82,7 @@ export function ConnectionCard({
         </ActionForm>
 
         <div className="border-t border-[var(--line-subtle)] pt-5">
-          <ActionForm action={setParkingTestMode} submitLabel="Guardar modo" onSuccessReset={false}>
+          <ActionForm submitVariant="confirm" action={setParkingTestMode} submitLabel="Guardar modo" onSuccessReset={false}>
             <input type="hidden" name="parkingLotId" value={parkingLotId} />
             <Checkbox
               name="testMode"
@@ -82,11 +90,12 @@ export function ConnectionCard({
               label="Modo de pruebas"
             />
             <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
-              Placa valida: carro por $2.000. Codigo valido (A7B48): moto por $1.500 o
+              Placa válida: carro por $2.000. Código válido (A7B48): moto por $1.500 o
               bicicleta/patineta por $1.000.
             </p>
           </ActionForm>
         </div>
+        </EditableBlock>
       </div>
     </Card>
   );
@@ -98,7 +107,7 @@ function TestConnection({ parkingLotId }: { parkingLotId: string }) {
   return (
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="parkingLotId" value={parkingLotId} />
-      <TestButton label="Probar conexion" />
+      <TestButton label="Probar conexión" />
       {state ? <Alert tone={state.ok ? 'success' : 'error'}>{state.message}</Alert> : null}
     </form>
   );
