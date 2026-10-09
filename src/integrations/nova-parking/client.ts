@@ -208,7 +208,7 @@ export class NovaParkingClient {
    * llega por la URL de una peticion y nadie va a usarla para pedir otra cosa.
    */
   async media(path: string): Promise<{ bytes: ArrayBuffer; contentType: string }> {
-    const rutaDeFoto = /^\/api\/parking\/ticket\/\d+\/foto\/$/.test(path);
+    const rutaDeFoto = /^\/api\/parking\/ticket\/\d+\/foto\/(\?tipo=(entrada|salida))?$/.test(path);
     if (!rutaDeFoto && (!path.startsWith('/media/') || path.includes('..'))) {
       throw new AppError('NOT_FOUND', { detail: { operation: 'media', path } });
     }

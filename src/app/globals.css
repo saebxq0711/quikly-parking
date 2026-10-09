@@ -598,6 +598,17 @@ button:disabled,
   animation: aparecer 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+/* Fondo de la ventana de fotos del panel: entra sin golpe. */
+.photo-overlay {
+  animation: oscurecer 180ms ease-out both;
+}
+
+@keyframes oscurecer {
+  from {
+    opacity: 0;
+  }
+}
+
 .receipt-in {
   animation: aparecer 420ms 120ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
@@ -662,6 +673,7 @@ button:disabled,
 
 @media (prefers-reduced-motion: reduce) {
   .page-in,
+  .photo-overlay,
   .receipt-in,
   .live-dot,
   .skeleton::after,

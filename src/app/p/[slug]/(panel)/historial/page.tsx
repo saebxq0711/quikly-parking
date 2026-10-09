@@ -161,8 +161,12 @@ export default async function HistoryPage({
                             <td className="py-2 pl-5 pr-4">
                               <VehiclePhoto
                                 src={ticket.photo}
+                                exitSrc={ticket.exitPhoto}
                                 slug={slug}
                                 label={ticket.plate ?? ticket.code ?? 'vehiculo'}
+                                enteredAt={entrada?.toISOString() ?? null}
+                                exitedAt={salida?.toISOString() ?? null}
+                                inside={ticket.status === 'IN' && !ticket.cancelled}
                               />
                             </td>
                             {/* El CODIGO, nunca el id: el id es secuencial y dejaria deducir otros. */}
