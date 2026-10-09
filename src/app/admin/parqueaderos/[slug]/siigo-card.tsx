@@ -135,6 +135,10 @@ export function SiigoCard(props: {
               defaultChecked={props.sendMail}
               label="Enviar la factura al correo del cliente"
             />
+            <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">
+              El envio a la DIAN va con un comprobante marcado &ldquo;electronica&rdquo;. Al guardar se
+              verifica todo con SIIGO.
+            </p>
           </div>
 
           <Advanced>

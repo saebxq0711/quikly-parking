@@ -28,7 +28,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
 const BASE = process.env.SIIGO_API_URL ?? 'https://api.siigo.com';
-const PARTNER = process.env.SIIGO_PARTNER_ID ?? 'PuntoPagoParking';
+const PARTNER = process.env.SIIGO_PARTNER_ID ?? 'QuiklyParking';
 
 /** Codigo con el que identificamos el servicio de parqueadero en SIIGO. */
 const PRODUCT_CODE = 'PARQUEADERO';

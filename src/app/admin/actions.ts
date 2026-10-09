@@ -9,10 +9,16 @@ import { requireRole } from '@/lib/auth/guards';
 import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
 import { revokeAllSessions } from '@/lib/auth/session';
 import { AuditAction, recordAudit } from '@/lib/audit';
-import { setCredential } from '@/lib/credentials';
+import { getCredentials, setCredential } from '@/lib/credentials';
 import { novaClientFor } from '@/lib/parking/config';
 import { testRedebanConnection } from '@/lib/parking/redeban';
-import { siigoClientFor } from '@/lib/parking/siigo';
+import {
+  getSiigoSettings,
+  isSiigoCredentialError,
+  siigoClientFor,
+  verifySiigoConfig,
+} from '@/lib/parking/siigo';
+import { SiigoClient } from '@/integrations/siigo/client';
 
 /**
  * Acciones administrativas.
@@ -491,11 +497,60 @@ export async function saveSiigoConfig(
     provider: 'SIIGO' as const,
     parkingLotId: parsed.data.parkingLotId,
   };
+  const enabled = parsed.data.enabled === 'on';
+  const sendStamp = parsed.data.sendStamp === 'on';
+
+  /*
+    Antes de guardar se compara con SIIGO, con las credenciales del formulario (o la
+    clave ya guardada si no se escribio una nueva). Con la facturacion activada, una
+    configuracion que SIIGO va a rechazar no se guarda: cada cobro quedaria sin
+    factura. Si SIIGO no responde, se guarda igual y se avisa.
+  */
+  const accessKey =
+    parsed.data.accessKey ?? (await getCredentials(scope)).accessKey ?? null;
+  let aviso: string | null = null;
+
+  if (!accessKey) {
+    if (enabled) return fail('Escribe la clave de acceso de SIIGO para activar la facturacion.');
+  } else {
+    try {
+      const problemas = await verifySiigoConfig(
+        new SiigoClient({
+          baseUrl: parsed.data.baseUrl,
+          username: parsed.data.username,
+          accessKey,
+          partnerId: parsed.data.partnerId,
+        }),
+        {
+          documentId: Number(parsed.data.documentId),
+          sellerId: Number(parsed.data.sellerId),
+          paymentTypeId: Number(parsed.data.paymentTypeId),
+          itemCode: parsed.data.itemCode,
+          sendStamp,
+        },
+      );
+      if (problemas.length > 0) {
+        if (enabled) return fail(`No se guardo. ${problemas.join(' ')}`);
+        aviso = `Antes de activarla corrige: ${problemas.join(' ')}`;
+      }
+    } catch (error) {
+      if (isSiigoCredentialError(error)) {
+        if (enabled) {
+          return fail(
+            'No se guardo: SIIGO rechazo el usuario, la clave de acceso o el identificador de la aplicacion.',
+          );
+        }
+        aviso = 'SIIGO rechazo el usuario o la clave: revisalos antes de activarla.';
+      } else {
+        aviso = 'No se pudo verificar con SIIGO en este momento; usa "Probar facturacion" mas tarde.';
+      }
+    }
+  }
 
   const plain: Record<string, string> = {
     baseUrl: parsed.data.baseUrl,
     partnerId: parsed.data.partnerId,
-    enabled: parsed.data.enabled === 'on' ? 'true' : 'false',
+    enabled: enabled ? 'true' : 'false',
     username: parsed.data.username,
     documentId: parsed.data.documentId,
     sellerId: parsed.data.sellerId,
@@ -506,7 +561,7 @@ export async function saveSiigoConfig(
     defaultCustomerIdentification:
       parsed.data.defaultCustomerIdentification ?? '222222222',
     defaultCustomerName: parsed.data.defaultCustomerName ?? 'Consumidor final',
-    sendStamp: parsed.data.sendStamp === 'on' ? 'true' : 'false',
+    sendStamp: sendStamp ? 'true' : 'false',
     sendMail: parsed.data.sendMail === 'on' ? 'true' : 'false',
   };
 
@@ -537,10 +592,14 @@ export async function saveSiigoConfig(
 
   revalidatePath('/admin/parqueaderos');
   revalidatePath('/admin/integraciones');
-  return ok('Facturacion configurada.');
+  return ok(aviso ? `Guardada. ${aviso}` : 'Facturacion configurada y verificada con SIIGO.');
 }
 
-/** Comprueba credenciales de facturacion pidiendo un catalogo, sin facturar. */
+/**
+ * Comprueba credenciales y configuracion de facturacion contra SIIGO, sin facturar:
+ * que el comprobante, el vendedor, la forma de pago y el servicio existan y que el
+ * envio a la DIAN corresponda al tipo de comprobante.
+ */
 export async function testSiigo(
   _prev: ActionResult | null,
   formData: FormData,
@@ -550,12 +609,26 @@ export async function testSiigo(
 
   try {
     const client = await siigoClientFor(parkingLotId);
-    // Pedir el catalogo de comprobantes valida credenciales y Partner-Id sin
-    // crear ningun documento.
-    const docs = await client.get<{ id: number }[]>('/v1/document-types?type=FV');
-    return ok(
-      `Conectado. El ambiente expone ${Array.isArray(docs) ? docs.length : 0} tipos de comprobante.`,
-    );
+    const settings = await getSiigoSettings(parkingLotId);
+    if (
+      settings.documentId === null ||
+      settings.sellerId === null ||
+      settings.paymentTypeId === null ||
+      !settings.itemCode
+    ) {
+      return fail('Completa y guarda la configuracion antes de probarla.');
+    }
+
+    const problemas = await verifySiigoConfig(client, {
+      documentId: settings.documentId,
+      sellerId: settings.sellerId,
+      paymentTypeId: settings.paymentTypeId,
+      itemCode: settings.itemCode,
+      sendStamp: settings.sendStamp,
+    });
+    return problemas.length === 0
+      ? ok('Conectado. El comprobante, el vendedor, la forma de pago y el servicio estan bien en SIIGO.')
+      : fail(`Conectado, pero hay que corregir: ${problemas.join(' ')}`);
   } catch (error) {
     return fail(
       error instanceof AppError

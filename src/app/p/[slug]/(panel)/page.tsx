@@ -30,6 +30,7 @@ import {
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { LiveDuration } from '@/components/panel/live-duration';
 import { VehiclePhoto } from '@/components/panel/vehicle-photo';
+import { diaEnBogota, inicioDelDia } from '@/lib/dates';
 
 export const metadata = { title: 'Resumen' };
 
@@ -58,13 +59,7 @@ export default async function PanelHomePage({
     : ([NO_SOURCE, NO_SOURCE, NO_SOURCE, NO_SOURCE] as const);
 
   // Medianoche de Bogota, no la del servidor (Vercel corre en UTC).
-  const hoy = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-  const desdeMedianoche = new Date(`${hoy}T00:00:00-05:00`);
+  const desdeMedianoche = inicioDelDia(diaEnBogota());
 
   const kiosco = await db.payment.aggregate({
     where: { parkingLotId: lot.id, status: 'APPROVED', createdAt: { gte: desdeMedianoche } },

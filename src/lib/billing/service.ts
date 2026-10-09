@@ -7,6 +7,7 @@ import {
   buildInvoicePayload,
   findMissingSettings,
 } from '@/integrations/siigo/invoice-payload';
+import { describeSiigoErrors } from '@/integrations/siigo/errors';
 
 /**
  * Facturacion electronica (CLAUDE.md secciones 14 y 15, FASE 7).
@@ -22,26 +23,13 @@ const MAX_ATTEMPTS = 5;
 /**
  * Saca el motivo legible del cuerpo de error de SIIGO.
  *
- * SIIGO responde `{ Status, Errors: [{ Code, Message, Params }] }`. Guardar
- * solo "la factura fue rechazada" obligaba a ir al log del servidor para saber
- * que campo estaba mal; con esto el motivo queda en la propia factura y se ve
- * desde la interfaz.
+ * Guardar solo "la factura fue rechazada" obligaba a ir al log del servidor para
+ * saber que campo estaba mal; con esto el motivo queda en la propia factura, en
+ * espanol, y se ve desde la interfaz.
  */
 function extractSiigoError(detail: unknown): string | null {
   if (typeof detail !== 'object' || detail === null) return null;
-  const body = (detail as { body?: unknown }).body;
-  if (typeof body !== 'object' || body === null) return null;
-
-  const errors = (body as { Errors?: unknown }).Errors;
-  if (Array.isArray(errors) && errors.length > 0) {
-    return errors
-      .map((e: { Message?: string; Params?: string[] }) =>
-        e.Params?.length ? `${e.Message} (${e.Params.join(', ')})` : e.Message,
-      )
-      .filter(Boolean)
-      .join(' | ');
-  }
-  return null;
+  return describeSiigoErrors((detail as { body?: unknown }).body);
 }
 
 /**

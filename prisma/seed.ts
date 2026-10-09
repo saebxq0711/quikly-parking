@@ -230,7 +230,7 @@ async function main() {
     baseUrl: { value: 'https://api.siigo.com', secret: false },
     // El Partner-Id NO admite guiones ni puntos: con ellos el servicio responde
     // `invalid_partner_id` en todos los endpoints salvo el de autenticacion.
-    partnerId: { value: 'PuntoPagoParking', secret: false },
+    partnerId: { value: 'QuiklyParking', secret: false },
     username: { value: process.env.SIIGO_USERNAME ?? '', secret: false },
     accessKey: { value: process.env.SIIGO_ACCESS_KEY ?? '', secret: true },
     /*

@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/app-shell';
 import { Card, EmptyState, formatCOP, formatDateTime } from '@/components/ui';
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { KioskLogoutButton } from './logout-button';
+import { diaEnBogota, inicioDelDia } from '@/lib/dates';
 
 export const metadata = { title: 'Kioscos' };
 
@@ -18,12 +19,7 @@ export default async function KiosksPage({ params }: { params: Promise<{ slug: s
   const { lot } = await panelAccess(slug);
 
   const ahora = new Date();
-  const hoy = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(ahora);
+  const hoy = diaEnBogota(ahora);
 
   const [kioscos, cobrosHoy] = await Promise.all([
     db.paymentPoint.findMany({
@@ -50,7 +46,7 @@ export default async function KiosksPage({ params }: { params: Promise<{ slug: s
       where: {
         parkingLotId: lot.id,
         status: 'APPROVED',
-        createdAt: { gte: new Date(`${hoy}T00:00:00-05:00`) },
+        createdAt: { gte: inicioDelDia(hoy) },
       },
       _count: { _all: true },
       _sum: { amount: true },

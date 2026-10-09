@@ -190,7 +190,7 @@ export default async function ParkingLotDetailPage({
             parkingLotId={lot.id}
             catalogs={catalogs}
             baseUrl={siigoValues.baseUrl ?? 'https://api.siigo.com'}
-            partnerId={siigoValues.partnerId ?? 'PuntoPagoParking'}
+            partnerId={siigoValues.partnerId ?? 'QuiklyParking'}
             enabled={siigo.enabled}
             missing={siigo.missing}
             username={siigo.username ?? ''}

@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
+import { esDiaValido, finDelDia, inicioDelDia } from '@/lib/dates';
 import { requireUser, scopeToParkingLot } from '@/lib/auth/guards';
 import { PageHeader } from '@/components/app-shell';
 import { VehicleIcon } from '@/components/vehicle-icon';
@@ -89,11 +90,17 @@ export default async function PaymentsPage({
   if (filters.tipo && filters.tipo !== 'TODOS') {
     where.vehicleType = filters.tipo as Prisma.EnumVehicleTypeFilter['equals'];
   }
-  if (filters.desde || filters.hasta) {
+  /*
+    Dias de Bogota, no del servidor (Vercel corre en UTC). Una fecha mal escrita
+    en la URL se ignora en vez de romper la consulta.
+  */
+  const desde = esDiaValido(filters.desde) ? filters.desde : null;
+  const hasta = esDiaValido(filters.hasta) ? filters.hasta : null;
+  if (desde || hasta) {
     where.createdAt = {};
-    if (filters.desde) where.createdAt.gte = new Date(`${filters.desde}T00:00:00`);
+    if (desde) where.createdAt.gte = inicioDelDia(desde);
     // `hasta` es inclusivo: se toma hasta el final de ese dia.
-    if (filters.hasta) where.createdAt.lte = new Date(`${filters.hasta}T23:59:59`);
+    if (hasta) where.createdAt.lte = finDelDia(hasta);
   }
 
   const page = Math.max(1, Number(filters.pagina ?? 1) || 1);

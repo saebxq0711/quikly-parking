@@ -116,7 +116,7 @@ export async function siigoClientFor(
     accessKey: values.accessKey,
     // El Partner-Id NO admite guiones ni puntos: con ellos el servicio responde
     // `invalid_partner_id` en todos los endpoints salvo el de autenticacion.
-    partnerId: values.partnerId ?? 'PuntoPagoParking',
+    partnerId: values.partnerId ?? 'QuiklyParking',
   });
 }
 
@@ -225,4 +225,103 @@ export async function getSiigoCatalogs(parkingLotId: string): Promise<SiigoCatal
       message: error instanceof AppError ? error.publicMessage : 'SIIGO no respondio a tiempo.',
     };
   }
+}
+
+/* ---------------------------------------------------- Verificacion */
+
+export interface SiigoConfigToCheck {
+  documentId: number;
+  sellerId: number;
+  paymentTypeId: number;
+  itemCode: string;
+  sendStamp: boolean;
+}
+
+/**
+ * Compara la configuracion con lo que de verdad hay en SIIGO, sin emitir nada.
+ *
+ * Existe porque SIIGO solo dice que algo esta mal cuando se intenta facturar: el
+ * parqueadero 122 tuvo guardado un comprobante NO electronico con el envio a la DIAN
+ * activado, y cada cobro habria quedado sin factura. Devuelve los problemas en
+ * lenguaje del SuperAdmin; lista vacia = la configuracion es coherente.
+ *
+ * Lanza AppError si SIIGO no responde o rechaza las credenciales: eso no es un
+ * problema de la configuracion y quien llama decide que hacer.
+ */
+export async function verifySiigoConfig(
+  client: SiigoClient,
+  config: SiigoConfigToCheck,
+): Promise<string[]> {
+  const [documentos, pagos, usuarios, productos] = await conLimite(
+    Promise.all([
+      client.get<unknown>('/v1/document-types?type=FV'),
+      client.get<unknown>('/v1/payment-types?document_type=FV'),
+      client.get<unknown>('/v1/users?page_size=100'),
+      client.get<unknown>(`/v1/products?code=${encodeURIComponent(config.itemCode)}`),
+    ]),
+    15_000,
+  );
+
+  const problemas: string[] = [];
+
+  const doc = filas(documentos).find((d) => Number(d.id) === config.documentId);
+  if (!doc) {
+    problemas.push(`El comprobante ${config.documentId} no existe en SIIGO.`);
+  } else if (!activo(doc)) {
+    problemas.push(`El comprobante "${String(doc.name)}" esta inactivo en SIIGO.`);
+  } else {
+    const tipo = String(doc.electronic_type ?? '');
+    const electronico = tipo === 'ElectronicInvoice';
+    if (tipo === 'ExportInvoice') {
+      problemas.push(`El comprobante "${String(doc.name)}" es de exportacion: elige uno de factura de venta.`);
+    } else if (config.sendStamp && !electronico) {
+      problemas.push(
+        `El comprobante "${String(doc.name)}" no es electronico, asi que no se puede enviar a la DIAN. Elige uno marcado "electronica" o desactiva el envio a la DIAN.`,
+      );
+    } else if (!config.sendStamp && electronico) {
+      problemas.push(
+        `El comprobante "${String(doc.name)}" es de factura electronica: SIIGO exige enviarlo a la DIAN. Activa "Enviar la factura a la DIAN".`,
+      );
+    }
+  }
+
+  const pago = filas(pagos).find((p) => Number(p.id) === config.paymentTypeId);
+  if (!pago) {
+    problemas.push(`La forma de pago ${config.paymentTypeId} no existe para facturas en SIIGO.`);
+  } else if (!activo(pago)) {
+    problemas.push(`La forma de pago "${String(pago.name)}" esta inactiva en SIIGO.`);
+  }
+
+  /*
+    Los vendedores vienen paginados: si no aparece en la primera pagina pero hay mas,
+    no se puede afirmar que no exista, y no se reporta.
+  */
+  const listaUsuarios = filas(usuarios);
+  const totalUsuarios = Number(
+    (usuarios as { pagination?: { total_results?: number } } | null)?.pagination?.total_results ??
+      listaUsuarios.length,
+  );
+  const vendedor = listaUsuarios.find((u) => Number(u.id) === config.sellerId);
+  if (vendedor && !activo(vendedor)) {
+    problemas.push(`El vendedor ${config.sellerId} esta inactivo en SIIGO.`);
+  } else if (!vendedor && totalUsuarios <= listaUsuarios.length) {
+    problemas.push(`El vendedor ${config.sellerId} no existe en SIIGO.`);
+  }
+
+  const producto = filas(productos).find((p) => String(p.code) === config.itemCode);
+  if (!producto) {
+    problemas.push(`El servicio con codigo ${config.itemCode} no existe en SIIGO.`);
+  } else if (!activo(producto)) {
+    problemas.push(`El servicio "${String(producto.name)}" esta inactivo en SIIGO.`);
+  }
+
+  return problemas;
+}
+
+/** True si el error es SIIGO rechazando el usuario o la clave (no una caida). */
+export function isSiigoCredentialError(error: unknown): boolean {
+  return (
+    error instanceof AppError &&
+    (error.detail as { credencialesRechazadas?: boolean } | undefined)?.credencialesRechazadas === true
+  );
 }

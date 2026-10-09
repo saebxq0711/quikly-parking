@@ -24,6 +24,7 @@ import {
 import { Pager } from '@/components/pager';
 import { ReportFilters } from './filters';
 import { ExcelButton } from './excel-button';
+import { diaEnBogota } from '@/lib/dates';
 
 export const metadata = { title: 'Reportes' };
 
@@ -40,15 +41,6 @@ interface SearchParams extends Record<string, string | undefined> {
   desde?: string;
   hasta?: string;
   pagina?: string;
-}
-
-function diaEnBogota(fecha: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(fecha);
 }
 
 /**

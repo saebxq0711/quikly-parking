@@ -29,7 +29,7 @@ const schema = z.object({
   SIIGO_API_URL: z.string().url().default('https://api.siigo.com'),
   SIIGO_USERNAME: z.string().optional(),
   SIIGO_ACCESS_KEY: z.string().optional(),
-  SIIGO_PARTNER_ID: z.string().default('PuntoPagoParking'),
+  SIIGO_PARTNER_ID: z.string().default('QuiklyParking'),
   SIIGO_ENABLED: z
     .string()
     .default('false')
