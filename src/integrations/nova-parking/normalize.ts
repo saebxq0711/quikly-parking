@@ -193,7 +193,7 @@ export function normalizeTicket(raw: unknown): NovaTicket | null {
       camaras. Se mira primero el campo propio y despues la lista, igual que hace
       su propio buscador.
     */
-    photo: (() => {
+    photo: ticketPhotoPath(id, (() => {
       const propia = asString(pick(source, 'front_image', 'frontImage', 'foto'));
       if (propia) return propia;
 
@@ -205,8 +205,23 @@ export function normalizeTicket(raw: unknown): NovaTicket | null {
         }
       }
       return asString(pick(source, 'plate_image', 'plateImage'));
-    })(),
+    })()),
   };
+}
+
+/**
+ * Ruta por la que se pide la foto de un tiquete al sistema del parqueadero.
+ *
+ * El tiquete trae la foto como `/media/parking_tickets/...`, pero esa carpeta no
+ * esta publicada en el tunel. Nova Parking expone la foto de cada tiquete en
+ * `/api/parking/ticket/<id>/foto/`, con token (verificado el 2026-10-09: 200
+ * con token, 403 sin el). Si el tiquete no trae foto, no hay ruta: asi la
+ * pantalla dice "sin foto" sin hacer una peticion de mas.
+ */
+export function ticketPhotoPath(ticketId: string | null, rutaOriginal: string | null): string | null {
+  if (!rutaOriginal) return null;
+  if (ticketId && /^\d+$/.test(ticketId)) return `/api/parking/ticket/${ticketId}/foto/`;
+  return rutaOriginal;
 }
 
 export function normalizeCheckout(raw: unknown): NovaCheckout | null {

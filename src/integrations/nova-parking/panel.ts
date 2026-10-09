@@ -1,6 +1,7 @@
 import { AppError } from '@/lib/errors';
 import { parseUpstreamDate } from '@/lib/parking/tickets-view';
 import type { NovaParkingClient } from './client';
+import { ticketPhotoPath } from './normalize';
 
 /**
  * Lecturas del panel del administrador de parqueadero.
@@ -345,7 +346,7 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
   const galeria = list(item.images).flatMap((foto) =>
     isDict(foto) ? [str(foto.image)].filter(Boolean) : [],
   ) as string[];
-  const photo = str(item.front_image) ?? galeria[0] ?? null;
+  const photo = ticketPhotoPath(id, str(item.front_image) ?? galeria[0] ?? null);
 
   return [
     {

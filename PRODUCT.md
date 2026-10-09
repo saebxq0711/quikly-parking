@@ -24,7 +24,7 @@ No reemplaza ni recalcula nada del parqueadero: el valor a cobrar siempre lo cal
 
 - Flujo del kiosco: elegir vehículo (carro, moto, patineta, bicicleta) → escribir placa o código del tiquete (o escanear su QR) → confirmar el vehículo con la foto de entrada → documento del cliente (y datos si es nuevo) → total → pagar con tarjeta en el datáfono (hay que pulsar "Iniciar cobro" en el aparato) → resultado, comprobante impreso o en pantalla.
 - El kiosco cambia solo entre tema de día (claro) y de noche (oscuro) según la hora, con un botón para forzarlo.
-- El panel del administrador es de solo lectura sobre Nova Parking; las fotos de entrada dependen de que Nova Parking publique `/media/` por el túnel (pendiente del otro lado).
+- El panel del administrador es de solo lectura sobre Nova Parking; las fotos de entrada llegan por `/api/parking/ticket/<id>/foto/` del túnel, con token (desde el 2026-10-09).
 - Un parqueadero puede tener varios kioscos, cada uno con su datáfono, impresora y usuario.
 
 ## Capabilities and Constraints
