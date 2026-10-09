@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { AppError, toErrorResponse } from '@/lib/errors';
 import { consumeRateLimit } from '@/lib/rate-limit';
+import { strike } from '@/lib/security/blocklist';
 import { AuditAction, recordAudit, requestContext } from '@/lib/audit';
 import { hashToken } from '@/lib/auth/reset-token';
 import { hashPassword } from '@/lib/auth/password';
@@ -31,7 +32,9 @@ export async function POST(request: Request) {
   const ctx = requestContext(request);
 
   try {
-    consumeRateLimit({
+    await consumeRateLimit({
+      ip: ctx.ip,
+      path: '/api/auth/restablecer',
       key: `restablecer:${ctx.ip ?? 'desconocida'}`,
       limit: 10,
       windowMs: 10 * 60_000,
@@ -58,6 +61,11 @@ export async function POST(request: Request) {
       solicitud.expiresAt > new Date();
 
     if (!vigente) {
+      // Un token que nunca existio suma una falta: quien prueba tokens al azar
+      // termina bloqueado. Uno vencido o ya usado es un descuido, no un ataque.
+      if (!solicitud) {
+        await strike(ctx.ip, 'BAD_TOKEN', { path: '/api/auth/restablecer' });
+      }
       // Un solo mensaje para "no existe", "ya se uso" y "vencio": los tres
       // significan lo mismo para quien lo tiene delante, y separarlos le diria a
       // un atacante si acerto con un token.

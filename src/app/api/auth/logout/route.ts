@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const user = await getCurrentUser();
 
     if (user?.role === 'PUNTO_PAGO') {
-      consumeRateLimit({ key: `logout:${user.id}`, limit: 8, windowMs: 60_000 });
+      await consumeRateLimit({ key: `logout:${user.id}`, limit: 8, windowMs: 60_000 });
 
       const body = await request.json().catch(() => ({}));
       const parsed = schema.safeParse(body);

@@ -148,6 +148,7 @@ export async function novaClientFor(
   return new NovaParkingClient({
     baseUrl,
     token: credentials.platformToken ?? null,
+    parkingLotId,
   });
 }
 

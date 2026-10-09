@@ -4,6 +4,7 @@ import { requireRole, scopeToParkingLot } from '@/lib/auth/guards';
 import { AppError, toErrorResponse } from '@/lib/errors';
 import { getSiigoSettings } from '@/lib/parking/siigo';
 import { buildInvoicePrint } from '@/lib/billing/invoice-print';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 /**
  * La factura de un pago, para imprimirla en el kiosco.
@@ -18,6 +19,8 @@ export async function GET(
 ) {
   try {
     const user = await requireRole('PUNTO_PAGO');
+    // La pantalla pregunta cada 2 s durante 30 s como mucho.
+    await consumeRateLimit({ key: `factura-pos:${user.id}`, limit: 90, windowMs: 60_000 });
     const { id } = await params;
 
     const payment = await db.payment.findUnique({

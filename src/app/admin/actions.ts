@@ -19,6 +19,8 @@ import {
   verifySiigoConfig,
 } from '@/lib/parking/siigo';
 import { SiigoClient } from '@/integrations/siigo/client';
+import { blockIp, unblockIp } from '@/lib/security/blocklist';
+import { normalizeIp } from '@/lib/security/ip';
 
 /**
  * Acciones administrativas.
@@ -1085,4 +1087,72 @@ export async function dismissResetRequest(
 
   revalidatePath('/admin/usuarios');
   return ok('Solicitud descartada.');
+}
+
+/* ------------------------------------------------------------ Seguridad */
+
+const DURACIONES_BLOQUEO: Record<string, number | 'permanente'> = {
+  '60': 60,
+  '1440': 24 * 60,
+  '10080': 7 * 24 * 60,
+  permanente: 'permanente',
+};
+
+/** Bloquea una IP a mano (SuperAdmin). */
+export async function blockIpAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const actor = await requireRole('SUPERADMIN');
+
+  const ip = normalizeIp(String(formData.get('ip') ?? ''));
+  if (!ip) return fail('Escribe una IP valida, por ejemplo 181.49.12.30.');
+
+  const duracion = DURACIONES_BLOQUEO[String(formData.get('duration') ?? '')];
+  if (!duracion) return fail('Elige por cuanto tiempo.');
+
+  const motivo = String(formData.get('reason') ?? '').trim().slice(0, 150);
+  const bloqueo = await blockIp({
+    ip,
+    reason: motivo ? `Manual: ${motivo}` : 'Manual',
+    automatic: false,
+    permanent: duracion === 'permanente',
+    minutes: duracion === 'permanente' ? 0 : duracion,
+    actorId: actor.id,
+  });
+  if (!bloqueo) {
+    return fail('Esa IP esta en la lista de confianza (SECURITY_ALLOWLIST_IPS) y no se bloquea.');
+  }
+
+  await recordAudit({
+    action: AuditAction.SECURITY_IP_BLOCKED,
+    actorId: actor.id,
+    entity: 'BlockedIp',
+    entityId: ip,
+    metadata: { motivo, duracion },
+  });
+
+  revalidatePath('/admin/seguridad');
+  return ok(`IP ${ip} bloqueada.`);
+}
+
+/** Levanta el bloqueo de una IP (SuperAdmin). */
+export async function unblockIpAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const actor = await requireRole('SUPERADMIN');
+  const ip = String(formData.get('ip') ?? '');
+
+  if (!(await unblockIp(ip, actor.id))) return fail('Esa IP no estaba bloqueada.');
+
+  await recordAudit({
+    action: AuditAction.SECURITY_IP_UNBLOCKED,
+    actorId: actor.id,
+    entity: 'BlockedIp',
+    entityId: ip,
+  });
+
+  revalidatePath('/admin/seguridad');
+  return ok('IP desbloqueada.');
 }

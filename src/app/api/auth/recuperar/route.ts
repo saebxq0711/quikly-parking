@@ -22,7 +22,9 @@ export async function POST(request: Request) {
   const ctx = requestContext(request);
 
   try {
-    consumeRateLimit({
+    await consumeRateLimit({
+      ip: ctx.ip,
+      path: '/api/auth/recuperar',
       key: `reset:${ctx.ip ?? 'desconocida'}`,
       limit: 5,
       windowMs: 10 * 60_000,

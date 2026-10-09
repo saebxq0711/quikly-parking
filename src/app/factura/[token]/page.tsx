@@ -1,6 +1,10 @@
 import Image from 'next/image';
+import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db';
+import { consumeRateLimit } from '@/lib/rate-limit';
+import { strike } from '@/lib/security/blocklist';
+import { clientIp } from '@/lib/security/ip';
 import { formatCOP } from '@/components/ui';
 
 export const metadata = { title: 'Tu factura' };
@@ -33,9 +37,24 @@ export default async function FacturaPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const ip = clientIp(await headers());
+
+  /*
+    Es la unica pagina publica que consulta la base. El token tiene 24 bytes
+    aleatorios y no se adivina, pero sin limite cualquiera podria martillar la
+    base probando enlaces; asi, quien insiste queda bloqueado.
+  */
+  try {
+    await consumeRateLimit({ key: `factura:${ip ?? 'desconocida'}`, limit: 30, windowMs: 60_000, ip, path: '/factura' });
+  } catch {
+    return <Aviso titulo="Demasiadas consultas" texto="Espera un minuto y vuelve a abrir el enlace." />;
+  }
 
   // Forma del token antes de ir a la base: descarta basura sin consultar.
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) notFound();
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) {
+    await strike(ip, 'BAD_TOKEN', { path: '/factura' });
+    notFound();
+  }
 
   const payment = await db.payment.findUnique({
     where: { receiptToken: token },
@@ -48,7 +67,11 @@ export default async function FacturaPage({
     },
   });
 
-  if (!payment || payment.status !== 'APPROVED') notFound();
+  if (!payment) {
+    await strike(ip, 'BAD_TOKEN', { path: '/factura' });
+    notFound();
+  }
+  if (payment.status !== 'APPROVED') notFound();
 
   // Solo se sigue un enlace de SIIGO por https: la URL la guardamos nosotros de
   // su respuesta, pero no se redirige a ciegas a lo que haya en la base.
@@ -100,6 +123,17 @@ export default async function FacturaPage({
             </div>
           ) : null}
         </dl>
+      </div>
+    </main>
+  );
+}
+
+function Aviso({ titulo, texto }: { titulo: string; texto: string }) {
+  return (
+    <main className="flex min-h-dvh items-center justify-center px-5 py-12">
+      <div className="w-full max-w-sm text-center">
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">{titulo}</h1>
+        <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-[var(--text-secondary)]">{texto}</p>
       </div>
     </main>
   );

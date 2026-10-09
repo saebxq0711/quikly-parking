@@ -28,7 +28,7 @@ export async function changeOwnPassword(
   const user = await requireUser();
 
   try {
-    consumeRateLimit({ key: `cambio-clave:${user.id}`, limit: 5, windowMs: 10 * 60_000 });
+    await consumeRateLimit({ key: `cambio-clave:${user.id}`, limit: 5, windowMs: 10 * 60_000 });
   } catch {
     return fail('Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.');
   }

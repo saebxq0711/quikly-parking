@@ -2,6 +2,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { retryPendingInvoices } from '@/lib/billing/service';
 import { retryParkingConfirmations } from '@/lib/payments/service';
+import { purgeOldSecurityData } from '@/lib/security/blocklist';
+import { purgeExpiredBuckets } from '@/lib/security/limiter';
 
 export const maxDuration = 60;
 
@@ -31,5 +33,7 @@ export async function GET(request: Request) {
   const reintentadas = await retryPendingInvoices();
   // Tambien los cobros aprobados que el parqueadero no alcanzo a registrar.
   const avisos = await retryParkingConfirmations();
-  return NextResponse.json({ reintentadas, avisos });
+  // Limpieza de seguridad: contadores vencidos, eventos de mas de 90 dias.
+  const [contadores, seguridad] = await Promise.all([purgeExpiredBuckets(), purgeOldSecurityData()]);
+  return NextResponse.json({ reintentadas, avisos, limpieza: { contadores, ...seguridad } });
 }

@@ -13,6 +13,7 @@ import {
   MdHistory,
   MdLocalParking,
   MdPointOfSale,
+  MdShield,
   MdSettingsInputComponent,
   MdSpaceDashboard,
 } from 'react-icons/md';
@@ -37,7 +38,8 @@ export type NavIcon =
   | 'inside'
   | 'history'
   | 'cash'
-  | 'reports';
+  | 'reports'
+  | 'security';
 
 export interface NavItem {
   href: string;
@@ -63,6 +65,7 @@ const ICONS: Record<NavIcon, IconType> = {
   history: MdHistory,
   cash: MdAccountBalanceWallet,
   reports: MdAssessment,
+  security: MdShield,
 };
 
 function Icon({ name }: { name: NavIcon }) {

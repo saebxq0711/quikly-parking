@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { db } from './db';
 import { scrubSecrets } from './errors';
+import { clientIp } from './security/ip';
 
 /**
  * Registro de auditoria (CLAUDE.md seccion 24).
@@ -31,6 +32,8 @@ export const AuditAction = {
   INVOICE_REQUESTED: 'INVOICE_REQUESTED',
   INVOICE_RESULT: 'INVOICE_RESULT',
   UPSTREAM_ERROR: 'UPSTREAM_ERROR',
+  SECURITY_IP_BLOCKED: 'SECURITY_IP_BLOCKED',
+  SECURITY_IP_UNBLOCKED: 'SECURITY_IP_UNBLOCKED',
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -75,9 +78,9 @@ export function requestContext(request: Request): {
   ip: string | null;
   userAgent: string | null;
 } {
-  const forwarded = request.headers.get('x-forwarded-for');
   return {
-    ip: forwarded?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip'),
-    userAgent: request.headers.get('user-agent'),
+    // La que pone Vercel primero: `x-forwarded-for` la puede inventar el cliente.
+    ip: clientIp(request.headers),
+    userAgent: request.headers.get('user-agent')?.slice(0, 300) ?? null,
   };
 }

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/guards';
 import { respuestaDeFoto } from '@/lib/parking/vehicle-photo';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +28,13 @@ export async function GET(
   // 404 y no 403: no se confirma que exista un parqueadero ajeno.
   if (!lot || user.role !== 'ADMIN_PARQUEADERO' || user.parkingLotId !== lot.id) {
     return new Response(null, { status: 404 });
+  }
+
+  // El historial pide una foto por fila; 240 por minuto son varias paginas seguidas.
+  try {
+    await consumeRateLimit({ key: `foto-panel:${user.id}`, limit: 240, windowMs: 60_000 });
+  } catch {
+    return new Response(null, { status: 429, headers: { 'Retry-After': '60' } });
   }
 
   const src = new URL(request.url).searchParams.get('src') ?? '';

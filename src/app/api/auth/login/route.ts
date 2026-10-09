@@ -7,6 +7,7 @@ import { createSession } from '@/lib/auth/session';
 import { homePathForRole } from '@/lib/auth/guards';
 import { AuditAction, recordAudit, requestContext } from '@/lib/audit';
 import { consumeRateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { strike } from '@/lib/security/blocklist';
 
 const schema = z.object({
   email: z.string().email('Correo invalido').max(200),
@@ -22,10 +23,12 @@ export async function POST(request: Request) {
 
   try {
     // Limite por IP: frena el ataque de fuerza bruta antes de tocar la base.
-    consumeRateLimit({
+    await consumeRateLimit({
       key: `login:${ctx.ip ?? 'desconocida'}`,
       limit: 10,
       windowMs: 60_000,
+      ip: ctx.ip,
+      path: '/api/auth/login',
     });
 
     const parsed = schema.safeParse(await request.json());
@@ -36,6 +39,18 @@ export async function POST(request: Request) {
     }
 
     const email = parsed.data.email.trim().toLowerCase();
+
+    /*
+      Limite por CUENTA, compartido entre IPs: frena el ataque repartido desde
+      muchas direcciones contra un mismo correo, que el limite por IP no ve.
+    */
+    await consumeRateLimit({
+      key: `login-cuenta:${email}`,
+      limit: 20,
+      windowMs: 60 * 60_000,
+      ip: ctx.ip,
+      path: '/api/auth/login',
+    });
 
     const user = await db.user.findUnique({
       where: { email },
@@ -54,10 +69,13 @@ export async function POST(request: Request) {
         metadata: { email, reason: 'usuario inexistente' },
         ...ctx,
       });
+      await strike(ctx.ip, 'LOGIN_FAILED', { path: '/api/auth/login', detail: email });
       throw invalidCredentials;
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
+      // Seguir probando contra una cuenta ya bloqueada tambien es atacarla.
+      await strike(ctx.ip, 'LOGIN_FAILED', { path: '/api/auth/login', detail: `${email} (bloqueada)` });
       const minutes = Math.ceil(
         (user.lockedUntil.getTime() - Date.now()) / 60_000,
       );
@@ -87,6 +105,7 @@ export async function POST(request: Request) {
         metadata: { reason: 'contrasena incorrecta', failedCount: failed },
         ...ctx,
       });
+      await strike(ctx.ip, 'LOGIN_FAILED', { path: '/api/auth/login', detail: email });
       throw invalidCredentials;
     }
 
@@ -116,7 +135,8 @@ export async function POST(request: Request) {
       userAgent: ctx.userAgent,
     });
 
-    resetRateLimit(`login:${ctx.ip ?? 'desconocida'}`);
+    await resetRateLimit(`login:${ctx.ip ?? 'desconocida'}`);
+    await resetRateLimit(`login-cuenta:${email}`);
 
     await recordAudit({
       action: AuditAction.AUTH_LOGIN,
