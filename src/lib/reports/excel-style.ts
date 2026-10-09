@@ -13,23 +13,23 @@ import type ExcelJS from 'exceljs';
  * Aqui viven la portada, la barra de titulo, el encabezado de columnas y los
  * bordes: las hojas de `route.ts` solo dicen QUE datos llevan, no como se ven.
  *
- * Los colores son los del Manual de Marca Quikly (lavanda #b58fff, aqua #5CE1E6
- * y el ambar #F7B500 de la linea Parking), en los pasos oscuros que hacen falta
- * para sostener texto blanco encima.
+ * Los colores son los de la plataforma: negro, blanco y el amarillo #F7B500 de
+ * la linea Parking. Sobre amarillo el texto va en negro, igual que en pantalla.
  */
 
 /* Excel escribe los colores en ARGB (alfa primero). */
 export const COLOR = {
-  marcaFondo: 'FF1A0F33', // violeta profundo de la portada
-  marca: 'FF6D2FD4', // lavanda de marca, paso oscuro: encabezados
-  marcaSuave: 'FFF1E9FF', // lavanda al 8%: filas alternas
-  ambar: 'FFF7B500', // linea Parking: la franja de acento
-  aqua: 'FF167E87',
-  verde: 'FF4F7F39',
-  rojo: 'FFC93434',
-  texto: 'FF1A1629',
-  textoSuave: 'FF5D5575',
-  linea: 'FFE3DFEE',
+  marcaFondo: 'FF0B0B0B', // negro de la barra: portada y banda de titulo
+  marca: 'FFF7B500', // amarillo Parking: encabezado de columnas
+  enMarca: 'FF0B0B0B', // texto sobre el amarillo (blanco no se lee)
+  marcaSuave: 'FFFFF8E1', // amarillo al 10%: filas alternas y totales
+  ambar: 'FFF7B500', // la franja de acento bajo la banda
+  gris: 'FF5A5A56', // pestana de la hoja de vehiculos
+  verde: 'FF16803F',
+  rojo: 'FFC02626',
+  texto: 'FF0B0B0B',
+  textoSuave: 'FF5A5A56',
+  linea: 'FFE2E2DE',
   blanco: 'FFFFFFFF',
 } as const;
 
@@ -136,7 +136,7 @@ export function encabezadoDeColumnas(
   columnas.forEach((columna, indice) => {
     const celda = cabecera.getCell(indice + 1);
     celda.value = columna.header;
-    celda.font = { name: FUENTE, size: 10, bold: true, color: { argb: COLOR.blanco } };
+    celda.font = { name: FUENTE, size: 10, bold: true, color: { argb: COLOR.enMarca } };
     celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.marca } };
     celda.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     celda.border = { bottom: { style: 'thin', color: { argb: COLOR.marca } } };
@@ -179,7 +179,7 @@ export function filaDeTotales(
     celda.font = { name: FUENTE, size: 10, bold: true, color: { argb: COLOR.texto } };
     celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.marcaSuave } };
     celda.border = {
-      top: { style: 'double', color: { argb: COLOR.marca } },
+      top: { style: 'double', color: { argb: COLOR.texto } },
       bottom: BORDE_FINO,
     };
   }

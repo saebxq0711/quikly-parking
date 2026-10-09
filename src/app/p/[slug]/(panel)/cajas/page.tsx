@@ -22,8 +22,8 @@ function BoxStatus({ status }: { status: string }) {
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${
         open
-          ? 'bg-ok-500/12 text-ok-300 ring-ok-400/25'
-          : 'bg-white/[0.06] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
+          ? 'bg-ok-50 text-ok-700 ring-ok-400/25'
+          : 'bg-[var(--fill-soft-hover)] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
       }`}
     >
       <span
@@ -100,10 +100,10 @@ export default async function CashBoxesPage({
                     <TableBody>
                       {result.data.map((box) => (
                         <Row key={box.id}>
-                          <td className="py-3 pl-5 pr-4 font-medium text-ink-100">
+                          <td className="py-3 pl-5 pr-4 font-medium text-[var(--text-primary)]">
                             {box.name}
                             {box.automatic ? (
-                              <span className="ml-2 rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                              <span className="ml-2 rounded bg-[var(--fill-soft-hover)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
                                 Automatica
                               </span>
                             ) : null}
@@ -123,7 +123,7 @@ export default async function CashBoxesPage({
                           <td className="py-3 pl-4 pr-5 text-right">
                             <Link
                               href={`/p/${slug}/cajas/${box.id}`}
-                              className="inline-flex items-center gap-0.5 text-[13px] font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+                              className="inline-flex items-center gap-0.5 text-[13px] font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-[var(--text-primary)]"
                             >
                               Movimientos
                               <MdChevronRight

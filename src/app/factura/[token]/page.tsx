@@ -61,7 +61,7 @@ export default async function FacturaPage({
     <main className="flex min-h-dvh items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm text-center">
         <Image
-          src="/quikly-parking.png"
+          src="/quikly-parking-positivo.png"
           alt="Quikly Parking"
           width={783}
           height={269}
@@ -69,7 +69,7 @@ export default async function FacturaPage({
           className="mx-auto h-16 w-auto"
         />
 
-        <h1 className="mt-6 text-xl font-semibold text-white">
+        <h1 className="mt-6 text-xl font-semibold text-[var(--text-primary)]">
           {fallida ? 'Tu factura tuvo un problema' : 'Tu factura se esta generando'}
         </h1>
         <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-[var(--text-secondary)]">
@@ -81,16 +81,16 @@ export default async function FacturaPage({
         <dl className="mt-7 space-y-3 rounded-2xl bg-[var(--surface-raised)] p-5 text-left text-sm ring-1 ring-[var(--line-subtle)]">
           <div className="flex justify-between gap-4">
             <dt className="text-[var(--text-muted)]">Parqueadero</dt>
-            <dd className="text-right font-medium text-ink-100">{payment.parkingLot.name}</dd>
+            <dd className="text-right font-medium text-[var(--text-primary)]">{payment.parkingLot.name}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-[var(--text-muted)]">Valor pagado</dt>
-            <dd className="tnum font-medium text-ink-100">{formatCOP(payment.amount)}</dd>
+            <dd className="tnum font-medium text-[var(--text-primary)]">{formatCOP(payment.amount)}</dd>
           </div>
           {payment.resolvedAt ? (
             <div className="flex justify-between gap-4">
               <dt className="text-[var(--text-muted)]">Fecha</dt>
-              <dd className="tnum font-medium text-ink-100">
+              <dd className="tnum font-medium text-[var(--text-primary)]">
                 {new Intl.DateTimeFormat('es-CO', {
                   dateStyle: 'medium',
                   timeStyle: 'short',

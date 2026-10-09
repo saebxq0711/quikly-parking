@@ -40,75 +40,81 @@ export function AppShell({
         Fija a la altura de la pantalla: el contenido se desplaza y la barra no, asi
         "Cambiar contrasena" y "Cerrar sesion" quedan siempre a la vista.
       */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--line-subtle)] bg-[var(--surface-chrome)] lg:sticky lg:top-0 lg:flex lg:h-dvh">
-        <div className="border-b border-[var(--line-subtle)] px-5 py-5">
-          {/*
-            Logo de Quikly Parking en su version negativa: el PNG lleva el texto
-            en blanco, asi que solo funciona sobre superficie oscura — que es la
-            que usan las areas de administracion (el manual de marca pide
-            justamente elegir la version segun el fondo).
-          */}
+      {/*
+        La barra es NEGRA y el area de trabajo clara: la navegacion se lee como el
+        marco del producto y no compite con los datos. En negro, el logo va en su
+        version negativa (texto blanco, trazo amarillo), que es la que el manual de
+        marca pide sobre fondo oscuro, y la seccion activa es el unico amarillo.
+      */}
+      <aside className="hidden w-64 shrink-0 flex-col bg-[var(--surface-chrome)] text-[var(--text-on-chrome)] lg:sticky lg:top-0 lg:flex lg:h-dvh">
+        <div className="px-6 pb-5 pt-7">
           <Image
             src="/quikly-parking.png"
             alt="Quikly Parking"
             width={783}
             height={269}
             priority
-            className="h-9 w-auto"
+            className="h-10 w-auto"
           />
-          <p className="mt-4 truncate text-[13px] font-medium text-ink-200">
-            {contextName}
-          </p>
-          {contextHint ? (
-            <p className="truncate text-xs text-[var(--text-muted)]">
-              {contextHint}
-            </p>
-          ) : null}
+          <div className="mt-6 rounded-xl bg-white/[0.06] px-3.5 py-3">
+            <p className="truncate text-[13px] font-semibold text-white">{contextName}</p>
+            {contextHint ? (
+              <p className="truncate text-xs text-[var(--text-on-chrome-muted)]">{contextHint}</p>
+            ) : null}
+          </div>
         </div>
 
         <SideNav items={navItems} />
 
-        <div className="border-t border-[var(--line-subtle)] p-3">
-          <p className="truncate px-3 text-[13px] font-medium text-ink-200">
-            {userName}
-          </p>
-          <p className="px-3 pb-2 text-xs text-[var(--text-muted)]">
+        <div className="border-t border-white/10 p-3">
+          <p className="truncate px-3 pt-1 text-[13px] font-semibold text-white">{userName}</p>
+          <p className="px-3 pb-2 text-xs text-[var(--text-on-chrome-muted)]">
             {ROLE_LABEL[role]}
           </p>
           <Link
             href="/cuenta"
-            className="mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100"
+            className="mb-1 flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-[var(--text-on-chrome-muted)] transition-colors duration-150 hover:bg-white/10 hover:text-white"
           >
             <MdLockOutline className="h-4.5 w-4.5 shrink-0" aria-hidden focusable="false" />
-            Cambiar contrasena
+            Cambiar contraseña
           </Link>
           <LogoutButton />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Navegacion compacta bajo lg: el mismo destino, sin barra lateral. */}
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--line-subtle)] bg-[var(--surface-chrome)]/95 px-4 py-2.5 backdrop-blur lg:hidden">
-          <Image
-            src="/quikly-parking.png"
-            alt="Quikly Parking"
-            width={783}
-            height={269}
-            className="hidden h-7 w-auto shrink-0 sm:block"
-          />
-          <SideNav items={navItems} compact />
-          <Link
-            href="/cuenta"
-            aria-label="Cambiar contrasena"
-            title="Cambiar contrasena"
-            className="shrink-0 rounded-lg p-2 text-[var(--text-secondary)] transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100"
-          >
-            <MdLockOutline className="h-4.5 w-4.5" aria-hidden focusable="false" />
-          </Link>
-          <LogoutButton compact />
+        {/*
+          Bajo lg, dos filas sobre negro: arriba la marca y la cuenta (contraseña y
+          salir, con su nombre), abajo la navegación entera con desplazamiento
+          lateral. Antes iba todo en una fila y las secciones salían cortadas.
+        */}
+        <header className="sticky top-0 z-10 bg-[var(--surface-chrome)] text-white lg:hidden">
+          <div className="flex items-center justify-between gap-3 px-4 pt-3">
+            <Image
+              src="/quikly-parking.png"
+              alt="Quikly Parking"
+              width={783}
+              height={269}
+              className="h-7 w-auto shrink-0"
+            />
+            <div className="flex items-center gap-1">
+              <Link
+                href="/cuenta"
+                aria-label="Cambiar contraseña"
+                title="Cambiar contraseña"
+                className="shrink-0 rounded-full p-2 text-[var(--text-on-chrome-muted)] transition-colors duration-150 hover:bg-white/10 hover:text-white"
+              >
+                <MdLockOutline className="h-5 w-5" aria-hidden focusable="false" />
+              </Link>
+              <LogoutButton compact />
+            </div>
+          </div>
+          <div className="px-3 pb-3 pt-2.5">
+            <SideNav items={navItems} compact />
+          </div>
         </header>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-w-0 flex-1 bg-[var(--surface-page)] p-4 sm:p-6 lg:p-10">{children}</main>
       </div>
     </div>
   );
@@ -126,15 +132,15 @@ export function PageHeader({
   back?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       {back ? <div className="mb-3">{back}</div> : null}
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-ink-50">
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-[-0.02em] text-[var(--text-primary)]">
             {title}
           </h1>
           {description ? (
-            <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-[var(--text-secondary)]">
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)]">
               {description}
             </p>
           ) : null}

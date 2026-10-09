@@ -86,7 +86,7 @@ export default async function CashBoxDetailPage({
         back={
           <Link
             href={`/p/${slug}/cajas`}
-            className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-ink-100"
+            className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)]"
           >
             <MdArrowBack className="h-4 w-4" aria-hidden focusable="false" />
             Volver a cajas
@@ -162,13 +162,13 @@ export default async function CashBoxDetailPage({
                             <td className="whitespace-nowrap py-3 pl-5 pr-4 text-[var(--text-secondary)]">
                               {formatUpstreamDate(movement.at)}
                             </td>
-                            <td className="px-4 py-3 font-medium text-ink-100">
+                            <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                               {movement.movimiento}
                             </td>
                             <td className="px-4 py-3 text-[var(--text-secondary)]">
                               {movement.responsible ?? '—'}
                             </td>
-                            <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-ink-100">
+                            <td className="tnum whitespace-nowrap px-4 py-3 text-right font-medium text-[var(--text-primary)]">
                               {movement.amount !== null ? formatCOP(movement.amount) : '—'}
                             </td>
                             <td className="tnum whitespace-nowrap px-4 py-3 text-right text-[var(--text-secondary)]">

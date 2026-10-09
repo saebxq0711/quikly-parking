@@ -37,7 +37,7 @@ export function ParkingLotDataFields({
         aparecen en el RUT.
       </p>
 
-      <Field label="Razon social">
+      <Field label="Razón social">
         <Input
           name="legalName"
           required
@@ -56,7 +56,7 @@ export function ParkingLotDataFields({
             spellCheck={false}
           />
         </Field>
-        <Field label="Regimen de IVA">
+        <Field label="Régimen de IVA">
           <Select name="taxRegime" required defaultValue={lot?.taxRegime ?? ''}>
             <option value="" disabled>
               Elegir
@@ -67,7 +67,7 @@ export function ParkingLotDataFields({
         </Field>
       </div>
 
-      <Field label="Direccion">
+      <Field label="Dirección">
         <Input
           name="address"
           required
@@ -83,7 +83,7 @@ export function ParkingLotDataFields({
         <Field label="Departamento">
           <Input name="department" required defaultValue={lot?.department ?? ''} />
         </Field>
-        <Field label="Telefono">
+        <Field label="Teléfono">
           <Input name="phone" type="tel" required defaultValue={lot?.phone ?? ''} />
         </Field>
         <Field label="Correo" hint="Opcional.">
@@ -91,7 +91,7 @@ export function ParkingLotDataFields({
         </Field>
       </div>
 
-      <p className="pt-1 text-[13px] font-medium text-ink-200">
+      <p className="pt-1 text-[13px] font-medium text-[var(--text-primary)]">
         Poliza de responsabilidad civil
       </p>
       <div className={pares}>
@@ -103,7 +103,7 @@ export function ParkingLotDataFields({
             placeholder="Seguros Mundial"
           />
         </Field>
-        <Field label="Numero de poliza">
+        <Field label="Número de póliza">
           <Input
             name="insurancePolicy"
             required
@@ -114,7 +114,7 @@ export function ParkingLotDataFields({
         </Field>
       </div>
 
-      <Field label="Horario de atencion" hint="Opcional. Como se informa al publico.">
+      <Field label="Horario de atención" hint="Opcional. Como se informa al público.">
         <Input
           name="businessHours"
           defaultValue={lot?.businessHours ?? ''}

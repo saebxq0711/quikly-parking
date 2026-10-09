@@ -81,7 +81,7 @@ export function DownloadButton({
       type="button"
       onClick={descargar}
       disabled={busy || rows.length === 0}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.06] px-3 py-1.5 text-[13px] font-medium text-ink-100 ring-1 ring-[var(--line-subtle)] transition-colors duration-150 hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-raised)] px-3.5 py-1.5 ring-1 ring-inset ring-[var(--ring-soft)] text-[13px] font-medium text-[var(--text-primary)] ring-1 ring-[var(--line-subtle)] transition-colors duration-150 hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <MdDownload className="h-4 w-4" aria-hidden focusable="false" />
       {label}

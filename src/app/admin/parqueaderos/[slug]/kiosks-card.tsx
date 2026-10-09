@@ -45,7 +45,7 @@ export function KiosksCard({
         title="Kioscos de pago"
         description="Cada kiosco entra con su propio usuario y cobra con su propio datafono. Algunos imprimen el comprobante; los demas lo muestran en pantalla y lo envian al correo."
         action={
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--fill-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)]">
             <MdPointOfSale className="h-3.5 w-3.5" aria-hidden focusable="false" />
             {kiosks.length} {kiosks.length === 1 ? 'kiosco' : 'kioscos'}
           </span>
@@ -69,12 +69,12 @@ export function KiosksCard({
           ))
         )}
 
-        <details className="group rounded-xl ring-1 ring-inset ring-dashed ring-white/15">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-brand-200 transition-colors duration-150 hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
+        <details className="group rounded-xl ring-1 ring-inset ring-dashed ring-[var(--ring-soft)]">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition-colors duration-150 hover:bg-[var(--fill-soft)] [&::-webkit-details-marker]:hidden">
             <MdAdd className="h-5 w-5 transition-transform duration-200 group-open:rotate-45" aria-hidden focusable="false" />
             Nuevo kiosco
           </summary>
-          <div className="page-in border-t border-white/8 px-4 py-4">
+          <div className="page-in border-t border-[var(--line-subtle)] px-4 py-4">
             <ActionForm action={createKiosk} submitLabel="Crear kiosco">
               <input type="hidden" name="parkingLotId" value={parkingLotId} />
               <div className="grid gap-4 sm:grid-cols-2">
@@ -113,13 +113,13 @@ function KioskItem({
   const sesionAbierta = (kiosk.user?.activeSessions ?? 0) > 0;
 
   return (
-    <details open={abierto} className="group rounded-xl bg-white/[0.02] ring-1 ring-inset ring-white/10">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500/12 text-brand-200 ring-1 ring-inset ring-brand-400/25">
+    <details open={abierto} className="group rounded-xl bg-[var(--fill-soft)] ring-1 ring-inset ring-[var(--ring-soft)]">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-[var(--fill-soft)] [&::-webkit-details-marker]:hidden">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-ink-950 ring-1 ring-inset ring-brand-300">
           <MdPointOfSale className="h-5 w-5" aria-hidden focusable="false" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-ink-100">{kiosk.name}</span>
+          <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{kiosk.name}</span>
           <span className="block truncate text-xs text-[var(--text-muted)]">
             {kiosk.user?.email ?? 'Sin usuario de acceso'}
           </span>
@@ -129,14 +129,14 @@ function KioskItem({
             <StatusPill ok={false} pendingLabel="Fuera de servicio" />
           ) : null}
           <StatusPill ok={datafonoListo} okLabel="Datafono listo" pendingLabel="Sin datafono" />
-          <span className="inline-flex items-center rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-white/10">
+          <span className="inline-flex items-center rounded-full bg-[var(--fill-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)]">
             {kiosk.hasPrinter ? 'Con impresora' : 'Sin impresora'}
           </span>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${
               sesionAbierta
-                ? 'bg-brand-500/12 text-brand-200 ring-brand-400/30'
-                : 'bg-white/[0.05] text-[var(--text-muted)] ring-white/10'
+                ? 'bg-brand-100 text-ink-950 ring-brand-300'
+                : 'bg-[var(--fill-soft)] text-[var(--text-muted)] ring-[var(--ring-soft)]'
             }`}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${sesionAbierta ? 'live-dot bg-brand-300' : 'bg-ink-600'}`} />
@@ -150,16 +150,16 @@ function KioskItem({
         </span>
       </summary>
 
-      <div className="page-in grid gap-6 border-t border-white/8 p-4 lg:grid-cols-2">
+      <div className="page-in grid gap-6 border-t border-[var(--line-subtle)] p-4 lg:grid-cols-2">
         <div className="space-y-6">
           <section>
-            <h3 className="mb-3 text-[13px] font-semibold text-ink-200">Kiosco</h3>
+            <h3 className="mb-3 text-[13px] font-semibold text-[var(--text-primary)]">Kiosco</h3>
             <ActionForm action={updateKiosk} submitLabel="Guardar kiosco" onSuccessReset={false}>
               <input type="hidden" name="paymentPointId" value={kiosk.id} />
               <Field label="Nombre">
                 <Input name="name" required defaultValue={kiosk.name} />
               </Field>
-              <div className="space-y-2.5 rounded-xl bg-white/[0.02] px-4 py-3 ring-1 ring-inset ring-white/8">
+              <div className="space-y-2.5 rounded-xl bg-[var(--fill-soft)] px-4 py-3 ring-1 ring-inset ring-[var(--line-subtle)]">
                 <Checkbox name="hasPrinter" defaultChecked={kiosk.hasPrinter} label="Imprime el comprobante" />
                 <p className="pl-6.5 text-xs leading-relaxed text-[var(--text-muted)]">
                   Sin impresora, el comprobante se muestra en pantalla y se envia al correo del
@@ -171,7 +171,7 @@ function KioskItem({
           </section>
 
           <section>
-            <h3 className="mb-1 text-[13px] font-semibold text-ink-200">Acceso de la pantalla</h3>
+            <h3 className="mb-1 text-[13px] font-semibold text-[var(--text-primary)]">Acceso de la pantalla</h3>
             {kiosk.user ? (
               <>
                 <p className="mb-3 text-xs text-[var(--text-muted)]">
@@ -196,7 +196,7 @@ function KioskItem({
         </div>
 
         <section>
-          <h3 className="mb-3 text-[13px] font-semibold text-ink-200">Datafono Redeban</h3>
+          <h3 className="mb-3 text-[13px] font-semibold text-[var(--text-primary)]">Datafono Redeban</h3>
           <RedebanForm parkingLotId={parkingLotId} paymentPointId={kiosk.id} {...kiosk.redeban} />
         </section>
       </div>

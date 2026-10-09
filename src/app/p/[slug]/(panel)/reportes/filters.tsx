@@ -48,25 +48,25 @@ export function ReportFilters({
   return (
     <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
       <div>
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Desde
         </label>
         <DateField name="desde" defaultValue={current.desde} max={hoy} required label="Desde" />
       </div>
       <div>
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Hasta
         </label>
         <DateField name="hasta" defaultValue={current.hasta} max={hoy} required label="Hasta" />
       </div>
       <Button type="submit">Consultar</Button>
       {error ? (
-        <p role="alert" className="text-[13px] text-bad-400 sm:col-span-3">
+        <p role="alert" className="text-[13px] text-bad-600 sm:col-span-3">
           {error}
         </p>
       ) : (
         <p className="text-xs text-[var(--text-muted)] sm:col-span-3">
-          Maximo {maxDias} dias por consulta.
+          Máximo {maxDias} días por consulta.
         </p>
       )}
     </form>

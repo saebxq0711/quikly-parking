@@ -14,8 +14,8 @@ export function Advanced({
   children: React.ReactNode;
 }) {
   return (
-    <details className="group rounded-xl bg-white/[0.02] ring-1 ring-inset ring-white/8">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-ink-100 [&::-webkit-details-marker]:hidden">
+    <details className="group rounded-xl bg-[var(--fill-soft)] ring-1 ring-inset ring-[var(--line-subtle)]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)] [&::-webkit-details-marker]:hidden">
         {title}
         <MdExpandMore
           className="h-5 w-5 shrink-0 transition-transform duration-200 group-open:rotate-180"
@@ -23,7 +23,7 @@ export function Advanced({
           focusable="false"
         />
       </summary>
-      <div className="page-in space-y-4 border-t border-white/8 px-4 py-4">{children}</div>
+      <div className="page-in space-y-4 border-t border-[var(--line-subtle)] px-4 py-4">{children}</div>
     </details>
   );
 }

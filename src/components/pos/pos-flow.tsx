@@ -13,11 +13,11 @@ import {
   MdCreditCard,
   MdKeyboard,
   MdNoPhotography,
-  MdPointOfSale,
   MdQrCodeScanner,
-  MdWarningAmber,
 } from 'react-icons/md';
 import { VehicleIcon } from '@/components/vehicle-icon';
+import { BrandSwoosh } from '@/components/brand-swoosh';
+import { WelcomeScene } from './welcome-scene';
 import { formatCOP, formatDuration } from '@/components/ui';
 import type { PaymentDTO } from '@/lib/payments/serialize';
 import type { InvoiceDocumentDTO, InvoicePrintDTO } from '@/lib/billing/invoice-print';
@@ -26,6 +26,20 @@ import { ExitGate } from './exit-gate';
 import { CustomerStep, type CustomerData } from './customer-step';
 import { ReceiptScreen } from './receipt';
 import { ThemeToggle } from './theme';
+import {
+  BackLink,
+  CheckBadge,
+  InfoCard,
+  InfoRow,
+  KioskStep,
+  KioskTitle,
+  Notice,
+  PlateHeader,
+  PrimaryButton,
+  ResultDisc,
+  SecondaryButton,
+  TotalBlock,
+} from './kiosk-ui';
 import { impresoraEmparejada, imprimirPorUsb, vigilarImpresora } from '@/lib/printing/usb-printer';
 import { comprobante, type ReceiptIssuer } from '@/lib/printing/receipt-data';
 import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
@@ -189,7 +203,7 @@ export function PosFlow({
       if (!response.ok || !data) {
         setError(
           data?.error?.message ??
-            'No hay conexion con el servidor en este momento. Intenta de nuevo en unos segundos.',
+            'No hay conexión con el servidor en este momento. Intenta de nuevo en unos segundos.',
         );
         return;
       }
@@ -227,7 +241,7 @@ export function PosFlow({
       if (!response.ok) return;
       const result = (await response.json()) as LookupResult;
       if (montoVisto.current !== null && result.amount !== montoVisto.current) {
-        setError('El total se actualizo porque paso mas tiempo. Revisalo antes de pagar.');
+        setError('El total se actualizó porque pasó más tiempo. Revísalo antes de pagar.');
       }
       setLookup(result);
     } catch {
@@ -403,7 +417,7 @@ export function PosFlow({
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         clearInterval(timer);
         setError(
-          'No recibimos respuesta del datafono. Si el cobro salio de tu cuenta, acercate a la oficina del parqueadero con este mensaje.',
+          'No recibimos respuesta del datáfono. Si el cobro salió de tu cuenta, acércate a la oficina del parqueadero con este mensaje.',
         );
         setStep('result');
         return;
@@ -434,49 +448,81 @@ export function PosFlow({
   return (
     /*
       `kiosk-root` no pinta nada: es la marca que usa `globals.css` para subir el
-      tamano de la raiz en pantallas grandes. El kiosco del 122 es un monitor de
-      27" en vertical y, con la medida de tablet, el cliente ve botones de sello
-      a medio metro de distancia. Al escalar la raiz crece todo a la vez —texto,
-      botones, margenes— sin duplicar una sola clase.
-    */
-    <main className="touch-surface kiosk-root flex min-h-dvh flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--line-subtle)] px-5 py-3 kland:py-2">
-        {/*
-          El nombre del parqueadero es lo unico que el cliente necesita ver aqui.
-          Mantenerlo pulsado tres segundos abre la salida del kiosco, que pide
-          contrasena: asi el personal puede cerrarlo sin que haya un boton a la
-          vista que cualquiera pulse.
-        */}
-        <ExitGate disabled={isWaiting}>
-          <p className="truncate text-base font-semibold text-[var(--text-primary)]">
-            {parkingLotName}
-          </p>
-          <p className="truncate text-xs text-[var(--text-muted)]">
-            Punto de pago
-            {testMode ? (
-              <span className="ml-2 rounded bg-warn-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn-300 day:text-warn-600 ring-1 ring-warn-400/30">
-                Modo de pruebas
-              </span>
-            ) : null}
-          </p>
-        </ExitGate>
+      tamano de la raiz en pantallas grandes (el 27" vertical del 122). Al escalar
+      la raiz crece todo a la vez —texto, botones, margenes— sin duplicar clases.
 
-        <div className="flex shrink-0 items-center gap-2">
-          {step !== 'type' && step !== 'waiting' ? (
+      `isolate` crea la capa propia donde vive la franja amarilla de la esquina,
+      detras del contenido y delante del fondo. `overflow-clip` y no `hidden`:
+      recorta igual lo que sale por los bordes (la franja, el sedan) sin volverse
+      un contenedor de desplazamiento, que anularia el "Finalizar" fijo al pie.
+    */
+    <main className="touch-surface kiosk-root relative isolate flex min-h-dvh flex-col overflow-clip bg-[var(--surface-base)]">
+      <header className="flex shrink-0 items-center justify-between gap-6 px-8 pb-2 pt-7 kland:px-6 kland:pt-3">
+        {/*
+          El logo cambia de version con el tema, como pide el manual de marca:
+          texto negro sobre blanco de dia, texto blanco sobre negro de noche.
+        */}
+        <div className="shrink-0">
+          <Image
+            src="/quikly-parking-positivo.png"
+            alt="Quikly Parking"
+            width={783}
+            height={269}
+            priority
+            className="h-[3.1rem] w-auto night:hidden kland:h-9"
+          />
+          <Image
+            src="/quikly-parking.png"
+            alt=""
+            aria-hidden
+            width={783}
+            height={269}
+            priority
+            className="hidden h-[3.1rem] w-auto night:block kland:h-9"
+          />
+        </div>
+
+        <div className="flex min-w-0 items-center gap-4">
+          {/*
+            Empezar de nuevo desde cualquier paso antes del cobro. Va arriba y en
+            texto, lejos de la accion principal: es una salida, no una opcion mas.
+          */}
+          {step !== 'type' && step !== 'identify' && step !== 'waiting' && step !== 'result' ? (
             <button
+              type="button"
               onClick={reset}
-              className="rounded-xl px-4 py-2 text-base font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--fill-soft)] hover:text-[var(--text-primary)]"
+              className="shrink-0 rounded-xl px-3 py-2 text-lg font-semibold text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--fill-soft)] hover:text-[var(--text-primary)] kshort:text-sm"
             >
               Cancelar
             </button>
           ) : null}
-          {/* Dia/noche. Se deja a la vista y no escondido: quien atiende el
-              parqueadero es quien sabe si le esta pegando el sol a la pantalla. */}
+
+          {/*
+            Mantener pulsado el nombre del parqueadero tres segundos abre la salida
+            del kiosco, que pide contrasena: el personal puede cerrarlo sin que haya
+            un boton a la vista que cualquiera pulse.
+          */}
+          <ExitGate disabled={isWaiting}>
+            <p className="truncate text-right text-lg font-semibold leading-tight text-[var(--text-primary)] kshort:text-sm">
+              {parkingLotName}
+            </p>
+            <p className="truncate text-right text-base text-[var(--text-muted)] kshort:text-xs">
+              {testMode ? (
+                <span className="mr-2 rounded-md bg-warn-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-warn-700 night:bg-warn-500/15 night:text-warn-300">
+                  Modo de pruebas
+                </span>
+              ) : null}
+              Punto de pago
+            </p>
+          </ExitGate>
+
+          {/* Dia/noche. A la vista y no escondido: quien atiende el parqueadero
+              es quien sabe si le esta pegando el sol a la pantalla. */}
           <ThemeToggle />
         </div>
       </header>
 
-      <div className="flex flex-1 items-center justify-center overflow-y-auto px-5 py-6 kland:py-3">
+      <div className="flex flex-1 flex-col px-8 pb-7 kland:px-6 kland:pb-4">
         {step === 'type' ? (
           <SelectType
             vehicles={vehicles}
@@ -507,6 +553,7 @@ export function PosFlow({
         {step === 'confirm' && lookup ? (
           <ConfirmVehicle
             lookup={lookup}
+            vehicleType={vehicle?.vehicleType ?? null}
             vehicleLabel={vehicle?.label ?? null}
             onConfirm={() => setStep('customer')}
             onReject={() => {
@@ -537,6 +584,8 @@ export function PosFlow({
           <Summary
             lookup={lookup}
             customer={customer}
+            searched={identifier}
+            vehicleType={vehicle?.vehicleType ?? null}
             vehicleLabel={vehicle?.label ?? null}
             identifierKind={vehicle?.identifierKind ?? 'PLATE'}
             error={error}
@@ -550,7 +599,12 @@ export function PosFlow({
         ) : null}
 
         {step === 'waiting' && payment ? (
-          <Waiting payment={payment} onCancel={handleCancel} busy={busy} />
+          <Waiting
+            payment={payment}
+            vehicleType={vehicle?.vehicleType ?? (payment.vehicleType as VehicleType)}
+            onCancel={handleCancel}
+            busy={busy}
+          />
         ) : null}
 
         {step === 'result' && payment ? (
@@ -564,12 +618,32 @@ export function PosFlow({
           />
         ) : null}
       </div>
+
+      {/*
+        La franja amarilla de la esquina: el trazo del logo llevado al borde. En
+        la bienvenida va la escena completa (las dos franjas y el sedan, en
+        `welcome-scene.tsx`); en los demas pasos, solo esta.
+      */}
+      {step === 'type' ? (
+        <WelcomeScene />
+      ) : (
+        <BrandSwoosh className="swoosh-in pointer-events-none absolute -bottom-8 -right-8 -z-10 h-[12rem] w-[12rem] text-brand-500 kland:h-32 kland:w-32" />
+      )}
     </main>
   );
 }
 
 /* ------------------------------------------------------------ Paso 1: tipo */
 
+/**
+ * Bienvenida: cuatro mosaicos iguales. La escena de abajo (franjas y sedan) la
+ * pinta `WelcomeScene` a todo el ancho de la pantalla, detras del contenido.
+ *
+ * Ningun vehiculo viene marcado: los cuatro esperan igual, y el amarillo aparece
+ * solo cuando el cliente pasa por encima (en un PC) o lo toca. Al tocarlo, el
+ * mosaico se queda amarillo un instante antes de pasar al siguiente paso: es la
+ * confirmacion de "esto elegiste", que en una pantalla tactil no da el cursor.
+ */
 function SelectType({
   vehicles,
   onSelect,
@@ -577,38 +651,48 @@ function SelectType({
   vehicles: PosVehicle[];
   onSelect: (vehicle: PosVehicle) => void;
 }) {
-  // Con 4 opciones, 2x2 en vertical y una sola fila en horizontal. Con menos,
-  // la rejilla se ajusta sola para que no queden huecos.
-  const columns =
-    vehicles.length <= 2
-      ? 'grid-cols-2'
-      : 'grid-cols-2 kland:grid-cols-4';
+  const columns = vehicles.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 kland:grid-cols-4';
+  const [elegido, setElegido] = useState<VehicleType | null>(null);
+
+  function elegir(vehicle: PosVehicle) {
+    if (elegido) return;
+    setElegido(vehicle.vehicleType);
+    // Lo justo para ver el amarillo; mas, y se siente lento.
+    setTimeout(() => onSelect(vehicle), 180);
+  }
 
   return (
-    <div className="step-in w-full max-w-3xl text-center kland:max-w-5xl">
-      <h1 className="text-3xl font-semibold tracking-tight kland:text-2xl kshort:text-xl">
-        Bienvenido
-      </h1>
-      <p className="mt-2 text-lg text-[var(--text-secondary)] kland:mt-1 kland:text-base">
-        Selecciona tu vehiculo
-      </p>
-
-      <div className={`mt-8 grid gap-4 kland:mt-5 kland:gap-3 ${columns}`}>
-        {vehicles.map((vehicle) => (
-          <button
-            key={vehicle.vehicleType}
-            onClick={() => onSelect(vehicle)}
-            className="group flex min-h-44 flex-col items-center justify-center gap-4 rounded-3xl bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)] transition-[background-color,box-shadow] duration-150 hover:bg-brand-600 hover:ring-brand-400/50 active:bg-brand-700 kland:min-h-36 kland:gap-2.5 kland:p-4 kshort:min-h-28"
-          >
-            <span className="h-24 w-24 text-brand-400 day:text-brand-700 transition-colors duration-150 group-hover:text-white kland:h-16 kland:w-16 kshort:h-12 kshort:w-12">
-              <VehicleIcon type={vehicle.vehicleType} />
-            </span>
-            <span className="text-xl font-semibold uppercase tracking-wide kland:text-base kshort:text-sm">
-              {vehicle.label}
-            </span>
-          </button>
-        ))}
+    <div className="step-in relative mx-auto flex w-full max-w-[38rem] flex-1 flex-col kland:max-w-5xl">
+      <div className="pt-[6vh] kland:pt-2">
+        <KioskTitle title="Bienvenido" subtitle="Selecciona tu vehículo para continuar" />
       </div>
+
+      <div className={`mt-12 grid gap-5 kland:mt-6 kland:gap-4 ${columns}`}>
+        {vehicles.map((vehicle) => {
+          const activo = elegido === vehicle.vehicleType;
+          return (
+            <button
+              key={vehicle.vehicleType}
+              onClick={() => elegir(vehicle)}
+              aria-pressed={activo}
+              className={`group flex aspect-[1.22] flex-col items-center justify-center gap-5 rounded-[1.6rem] transition-[background-color,transform,color] duration-150 hover:bg-brand-500 hover:text-ink-950 active:scale-[0.97] active:bg-brand-600 active:text-ink-950 kland:aspect-auto kland:min-h-36 kland:gap-3 kshort:min-h-28 ${
+                activo
+                  ? 'scale-[0.98] bg-brand-500 text-ink-950'
+                  : 'bg-[var(--surface-tile)] text-[var(--text-primary)]'
+              }`}
+            >
+              <VehicleIcon
+                type={vehicle.vehicleType}
+                className="h-[4.4rem] w-[6rem] kland:h-14 kland:w-20 kshort:h-10 kshort:w-14"
+              />
+              <span className="text-[1.65rem] font-semibold kland:text-xl kshort:text-base">
+                {vehicle.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
     </div>
   );
 }
@@ -721,90 +805,84 @@ function Identify({
 
   return (
     /*
-      Tres bloques independientes cuyo ORDEN cambia con la orientacion:
-
-        Vertical            Horizontal
-        1 campo             1 campo    | 2 teclado
-        2 teclado           3 botones  |
-        3 botones
-
-      Se colocan por rejilla en vez de anidarlos, porque anidando los botones
-      junto al campo el teclado quedaba DEBAJO de "Consultar" en vertical: se
-      escribia despues de ver el boton de enviar, que es justo al reves.
+      Vertical: titulo, campo, teclado, Consultar y Atras, en ese orden, porque se
+      escribe antes de enviar. Horizontal (kland): campo y botones a la izquierda,
+      teclado a la derecha, porque ahi lo que falta es alto.
     */
-    <div className="step-in grid w-full max-w-xl gap-5 kland:max-w-5xl kland:grid-cols-2 kland:grid-rows-[auto_auto] kland:items-center kland:gap-x-10 kland:gap-y-6">
-      <div className="text-center kland:col-start-1 kland:row-start-1 kland:text-left">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {vehicle.inputLabel}
-        </h1>
-        {porCodigo ? (
-          <div className="mt-3 space-y-2 text-left kland:mt-2">
-            <p className="flex items-center gap-2.5 text-base font-medium text-[var(--text-primary)] kshort:text-sm">
-              <MdQrCodeScanner className="h-6 w-6 shrink-0 text-brand-400 day:text-brand-700" aria-hidden focusable="false" />
-              Usa el escaner con el QR de tu tiquete o de tu celular
-            </p>
-            <p className="flex items-center gap-2.5 text-base text-[var(--text-secondary)] kshort:text-sm">
-              <MdKeyboard className="h-6 w-6 shrink-0 text-[var(--text-muted)]" aria-hidden focusable="false" />
-              O digita manualmente el codigo de 5 caracteres
-            </p>
+    <KioskStep pie={<BackLink onClick={onBack} />}>
+      <div className="kland:grid kland:grid-cols-2 kland:items-center kland:gap-10">
+        <div className="space-y-7 kland:space-y-4">
+          {/*
+            El titulo sale del tipo de dato y no de la configuracion guardada del
+            sitio: asi dice lo mismo que la referencia ("Ingresa la placa") y no
+            depende de como alguien lo escribio en la base.
+          */}
+          <KioskTitle
+            title={porCodigo ? 'Ingresa el código' : 'Ingresa la placa'}
+            subtitle={porCodigo ? undefined : 'Digita la placa de tu vehículo'}
+          />
+
+          {porCodigo ? (
+            <div className="mx-auto max-w-[30rem] space-y-3 kshort:space-y-1">
+              <p className="flex items-center gap-3 text-lg font-semibold text-[var(--text-primary)] kshort:text-sm">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-ink-950">
+                  <MdQrCodeScanner className="h-6 w-6" aria-hidden focusable="false" />
+                </span>
+                Acerca el QR de tu tiquete o de tu celular al escáner
+              </p>
+              <p className="flex items-center gap-3 text-lg text-[var(--text-secondary)] kshort:text-sm">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tile)]">
+                  <MdKeyboard className="h-6 w-6" aria-hidden focusable="false" />
+                </span>
+                O escribe el código de 5 caracteres
+              </p>
+            </div>
+          ) : null}
+
+          {/*
+            Solo muestra: todo lo que se escribe entra por el teclado en pantalla o
+            por el escaner, y lo maneja el oyente de arriba. Si el campo aceptara
+            teclas por su cuenta, un QR con enlace leido con el foco aqui se
+            limpiaria letra por letra y se cortaria antes de llegar al codigo.
+          */}
+          <div className="relative">
+            <input
+              ref={campo}
+              value={value}
+              readOnly
+              placeholder={vehicle.inputPlaceholder}
+              inputMode="none"
+              aria-label={porCodigo ? 'Código del tiquete' : 'Placa del vehículo'}
+              className="tnum h-[6.2rem] w-full rounded-[1.4rem] bg-[var(--surface-sunken)] px-20 text-center text-[3.4rem] font-bold tracking-[0.14em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:font-semibold placeholder:tracking-[0.14em] placeholder:text-[var(--ring-strong)] focus:outline-none focus:ring-brand-500 kland:h-20 kland:text-4xl kshort:h-16 kshort:text-3xl"
+            />
+            {value ? (
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                aria-label="Borrar lo escrito"
+                className="absolute right-5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--surface-tile)] text-[var(--text-primary)] transition-colors duration-150 hover:bg-[var(--surface-tile-hover)]"
+              >
+                <MdClose className="h-6 w-6" aria-hidden focusable="false" />
+              </button>
+            ) : null}
           </div>
-        ) : (
-          <p className="mt-2 text-base text-[var(--text-secondary)] kshort:text-sm">
-            Digita la placa de tu vehiculo
-          </p>
-        )}
 
-        {/*
-          Solo muestra: todo lo que se escribe entra por el teclado en pantalla o por el
-          escaner, y lo maneja el oyente de arriba. Si el campo aceptara teclas por su
-          cuenta, un QR con enlace leido con el foco aqui se limpiaria letra por letra y se
-          cortaria antes de llegar al codigo.
-        */}
-        <input
-          ref={campo}
-          value={value}
-          readOnly
-          placeholder={vehicle.inputPlaceholder}
-          inputMode="none"
-          aria-label={vehicle.inputLabel}
-          className="tnum mt-5 w-full rounded-2xl bg-[var(--surface-sunken)] px-5 py-6 text-center text-5xl font-bold tracking-[0.18em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-2xl placeholder:font-medium placeholder:tracking-normal placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kland:py-5 kland:text-4xl kshort:mt-4 kshort:py-3.5 kshort:text-3xl"
-        />
+          {error ? <Notice tone="bad">{error}</Notice> : null}
+        </div>
 
-        {error ? (
-          <p
-            role="alert"
-            className="mt-3 text-[15px] leading-relaxed text-bad-400 day:text-bad-600"
-          >
-            {error}
-          </p>
-        ) : null}
+        <div className="mt-8 space-y-6 kland:mt-0 kland:space-y-4">
+          <Keypad
+            mode={numeric ? 'numeric' : 'alphanumeric'}
+            onKey={(key) => onChange((value + key).slice(0, maxLength))}
+            onBackspace={() => onChange(value.slice(0, -1))}
+            onClear={() => onChange('')}
+          />
+          <PrimaryButton onClick={onSubmit} disabled={busy || value.length === 0}>
+            {busy ? 'Consultando...' : 'Consultar'}
+          </PrimaryButton>
+        </div>
       </div>
-
-      <div className="kland:col-start-2 kland:row-start-1 kland:row-span-2 kland:self-center">
-        <Keypad
-          mode={numeric ? 'numeric' : 'alphanumeric'}
-          onKey={(key) => onChange((value + key).slice(0, maxLength))}
-          onBackspace={() => onChange(value.slice(0, -1))}
-          onClear={() => onChange('')}
-        />
-      </div>
-
-      <div className="flex gap-3 kland:col-start-1 kland:row-start-2">
-        <button
-          onClick={onBack}
-          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
-        >
-          Atras
-        </button>
-        <button
-          onClick={onSubmit}
-          disabled={busy || value.length === 0}
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
-        >
-          {busy ? 'Consultando...' : 'Consultar'}
-        </button>
-      </div>
-    </div>
+    </KioskStep>
   );
 }
 
@@ -820,17 +898,18 @@ function Identify({
  *
  * SIN FOTO TAMBIEN SIRVE. Mientras el sistema del parqueadero no publique sus
  * imagenes —hoy estan cerradas en el tunel— el paso se queda igual, con los
- * datos del tiquete en grande: hora de entrada, placa o codigo. Se confirma
- * leyendo, que es lo mismo que hacia el operador antes. El paso NO se salta al
- * faltar la foto: la confirmacion es el punto, la foto es la ayuda.
+ * datos del tiquete en grande. El paso NO se salta al faltar la foto: la
+ * confirmacion es el punto, la foto es la ayuda.
  */
 function ConfirmVehicle({
   lookup,
+  vehicleType,
   vehicleLabel,
   onConfirm,
   onReject,
 }: {
   lookup: LookupResult;
+  vehicleType: VehicleType | null;
   vehicleLabel: string | null;
   onConfirm: () => void;
   onReject: () => void;
@@ -843,23 +922,21 @@ function ConfirmVehicle({
     : null;
 
   return (
-    <div className="step-in w-full max-w-xl text-center kland:max-w-4xl">
-      <h1 className="text-3xl font-semibold tracking-tight kland:text-2xl kshort:text-xl">
-        {falla ? 'Confirma tu vehiculo' : '¿Este es tu vehiculo?'}
-      </h1>
-      <p className="mx-auto mt-2 max-w-md text-lg leading-relaxed text-[var(--text-secondary)] kland:text-base">
-        {falla
-          ? 'Revisa que los datos sean los de tu vehiculo antes de continuar.'
-          : 'Asi entro al parqueadero. Si no es el tuyo, vuelve y revisa el dato.'}
-      </p>
+    <KioskStep>
+      <KioskTitle
+        title={falla ? 'Confirma tu vehículo' : '¿Este es tu vehículo?'}
+        subtitle={
+          falla
+            ? 'Revisa que los datos sean los de tu vehículo antes de continuar.'
+            : 'Así entró al parqueadero. Si no es el tuyo, vuelve y revisa el dato.'
+        }
+      />
 
-      <div className="mt-6 overflow-hidden rounded-3xl bg-[var(--surface-raised)] ring-1 ring-[var(--line-subtle)] kland:mt-4 kland:grid kland:grid-cols-2 kland:items-center kland:text-left">
+      <InfoCard className="overflow-hidden">
         {falla ? (
-          <div className="flex h-56 flex-col items-center justify-center gap-3 bg-[var(--surface-sunken)] text-[var(--text-muted)] kland:h-44">
-            <MdNoPhotography className="h-12 w-12" aria-hidden focusable="false" />
-            <p className="px-6 text-sm leading-relaxed">
-              El parqueadero no tiene foto de esta entrada.
-            </p>
+          <div className="flex h-[13rem] flex-col items-center justify-center gap-3 bg-[var(--surface-tile)] text-[var(--text-muted)] kland:h-32">
+            <MdNoPhotography className="h-14 w-14" aria-hidden focusable="false" />
+            <p className="px-6 text-lg kshort:text-sm">El parqueadero no tiene foto de esta entrada.</p>
           </div>
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element -- la sirve
@@ -867,60 +944,58 @@ function ConfirmVehicle({
              a bajar por el tunel en cada tamano. */
           <img
             src={url ?? ''}
-            alt="Foto del vehiculo al entrar al parqueadero"
+            alt="Foto del vehículo al entrar al parqueadero"
             onError={() => setFalla(true)}
-            className="h-72 w-full bg-[var(--surface-sunken)] object-cover kland:h-64"
+            className="h-[19rem] w-full bg-[var(--surface-tile)] object-cover kland:h-44"
           />
         )}
-
-        <dl className="space-y-3 p-6 text-base kland:p-7">
-          <Row
-            label={lookup.plate ? 'Placa' : 'Codigo'}
-            value={lookup.plate ?? lookup.code ?? '—'}
-          />
-          <Row label="Vehiculo" value={lookup.vehicleTypeLabel ?? vehicleLabel ?? '—'} />
-          <Row label="Entrada" value={horaDeEntrada(lookup.entryAt)} />
-          <Row label="Permanencia" value={formatDuration(lookup.minutes)} />
+        <PlateHeader
+          identifier={lookup.plate ?? lookup.code ?? '—'}
+          vehicleType={vehicleType}
+          vehicleLabel={lookup.vehicleTypeLabel ?? vehicleLabel}
+        />
+        <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
+          <InfoRow label="Hora de entrada" value={horaDeEntrada(lookup.entryAt)} />
+          <InfoRow label="Tiempo de estadía" value={formatDuration(lookup.minutes)} />
         </dl>
-      </div>
+      </InfoCard>
 
-      <div className="mt-6 flex gap-3 kland:mt-4">
-        <button
-          onClick={onReject}
-          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
-        >
-          No es el mio
-        </button>
-        <button
-          onClick={onConfirm}
-          autoFocus
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 kshort:min-h-13"
-        >
-          Si, continuar
-        </button>
+      <div className="grid gap-4">
+        <PrimaryButton onClick={onConfirm}>
+          Sí, es mi vehículo
+        </PrimaryButton>
+        <SecondaryButton onClick={onReject}>No es el mío</SecondaryButton>
       </div>
-    </div>
+    </KioskStep>
   );
 }
 
-/** Hora de ingreso en formato de reloj, que es como la reconoce el cliente. */
+/** Fecha y hora de ingreso como la reconoce el cliente: "29 sep 2026 - 10:24 a. m.". */
 function horaDeEntrada(iso: string | null): string {
   if (!iso) return '—';
   const fecha = new Date(iso);
   if (Number.isNaN(fecha.getTime())) return '—';
-  return new Intl.DateTimeFormat('es-CO', {
+  const dia = new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'America/Bogota',
+  }).format(fecha);
+  const hora = new Intl.DateTimeFormat('es-CO', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
     timeZone: 'America/Bogota',
   }).format(fecha);
+  return `${dia.replace('.', '')} - ${hora}`;
 }
 
-/* ------------------------------------------------------- Paso 4: resumen */
+/* ------------------------------------------------------- Paso 5: resumen */
 
 function Summary({
   lookup,
   customer,
+  searched,
+  vehicleType,
   vehicleLabel,
   identifierKind,
   error,
@@ -930,10 +1005,13 @@ function Summary({
 }: {
   lookup: LookupResult;
   customer: CustomerData | null;
+  /** Lo que el cliente escribio, para mostrarselo si no se encontro. */
+  searched: string;
+  vehicleType: VehicleType | null;
   /**
    * Lo que el cliente eligio en la primera pantalla. El sistema del parqueadero
-   * no devuelve el tipo de vehiculo en la busqueda, asi que sin esto la fila
-   * quedaba en un guion — justo el dato que el cliente acaba de indicar.
+   * no siempre devuelve el tipo de vehiculo, y sin esto la fila quedaba en un
+   * guion — justo el dato que el cliente acaba de indicar.
    */
   vehicleLabel: string | null;
   identifierKind: VehicleIdentifierKind;
@@ -951,252 +1029,258 @@ function Summary({
   const sinValor = lookup.found && !lookup.alreadyPaid && (lookup.amount ?? 0) <= 0;
 
   if (!canPay) {
+    const noEncontrado = !lookup.found && !lookup.alreadyPaid;
     return (
-      <div className="step-in w-full max-w-lg text-center">
-        <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-warn-500/12 ring-1 ring-warn-400/25 kland:h-14 kland:w-14">
-          <MdWarningAmber
-            className="h-9 w-9 text-warn-400 day:text-warn-600 kland:h-7 kland:w-7"
-            aria-hidden
-            focusable="false"
+      <KioskStep>
+        <div className="space-y-6 text-center">
+          <ResultDisc tone={noEncontrado ? 'bad' : 'warn'} />
+          <KioskTitle
+            title={
+              lookup.alreadyPaid
+                ? 'Este tiquete ya fue pagado'
+                : sinValor
+                  ? 'No hay valor por cobrar'
+                  : identifierKind === 'PLATE'
+                    ? 'No se encontró la placa'
+                    : 'No se encontró el código'
+            }
+            subtitle={
+              sinValor
+                ? 'Encontramos tu vehículo, pero el parqueadero no tiene un valor para cobrar en este momento. Acércate a la oficina del parqueadero.'
+                : (lookup.notice ?? 'Verifica el dato ingresado e intenta nuevamente.')
+            }
           />
         </div>
 
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight kland:text-xl">
-          {lookup.alreadyPaid
-            ? 'Este tiquete ya fue pagado'
-            : sinValor
-              ? 'No hay valor por cobrar'
-              : 'No encontramos tu vehiculo'}
-        </h1>
-        <p className="mx-auto mt-3 max-w-md text-[17px] leading-relaxed text-[var(--text-secondary)] kland:text-base">
-          {sinValor
-            ? 'Encontramos tu vehiculo, pero el parqueadero no tiene un valor para cobrar en este momento. Acercate a la oficina del parqueadero.'
-            : (lookup.notice ?? 'Verifica el dato ingresado e intenta nuevamente.')}
-        </p>
+        {noEncontrado && searched ? (
+          <div className="tnum flex h-[6.2rem] items-center justify-center rounded-[1.4rem] bg-[var(--surface-sunken)] text-[3rem] font-bold tracking-[0.14em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] kland:h-20 kland:text-4xl">
+            {searched}
+          </div>
+        ) : null}
 
-        {/* Ayuda concreta en vez de dejar al operador adivinando. */}
-        {!lookup.found && !lookup.alreadyPaid ? (
-          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[var(--text-muted)]">
+        {/* Ayuda concreta en vez de dejar al cliente adivinando. */}
+        {noEncontrado ? (
+          <p className="mx-auto max-w-[30rem] text-center text-lg leading-snug text-[var(--text-muted)] kshort:text-sm">
             {identifierKind === 'PLATE'
-              ? 'Revisa que la placa este completa y sin espacios. Si el problema sigue, acercate a la oficina del parqueadero.'
-              : 'Revisa el codigo impreso en tu tiquete: son cinco caracteres, como A7B48. Si el problema sigue, acercate a la oficina del parqueadero.'}
+              ? 'Revisa que la placa esté completa y sin espacios. Si el problema sigue, acércate a la oficina del parqueadero.'
+              : 'Revisa el código impreso en tu tiquete: son cinco caracteres, como A7B48. Si el problema sigue, acércate a la oficina del parqueadero.'}
           </p>
         ) : null}
 
-        <button
-          onClick={onRetry}
-          className="mt-7 min-h-15 w-full rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 kshort:min-h-12"
-        >
-          Intentar de nuevo
-        </button>
-      </div>
+        <PrimaryButton onClick={onRetry}>Intentar de nuevo</PrimaryButton>
+      </KioskStep>
     );
   }
 
   return (
-    <div className="step-in w-full max-w-lg kland:max-w-3xl">
-      {/* El ambar es el color de la linea Parking en el manual de marca: aqui
-          marca el dinero, que es lo unico que el cliente tiene que mirar. */}
-      <div className="overflow-hidden rounded-3xl border-t-4 border-gold-500 bg-[var(--surface-raised)] p-7 shadow-[var(--shadow-card)] ring-1 ring-[var(--line-subtle)] kland:grid kland:grid-cols-2 kland:items-center kland:gap-8 kland:p-6">
-        <div className="text-center kland:text-left">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-500 day:text-gold-800">
-            Total a pagar
-          </p>
-          <p className="tnum mt-2 text-6xl font-bold tracking-tight text-[var(--text-primary)] kland:text-5xl kshort:text-4xl">
-            {formatCOP(lookup.amount ?? 0)}
+    <KioskStep pie={<BackLink onClick={onRetry} disabled={busy} />}>
+      <div className="flex items-center justify-center gap-4">
+        <CheckBadge />
+        <div>
+          <h1 className="text-[2.2rem] font-bold leading-tight tracking-[-0.03em] text-[var(--text-primary)] kland:text-2xl">
+            Vehículo encontrado
+          </h1>
+          <p className="text-lg text-[var(--text-secondary)] kshort:text-sm">
+            Revisa el detalle antes de pagar
           </p>
         </div>
+      </div>
 
-        <dl className="mt-7 space-y-3 border-t border-[var(--line-subtle)] pt-6 text-sm kland:mt-0 kland:border-l kland:border-t-0 kland:pt-0 kland:pl-8">
-          <Row label="Vehiculo" value={lookup.vehicleTypeLabel ?? vehicleLabel ?? '—'} />
-          {/*
-            Se muestra la placa o el CODIGO, nunca el id interno de Nova
-            Parking: ese es un autoincremental secuencial y enseñarlo dejaria
-            deducir el de los vehiculos de al lado.
-          */}
-          <Row
-            label={lookup.plate ? 'Placa' : 'Codigo'}
-            value={lookup.plate ?? lookup.code ?? '—'}
-          />
-          <Row label="Permanencia" value={formatDuration(lookup.minutes)} />
+      <InfoCard>
+        {/*
+          Se muestra la placa o el CODIGO, nunca el id interno de Nova Parking: es
+          un autoincremental y ensenarlo dejaria deducir el de los vehiculos de al
+          lado.
+        */}
+        <PlateHeader
+          identifier={lookup.plate ?? lookup.code ?? '—'}
+          vehicleType={vehicleType}
+          vehicleLabel={lookup.vehicleTypeLabel ?? vehicleLabel}
+        />
+        <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
+          <InfoRow label="Hora de entrada" value={horaDeEntrada(lookup.entryAt)} />
+          <InfoRow label="Tiempo de estadía" value={formatDuration(lookup.minutes)} />
           {customer ? (
-            <Row
-              label="Factura a"
-              value={`${customer.firstName} ${customer.lastName}`.trim()}
-            />
+            <InfoRow label="Factura a" value={`${customer.firstName} ${customer.lastName}`.trim()} />
           ) : lookup.customerName ? (
-            <Row label="Cliente" value={lookup.customerName} />
+            <InfoRow label="Cliente" value={lookup.customerName} />
           ) : null}
         </dl>
-      </div>
+      </InfoCard>
 
-      {error ? (
-        <p
-          role="alert"
-          className="mt-4 text-center text-[15px] leading-relaxed text-bad-400 day:text-bad-600"
-        >
-          {error}
-        </p>
-      ) : null}
+      <TotalBlock amount={formatCOP(lookup.amount ?? 0)} />
 
-      <div className="mt-5 flex gap-3">
-        <button
-          onClick={onRetry}
-          className="min-h-15 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-12"
-        >
-          Atras
-        </button>
-        <button
-          onClick={onPay}
-          disabled={busy}
-          className="min-h-15 flex-[2] rounded-2xl bg-ok-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-ok-500 active:bg-ok-600 day:bg-ok-700 day:hover:bg-ok-600 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-12"
-        >
-          {busy ? 'Enviando al datafono...' : 'Pagar con tarjeta'}
-        </button>
-      </div>
-    </div>
+      {error ? <Notice tone="warn">{error}</Notice> : null}
+
+      <PrimaryButton onClick={onPay} disabled={busy}>
+        <MdCreditCard className="h-8 w-8" aria-hidden focusable="false" />
+        {busy ? 'Enviando al datáfono...' : 'Pagar con tarjeta'}
+      </PrimaryButton>
+    </KioskStep>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-[var(--text-muted)]">{label}</dt>
-      <dd className="text-right font-medium text-[var(--text-primary)]">{value}</dd>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------- Paso 4: espera */
+/* -------------------------------------------------------- Paso 6: espera */
 
 /**
  * Espera del datafono.
  *
  * El aparato esta conectado por SERIAL y no cobra solo: la orden queda puesta y
- * alguien tiene que iniciarla fisicamente. Por eso esta pantalla no dice
- * "procesando" y ya, sino exactamente que hacer en cada etapa.
+ * alguien tiene que iniciarla fisicamente. Por eso la pantalla dice exactamente
+ * que hacer en cada etapa: primero, con la foto del datafono y el boton
+ * senalado; despues, con el arco amarillo dando vueltas mientras se procesa.
  *
- * Una vez el cliente inicia la operacion en el datafono NO hay salida: ni
- * cancelar, ni volver, ni recargar sin aviso. Abandonar la pantalla con una
- * transaccion viva es como se pierde el rastro de un cobro que quiza ya se
- * aprobo.
+ * Una vez el cliente inicia la operacion NO hay salida: ni cancelar, ni volver,
+ * ni recargar sin aviso. Abandonar la pantalla con una transaccion viva es como
+ * se pierde el rastro de un cobro que quiza ya se aprobo.
  */
 function Waiting({
   payment,
+  vehicleType,
   onCancel,
   busy,
 }: {
   payment: PaymentDTO;
+  vehicleType: VehicleType;
   onCancel: () => void;
   busy: boolean;
 }) {
-  // Mientras el datafono no haya tomado la operacion, cancelar es seguro.
-  const canCancel = payment.stage === 'WAITING_TERMINAL';
-  // La misma condicion sirve para la foto: es el momento —y el unico— en que el
-  // cliente tiene que tocar algo en el aparato.
-  const mostrarDatafono = payment.stage === 'WAITING_TERMINAL';
+  // Mientras el datafono no haya tomado la operacion, cancelar es seguro, y es
+  // tambien el unico momento en que el cliente tiene que tocar el aparato.
+  const enDatafono = payment.stage === 'WAITING_TERMINAL';
 
-  return (
-    <div className="step-in w-full max-w-lg text-center kland:max-w-3xl kland:text-left">
-      <div className="kland:flex kland:items-center kland:gap-10">
-        <div className="relative mx-auto flex h-28 w-28 shrink-0 items-center justify-center kland:mx-0 kland:h-24 kland:w-24">
-          <span className="halo absolute inset-0 rounded-full bg-brand-500/35" />
-          <span className="relative flex h-22 w-22 items-center justify-center rounded-full bg-brand-600 kland:h-20 kland:w-20">
-            <TerminalGlyph stage={payment.stage} />
-          </span>
+  if (enDatafono) {
+    return (
+      <KioskStep>
+        {/* La instruccion la decide el servidor a partir del estado real del
+            datafono, no el navegador adivinando. */}
+        <div aria-live="polite">
+          <KioskTitle
+            title={
+              <>
+                Toca{' '}
+                <span className="whitespace-nowrap rounded-[0.35em] bg-brand-500 px-[0.25em] text-ink-950 [box-decoration-break:clone]">
+                  Iniciar cobro
+                </span>{' '}
+                en el datáfono
+              </>
+            }
+            subtitle="Está en la pantalla del datáfono, como en esta foto."
+          />
         </div>
 
-        <div className="min-w-0">
-          <p className="tnum mt-7 text-4xl font-bold tracking-tight text-[var(--text-primary)] kland:mt-0 kland:text-3xl">
-            {formatCOP(payment.amount)}
-          </p>
-
-          {/* La instruccion la decide el servidor a partir del estado real del
-              datafono, no el navegador adivinando. */}
-          <h1
-            aria-live="polite"
-            className="mt-3 text-2xl font-semibold leading-snug tracking-tight kland:text-xl"
-          >
-            {payment.instruction}
-          </h1>
-
-          <StageTrail stage={payment.stage} />
-
-          {payment.cardBrand || payment.cardMask ? (
-            <p className="mt-3 text-sm text-[var(--text-secondary)]">
-              {[payment.cardBrand, payment.cardMask].filter(Boolean).join(' ')}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {/*
-        Foto real del datafono con el boton que hay que pulsar.
-
-        El aparato esta conectado por serial y no cobra solo: la orden ya quedo
-        puesta, pero alguien tiene que iniciarla en la pantalla verde. Escrito con
-        palabras, la gente se queda mirando el kiosco esperando que pase algo;
-        con la foto del mismo aparato que tiene delante, lo encuentra sin que
-        nadie se lo explique.
-      */}
-      {mostrarDatafono ? (
-        <figure className="mt-7 flex flex-col items-center kland:mt-5">
+        {/*
+          Foto real del datafono con el boton que hay que pulsar. Escrito con
+          palabras, la gente se queda mirando el kiosco esperando que pase algo;
+          con la foto del mismo aparato que tiene delante, lo encuentra sola.
+        */}
+        <figure className="mx-auto w-full max-w-[24rem] kland:max-w-[14rem]">
           <Image
             src="/datafono-iniciar-cobro.jpg"
-            alt="Pantalla del datafono con el boton verde Iniciar cobro resaltado"
+            alt="Pantalla del datáfono con el botón verde Iniciar cobro resaltado"
             width={1254}
             height={1254}
             priority
-            className="w-full max-w-72 rounded-2xl ring-1 ring-[var(--line-subtle)] kland:max-w-56 kshort:max-w-44"
+            className="w-full rounded-[1.4rem] ring-1 ring-[var(--line-subtle)]"
           />
-          <figcaption className="mt-3 text-center text-base font-semibold text-[var(--text-primary)] kshort:text-sm">
-            Toca <span className="text-ok-600 day:text-ok-700">Iniciar cobro</span> en el
-            datafono
-          </figcaption>
         </figure>
+
+        <TotalBlock amount={formatCOP(payment.amount)} label="Valor a pagar" />
+
+        <SecondaryButton onClick={onCancel} disabled={busy}>
+          {busy ? 'Cancelando...' : 'Cancelar cobro'}
+        </SecondaryButton>
+      </KioskStep>
+    );
+  }
+
+  return (
+    <KioskStep>
+      <div className="space-y-10 text-center kland:space-y-5">
+        <Orbita>
+          {payment.stage === 'READING_CARD' ? (
+            <MdCreditCard className="h-[4.2rem] w-[4.2rem]" aria-hidden focusable="false" />
+          ) : (
+            <VehicleIcon type={vehicleType} className="h-[4.2rem] w-[5.6rem]" />
+          )}
+        </Orbita>
+
+        <div aria-live="polite">
+          <KioskTitle title="Procesando tu pago" subtitle={payment.instruction} />
+        </div>
+
+        <p className="tnum text-[2.6rem] font-bold tracking-[-0.02em] text-[var(--text-primary)] kland:text-3xl">
+          {formatCOP(payment.amount)}
+        </p>
+      </div>
+
+      <StageTrail stage={payment.stage} />
+
+      {payment.cardBrand || payment.cardMask ? (
+        <p className="text-center text-lg text-[var(--text-secondary)]">
+          {[payment.cardBrand, payment.cardMask].filter(Boolean).join(' ')}
+        </p>
       ) : null}
 
-      {canCancel ? (
-        <button
-          onClick={onCancel}
-          disabled={busy}
-          className="mt-9 min-h-14 w-full rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] disabled:text-[var(--text-muted)] kland:mt-6 kshort:min-h-12"
-        >
-          {busy ? 'Cancelando...' : 'Cancelar cobro'}
-        </button>
-      ) : (
-        <p className="mt-9 rounded-2xl bg-warn-500/10 px-5 py-4 text-sm leading-relaxed text-warn-300 day:text-warn-600 ring-1 ring-inset ring-warn-400/25 kland:mt-6">
-          Cobro en curso. Espera aqui hasta ver el resultado.
-        </p>
-      )}
+      <Notice tone="warn">Cobro en curso. Espera aquí hasta ver el resultado.</Notice>
+    </KioskStep>
+  );
+}
+
+/**
+ * El arco amarillo que da vueltas alrededor del vehiculo: la unica animacion
+ * continua del kiosco, reservada para el unico momento en que el cliente no
+ * puede hacer nada y necesita saber que el sistema sigue vivo.
+ */
+function Orbita({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mx-auto h-[13rem] w-[13rem] kland:h-36 kland:w-36">
+      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
+        <circle cx="50" cy="50" r="44" fill="none" strokeWidth="7" className="stroke-[var(--accent-soft)]" />
+        <g className="orbit">
+          <circle
+            cx="50"
+            cy="50"
+            r="44"
+            fill="none"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray="90 186"
+            className="stroke-brand-500"
+          />
+        </g>
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-[var(--text-primary)]">
+        {children}
+      </div>
     </div>
   );
 }
 
 /**
- * Las tres etapas del datafono, para que el operador vea el avance.
- * Sin esto, entre que se envia la orden y el cliente pasa la tarjeta pueden
- * pasar cuarenta segundos en los que la pantalla parece congelada.
+ * Las tres etapas del datafono, para que el cliente vea el avance. Sin esto,
+ * entre que se envia la orden y pasa la tarjeta pueden correr cuarenta segundos
+ * en los que la pantalla parece congelada.
  */
 function StageTrail({ stage }: { stage: TerminalStage }) {
   const steps: { key: TerminalStage; label: string }[] = [
-    { key: 'WAITING_TERMINAL', label: 'Iniciar en el datafono' },
-    { key: 'STARTED', label: 'Operacion iniciada' },
+    { key: 'WAITING_TERMINAL', label: 'Iniciar en el datáfono' },
+    { key: 'STARTED', label: 'Operación iniciada' },
     { key: 'READING_CARD', label: 'Leyendo la tarjeta' },
   ];
   const current = steps.findIndex((s) => s.key === stage);
 
   return (
-    <ol className="mt-5 space-y-2.5">
+    <ol className="mx-auto grid w-full max-w-[30rem] gap-3">
       {steps.map((item, index) => {
         const done = current > index;
         const active = current === index;
         return (
           <li
             key={item.key}
-            className={`flex items-center gap-3 text-sm ${
+            className={`flex items-center gap-4 text-xl kshort:text-sm ${
               active
-                ? 'text-[var(--text-primary)]'
+                ? 'font-semibold text-[var(--text-primary)]'
                 : done
                   ? 'text-[var(--text-secondary)]'
                   : 'text-[var(--text-muted)]'
@@ -1204,18 +1288,18 @@ function StageTrail({ stage }: { stage: TerminalStage }) {
           >
             <span
               aria-hidden="true"
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-1 ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                 done
-                  ? 'bg-ok-500/20 ring-ok-400/40'
+                  ? 'bg-ok-500 text-white'
                   : active
-                    ? 'bg-brand-500/25 ring-brand-400/50'
-                    : 'ring-[var(--ring-soft)]'
+                    ? 'bg-brand-500 text-ink-950'
+                    : 'ring-2 ring-inset ring-[var(--ring-soft)]'
               }`}
             >
               {done ? (
-                <MdCheck className="h-3 w-3 text-ok-400 day:text-ok-700" aria-hidden focusable="false" />
+                <MdCheck className="h-5 w-5" aria-hidden focusable="false" />
               ) : active ? (
-                <span className="h-2 w-2 rounded-full bg-brand-300" />
+                <span className="h-2.5 w-2.5 rounded-full bg-ink-950" />
               ) : null}
             </span>
             {item.label}
@@ -1226,28 +1310,7 @@ function StageTrail({ stage }: { stage: TerminalStage }) {
   );
 }
 
-function TerminalGlyph({ stage }: { stage: TerminalStage }) {
-  if (stage === 'READING_CARD') {
-    return (
-      <MdCreditCard
-        className="h-11 w-11 text-white kland:h-10 kland:w-10"
-        aria-hidden
-        focusable="false"
-      />
-    );
-  }
-
-  // Datafono con teclado: el mismo aparato que el cliente tiene delante.
-  return (
-    <MdPointOfSale
-      className="h-11 w-11 text-white kland:h-10 kland:w-10"
-      aria-hidden
-      focusable="false"
-    />
-  );
-}
-
-/* ------------------------------------------------------ Paso 5: resultado */
+/* ------------------------------------------------------ Paso 7: resultado */
 
 /** Cuanto se espera a que SIIGO emita la factura antes de imprimir el comprobante en su lugar. */
 const ESPERA_FACTURA_MS = 30_000;
@@ -1423,103 +1486,90 @@ function Result({
   }, [onDone, listo, mostrarComprobante]);
 
   const mensaje = !approved
-    ? (error ?? payment.failureReason ?? 'La transaccion no se completo.')
+    ? (error ?? payment.failureReason ?? 'La transacción no se completó.')
     : mostrarComprobante
       ? conCorreo
-        ? 'Puedes retirar el vehiculo. Este comprobante tambien te llega al correo, y alli recibiras tu factura electronica.'
-        : 'Puedes retirar el vehiculo. Si necesitas este comprobante, tomale una foto.'
+        ? 'Puedes retirar el vehículo. Este comprobante también te llega al correo, y allí recibirás tu factura electrónica.'
+        : 'Puedes retirar el vehículo. Si necesitas este comprobante, tómale una foto.'
       : impresion === 'factura-en-camino'
         ? 'Estamos generando tu factura. Espera un momento para recogerla.'
         : impresion === 'factura'
-          ? 'Puedes retirar el vehiculo. Recoge tu factura. Tambien llegara a tu correo.'
-          : 'Puedes retirar el vehiculo. Recoge tu comprobante: la factura electronica llegara a tu correo.';
+          ? 'Puedes retirar el vehículo. Recoge tu factura. También llegará a tu correo.'
+          : 'Puedes retirar el vehículo. Recoge tu comprobante: la factura electrónica llegará a tu correo.';
+
+  const identificador = payment.plate ?? payment.ticketCode ?? payment.vehicleIdentifier;
 
   return (
-    <div className="step-in w-full max-w-xl text-center">
-      <div
-        className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ring-1 kland:h-16 kland:w-16 ${
-          approved
-            ? 'bg-ok-500/12 ring-ok-400/25'
-            : 'bg-bad-500/12 ring-bad-400/25'
-        }`}
-      >
-        {approved ? (
-          <MdCheck
-            className="h-10 w-10 text-ok-400 day:text-ok-700 kland:h-8 kland:w-8"
-            aria-hidden
-            focusable="false"
+    <KioskStep>
+      <div className="space-y-6 text-center">
+        <ResultDisc tone={approved ? 'ok' : 'bad'} size={mostrarComprobante ? 'md' : 'lg'} />
+        <div aria-live="polite">
+          <KioskTitle
+            title={approved ? '¡Pago exitoso!' : 'Pago no completado'}
+            subtitle={mensaje}
           />
-        ) : (
-          <MdClose
-            className="h-10 w-10 text-bad-400 day:text-bad-600 kland:h-8 kland:w-8"
-            aria-hidden
-            focusable="false"
-          />
-        )}
+        </div>
       </div>
 
-      <h1 className="mt-5 text-3xl font-semibold tracking-tight kland:text-2xl">
-        {approved ? 'Pago aprobado' : 'Pago no completado'}
-      </h1>
-      <p
-        aria-live="polite"
-        className="mx-auto mt-3 max-w-md text-[17px] leading-relaxed text-[var(--text-secondary)] kland:text-base"
-      >
-        {mensaje}
-      </p>
-
       {approved && payment.parkingPending ? (
-        <p
-          role="alert"
-          className="mx-auto mt-4 max-w-md rounded-xl bg-warn-500/10 px-4 py-3 text-[15px] leading-relaxed text-warn-300 day:text-warn-600 ring-1 ring-warn-400/25"
-        >
-          Tu pago quedo aprobado, pero la barrera no recibio el aviso. Acercate a la oficina del
+        <Notice tone="warn">
+          Tu pago quedó aprobado, pero la barrera no recibió el aviso. Acércate a la oficina del
           parqueadero con tu comprobante para salir.
-        </p>
+        </Notice>
       ) : null}
 
       {mostrarComprobante ? (
         <ReceiptScreen doc={comprobante(payment, issuer)} />
       ) : approved ? (
-        <dl className="mt-7 space-y-3 rounded-2xl bg-[var(--surface-raised)] p-6 text-left text-sm ring-1 ring-[var(--line-subtle)] kland:mt-5 kland:grid kland:grid-cols-2 kland:gap-x-8 kland:space-y-0">
-          <Row label="Valor pagado" value={formatCOP(payment.amount)} />
-          {payment.authorizationCode ? (
-            <Row label="Autorizacion" value={payment.authorizationCode} />
-          ) : null}
-          {payment.receiptNumber ? (
-            <Row label="Recibo" value={payment.receiptNumber} />
-          ) : null}
-          {payment.cardBrand ? (
-            <Row
-              label="Tarjeta"
-              value={`${payment.cardBrand}${payment.cardMask ? ` ${payment.cardMask}` : ''}`}
+        <InfoCard>
+          <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
+            {identificador ? (
+              <InfoRow label={payment.plate ? 'Placa' : 'Código'} value={identificador} />
+            ) : null}
+            <InfoRow
+              label="Fecha y hora"
+              value={horaDeEntrada(payment.resolvedAt ?? payment.createdAt)}
             />
-          ) : null}
-        </dl>
+            {payment.stayMinutes !== null ? (
+              <InfoRow label="Tiempo total" value={formatDuration(payment.stayMinutes)} />
+            ) : null}
+            <InfoRow label="Valor pagado" value={`${formatCOP(payment.amount)} COP`} />
+            {payment.cardBrand || payment.cardMask ? (
+              <InfoRow
+                label="Método de pago"
+                value={`${payment.cardBrand ?? 'Tarjeta'}${payment.cardMask ? ` ${payment.cardMask}` : ''}`}
+              />
+            ) : null}
+            {payment.authorizationCode ? (
+              <InfoRow label="Autorización" value={payment.authorizationCode} />
+            ) : null}
+          </dl>
+        </InfoCard>
       ) : null}
 
       {listo ? (
-        <>
-          <button
-            onClick={onDone}
-            autoFocus
-            className="mt-8 min-h-15 w-full rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 kland:mt-6 kshort:min-h-12"
-          >
+        /*
+          Fijo al pie: con el comprobante en pantalla (y su QR) el contenido pasa
+          del alto del monitor, y "Finalizar" no puede quedar escondido debajo.
+        */
+        <div className="sticky bottom-0 -mx-2 space-y-3 bg-[var(--surface-base)] px-2 pb-1 pt-4">
+          <PrimaryButton onClick={onDone}>
             Finalizar
-          </button>
-
-          <p aria-live="polite" className="mt-3 text-sm text-[var(--text-muted)]">
+          </PrimaryButton>
+          <p aria-live="polite" className="text-center text-lg text-[var(--text-muted)] kshort:text-sm">
             La pantalla vuelve al inicio en {seconds} s
           </p>
-        </>
+        </div>
       ) : (
         /* Sin boton de terminar mientras sale el papel: cerrar aqui cancelaria la impresion. */
-        <div className="mt-8 flex items-center justify-center gap-3 rounded-2xl bg-[var(--fill-soft)] px-5 py-4 text-base text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] kland:mt-6">
-          <span className="halo relative h-3 w-3 rounded-full bg-brand-400" aria-hidden="true" />
-          {impresion === 'factura-en-camino' ? 'Generando tu factura...' : 'Imprimiendo...'}
+        <div className="flex min-h-[4.6rem] items-center justify-center gap-4 rounded-[1.1rem] bg-[var(--surface-tile)] px-6 text-xl font-semibold text-[var(--text-primary)] kshort:min-h-14 kshort:text-base">
+          <span className="relative flex h-4 w-4">
+            <span className="halo absolute inset-0 rounded-full bg-brand-500" aria-hidden="true" />
+            <span className="relative h-4 w-4 rounded-full bg-brand-500" aria-hidden="true" />
+          </span>
+          {impresion === 'factura-en-camino' ? 'Generando tu factura...' : 'Imprimiendo tu comprobante...'}
         </div>
       )}
-
-    </div>
+    </KioskStep>
   );
 }

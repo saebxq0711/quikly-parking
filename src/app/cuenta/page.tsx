@@ -24,7 +24,7 @@ export default async function AccountPage() {
       <div className="page-in w-full max-w-sm">
         <Link
           href={volver}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-ink-100"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)]"
         >
           <MdArrowBack className="h-4 w-4" aria-hidden focusable="false" />
           Volver
@@ -32,17 +32,17 @@ export default async function AccountPage() {
 
         <div className="mb-8 mt-6 text-center">
           <Image
-            src="/quikly-parking.png"
+            src="/quikly-parking-positivo.png"
             alt="Quikly Parking"
             width={783}
             height={269}
             priority
             className="mx-auto h-12 w-auto"
           />
-          <h1 className="mt-5 text-xl font-semibold text-white">Cambiar contrasena</h1>
+          <h1 className="mt-5 text-xl font-semibold text-[var(--text-primary)]">Cambiar contrasena</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{user.email}</p>
           {user.mustChangePassword ? (
-            <p className="mt-4 rounded-lg bg-warn-500/10 px-3 py-2 text-[13px] text-warn-300 ring-1 ring-warn-400/25">
+            <p className="mt-4 rounded-lg bg-warn-100/60 px-3 py-2 text-[13px] text-warn-700 ring-1 ring-warn-400/25">
               Tu contrasena es temporal. Elige una propia para seguir.
             </p>
           ) : null}

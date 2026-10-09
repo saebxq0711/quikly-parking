@@ -46,7 +46,7 @@ export function PaymentFilters({
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end"
     >
       <div className="lg:col-span-2">
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Buscar
         </label>
         <Input
@@ -57,7 +57,7 @@ export function PaymentFilters({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Estado
         </label>
         <Select name="estado" defaultValue={current.estado ?? 'TODOS'}>
@@ -71,7 +71,7 @@ export function PaymentFilters({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Vehiculo
         </label>
         <Select name="tipo" defaultValue={current.tipo ?? 'TODOS'}>
@@ -84,14 +84,14 @@ export function PaymentFilters({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Desde
         </label>
         <DateField name="desde" defaultValue={current.desde ?? ''} label="Desde" />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <label className="mb-1.5 block text-[13px] font-medium text-[var(--text-secondary)]">
           Hasta
         </label>
         <DateField name="hasta" defaultValue={current.hasta ?? ''} label="Hasta" />

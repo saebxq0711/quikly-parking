@@ -167,7 +167,7 @@ export function DateField({
         aria-label={label ?? 'Elegir fecha'}
         aria-required={required || undefined}
         className={`flex w-full items-center gap-2.5 rounded-lg bg-[var(--surface-sunken)] px-3 py-2.5 text-left text-sm ring-1 ring-inset transition-shadow duration-150 hover:ring-[var(--ring-strong)] ${
-          abierto ? 'ring-2 ring-brand-500' : 'ring-[var(--ring-soft)]'
+          abierto ? 'ring-2 ring-[var(--text-primary)]' : 'ring-[var(--ring-soft)]'
         }`}
       >
         <MdCalendarToday
@@ -260,11 +260,11 @@ export function DateField({
                   aria-current={esHoy ? 'date' : undefined}
                   className={`tnum h-8 rounded-lg text-[13px] font-medium transition-colors duration-100 ${
                     elegido
-                      ? 'bg-brand-600 text-white'
+                      ? 'bg-brand-500 text-ink-950'
                       : bloqueado
                         ? 'text-[var(--text-muted)] opacity-40'
                         : esHoy
-                          ? 'bg-[var(--fill-soft)] text-brand-300 ring-1 ring-inset ring-brand-400/40 day:text-brand-700'
+                          ? 'bg-[var(--fill-soft)] text-[var(--text-primary)] ring-1 ring-inset ring-brand-500'
                           : 'text-[var(--text-primary)] hover:bg-[var(--fill-soft-hover)]'
                   }`}
                 >

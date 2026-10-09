@@ -1,4 +1,5 @@
 import type { Payment } from '@prisma/client';
+import { diaEnBogota } from '@/lib/dates';
 
 /**
  * Construccion del payload de factura para SIIGO.
@@ -70,9 +71,11 @@ export function findMissingSettings(settings: SiigoInvoiceSettings): string[] {
   return missing;
 }
 
-function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+/*
+  Fecha de la factura en hora de Colombia. Con la de UTC, un cobro despues de las
+  7 p. m. salia con fecha del dia siguiente, y SIIGO no acepta facturas a futuro.
+*/
+const toIsoDate = diaEnBogota;
 
 /**
  * Arma el cuerpo de la factura a partir de un pago aprobado.

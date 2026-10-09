@@ -157,7 +157,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     properties: { tabColor: { argb: COLOR.marca } },
   });
   const vehiculos = libro.addWorksheet('Vehiculos', {
-    properties: { tabColor: { argb: COLOR.aqua } },
+    properties: { tabColor: { argb: COLOR.gris } },
   });
   const kiosco = libro.addWorksheet('Pagos del kiosco', {
     properties: { tabColor: { argb: COLOR.ambar } },
@@ -364,10 +364,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
       name: FUENTE,
       size: 10,
       bold: true,
-      color: { argb: COLOR.marca },
+      color: { argb: COLOR.texto },
     };
-    fila.getCell('dato').border = { bottom: { style: 'thin', color: { argb: COLOR.marca } } };
-    fila.getCell('valor').border = { bottom: { style: 'thin', color: { argb: COLOR.marca } } };
+    fila.getCell('dato').border = { bottom: { style: 'medium', color: { argb: COLOR.marca } } };
+    fila.getCell('valor').border = { bottom: { style: 'medium', color: { argb: COLOR.marca } } };
     fila.height = 20;
   };
 

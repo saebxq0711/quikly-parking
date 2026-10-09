@@ -1,8 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MdOutlineMail } from 'react-icons/md';
+import { MdClose, MdOutlineMail } from 'react-icons/md';
 import { Keypad } from './keypad';
+import {
+  BackLink,
+  InfoCard,
+  InfoRow,
+  KioskStep,
+  KioskTitle,
+  Notice,
+  PrimaryButton,
+  SecondaryButton,
+} from './kiosk-ui';
 
 /**
  * Identificacion del cliente, antes de pagar.
@@ -12,9 +22,8 @@ import { Keypad } from './keypad';
  * datos una sola vez y quedan guardados para la proxima.
  *
  * Por que se pide: la factura electronica sale a su nombre y le llega al CORREO.
- * Por eso el correo es obligatorio: sin el, la factura se emite pero el cliente
- * nunca la recibe. Si un cliente conocido no tiene correo guardado, se le pide
- * antes de continuar.
+ * El correo no se exige (hay personas, sobre todo mayores, que no tienen), pero
+ * se pide con su porque a la vista, que es lo que hace que la gente lo de.
  */
 
 export interface CustomerData {
@@ -85,40 +94,28 @@ export function CustomerStep({
     const emailOk = email === '' || EMAIL.test(email);
 
     return (
-      <div className="step-in w-full max-w-lg text-center">
-        <p className="text-lg text-[var(--text-secondary)]">Hola,</p>
-        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-[var(--text-primary)] kland:text-3xl">
-          {lookup.fullName}
-        </h1>
+      <KioskStep>
+        <KioskTitle title={`Hola, ${lookup.firstName || lookup.fullName}`} subtitle="Tu factura saldrá con estos datos." />
 
-        <dl className="mt-7 space-y-3 rounded-2xl bg-[var(--surface-raised)] p-6 text-left text-sm ring-1 ring-[var(--line-subtle)]">
-          <Row label="Documento" value={lookup.identification} />
-          {lookup.phone ? <Row label="Telefono" value={lookup.phone} /> : null}
-          {lookup.email ? <Row label="Correo" value={lookup.email} /> : null}
-        </dl>
+        <InfoCard>
+          <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
+            <InfoRow label="Nombre" value={lookup.fullName} />
+            <InfoRow label="Documento" value={lookup.identification} />
+            {lookup.phone ? <InfoRow label="Teléfono" value={lookup.phone} /> : null}
+            {lookup.email ? <InfoRow label="Correo" value={lookup.email} /> : null}
+          </dl>
+        </InfoCard>
 
         {needsEmail ? (
-          <div className="mt-5 text-left">
-            <EmailField value={missingEmail} onChange={setMissingEmail} autoFocus />
-          </div>
+          <EmailField value={missingEmail} onChange={setMissingEmail} autoFocus />
         ) : (
-          <p className="mt-4 text-sm text-[var(--text-muted)]">
-            Tu factura electronica saldra con estos datos y te llegara a este correo.
+          <p className="text-center text-lg text-[var(--text-muted)] kshort:text-sm">
+            Tu factura electrónica te llegará a este correo.
           </p>
         )}
 
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={() => {
-              setLookup(null);
-              setIdentification('');
-              setMissingEmail('');
-            }}
-            className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
-          >
-            No soy yo
-          </button>
-          <button
+        <div className="grid gap-4">
+          <PrimaryButton
             onClick={() =>
               onReady({
                 identification: lookup.identification,
@@ -129,12 +126,20 @@ export function CustomerStep({
               })
             }
             disabled={!emailOk}
-            className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
           >
             Continuar
-          </button>
+          </PrimaryButton>
+          <SecondaryButton
+            onClick={() => {
+              setLookup(null);
+              setIdentification('');
+              setMissingEmail('');
+            }}
+          >
+            No soy yo
+          </SecondaryButton>
         </div>
-      </div>
+      </KioskStep>
     );
   }
 
@@ -154,70 +159,66 @@ export function CustomerStep({
 
   /* ------------------------------------------- Se pide el documento ------ */
   return (
-    <div className="step-in grid w-full max-w-xl gap-5 kland:max-w-5xl kland:grid-cols-2 kland:grid-rows-[auto_auto] kland:items-center kland:gap-x-10 kland:gap-y-6">
-      <div className="text-center kland:col-start-1 kland:row-start-1 kland:text-left">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Numero de documento
-        </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          Lo usamos para emitir tu factura electronica.
-        </p>
+    <KioskStep pie={<BackLink onClick={onBack} />}>
+      <div className="kland:grid kland:grid-cols-2 kland:items-center kland:gap-10">
+        <div className="space-y-7 kland:space-y-4">
+          <KioskTitle
+            title="Número de documento"
+            subtitle="Lo usamos para emitir tu factura electrónica."
+          />
 
-        <input
-          value={identification}
-          onChange={(e) =>
-            setIdentification(e.target.value.replace(/\D/g, '').slice(0, MAX_ID))
-          }
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleLookup();
-          }}
-          inputMode="numeric"
-          autoFocus
-          aria-label="Numero de documento"
-          placeholder="1098765432"
-          className="tnum mt-5 w-full rounded-2xl bg-[var(--surface-sunken)] px-5 py-6 text-center text-5xl font-bold tracking-[0.12em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-2xl placeholder:font-medium placeholder:tracking-normal placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kland:py-5 kland:text-4xl kshort:mt-4 kshort:py-3.5 kshort:text-3xl"
-        />
+          <div className="relative">
+            <input
+              value={identification}
+              onChange={(e) =>
+                setIdentification(e.target.value.replace(/\D/g, '').slice(0, MAX_ID))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleLookup();
+              }}
+              inputMode="numeric"
+              autoFocus
+              aria-label="Número de documento"
+              placeholder="1098765432"
+              className="tnum h-[6.2rem] w-full rounded-[1.4rem] bg-[var(--surface-sunken)] px-20 text-center text-[3.2rem] font-bold tracking-[0.1em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:font-semibold placeholder:text-[var(--ring-strong)] focus:outline-none focus:ring-brand-500 kland:h-20 kland:text-4xl kshort:h-16 kshort:text-3xl"
+            />
+            {identification ? (
+              <button
+                type="button"
+                onClick={() => setIdentification('')}
+                aria-label="Borrar lo escrito"
+                className="absolute right-5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--surface-tile)] text-[var(--text-primary)] transition-colors duration-150 hover:bg-[var(--surface-tile-hover)]"
+              >
+                <MdClose className="h-6 w-6" aria-hidden focusable="false" />
+              </button>
+            ) : null}
+          </div>
 
-        {error ? (
-          <p role="alert" className="mt-3 text-[15px] text-bad-400 day:text-bad-600">
-            {error}
-          </p>
-        ) : null}
+          {error ? <Notice tone="bad">{error}</Notice> : null}
+        </div>
+
+        <div className="mt-8 space-y-6 kland:mt-0 kland:space-y-4">
+          <Keypad
+            mode="numeric"
+            onKey={(key) => setIdentification((v) => (v + key).slice(0, MAX_ID))}
+            onBackspace={() => setIdentification((v) => v.slice(0, -1))}
+            onClear={() => setIdentification('')}
+          />
+          <PrimaryButton onClick={handleLookup} disabled={busy || identification.length < 5}>
+            {busy ? 'Consultando...' : 'Continuar'}
+          </PrimaryButton>
+        </div>
       </div>
-
-      <div className="kland:col-start-2 kland:row-start-1 kland:row-span-2 kland:self-center">
-        <Keypad
-          mode="numeric"
-          onKey={(key) => setIdentification((v) => (v + key).slice(0, MAX_ID))}
-          onBackspace={() => setIdentification((v) => v.slice(0, -1))}
-          onClear={() => setIdentification('')}
-        />
-      </div>
-
-      <div className="flex gap-3 kland:col-start-1 kland:row-start-2">
-        <button
-          onClick={onBack}
-          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
-        >
-          Atras
-        </button>
-        <button
-          onClick={handleLookup}
-          disabled={busy || identification.length < 5}
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
-        >
-          {busy ? 'Consultando...' : 'Continuar'}
-        </button>
-      </div>
-    </div>
+    </KioskStep>
   );
 }
 
 /**
  * Datos de un cliente nuevo.
  *
- * Nombre, apellido y correo son obligatorios: los dos primeros van en la factura
- * y el correo es a donde llega la factura electronica. El telefono es opcional.
+ * Nombre y apellido van en la factura. El correo es a donde llega la factura
+ * electronica: se pide sin marcarlo como opcional (casi todos lo dan), pero no
+ * se exige. El telefono es opcional y lo dice.
  */
 function NewCustomerForm({
   identification,
@@ -241,90 +242,99 @@ function NewCustomerForm({
   const ready =
     firstName.trim().length >= 2 &&
     lastName.trim().length >= 2 &&
-    // Sin marcarlo como opcional en pantalla (casi todos lo dan), pero sin exigirlo:
-    // hay personas, sobre todo mayores, que no tienen correo.
     (email === '' || EMAIL.test(email));
 
-  const field =
-    'block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base';
-
   return (
-    <div className="step-in w-full max-w-xl">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Es tu primera vez aqui
-        </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          Completa tus datos una sola vez. La proxima te reconoceremos con tu
-          documento.
-        </p>
-      </div>
+    <KioskStep pie={<BackLink onClick={onBack} />}>
+      <KioskTitle
+        title="Es tu primera vez aquí"
+        subtitle="Completa tus datos una sola vez. La próxima te reconoceremos con tu documento."
+      />
 
-      <div className="mt-6 space-y-3">
-        <div className="rounded-xl bg-[var(--fill-soft)] px-4 py-3 text-sm">
-          <span className="text-[var(--text-muted)]">Documento</span>
-          <span className="tnum ml-3 font-medium text-[var(--text-primary)]">
-            {identification}
-          </span>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-[1.1rem] bg-[var(--surface-tile)] px-6 py-4 text-lg kshort:text-sm">
+          <span className="text-[var(--text-secondary)]">Documento</span>
+          <span className="tnum font-semibold text-[var(--text-primary)]">{identification}</span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
             ref={firstField}
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={setFirstName}
             placeholder="Nombres"
-            aria-label="Nombres"
             autoComplete="given-name"
-            className={field}
           />
-          <input
+          <TextField
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={setLastName}
             placeholder="Apellidos"
-            aria-label="Apellidos"
             autoComplete="family-name"
-            className={field}
           />
         </div>
 
         <EmailField value={email} onChange={setEmail} />
 
-        <input
+        <TextField
           value={phone}
-          onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ''))}
-          placeholder="Telefono (opcional)"
-          aria-label="Telefono"
-          inputMode="tel"
+          onChange={(v) => setPhone(v.replace(/[^\d+]/g, ''))}
+          placeholder="Teléfono (opcional)"
           autoComplete="tel"
-          className={`tnum ${field}`}
+          inputMode="tel"
+          numeric
         />
       </div>
 
-      <div className="mt-6 flex gap-3">
-        <button
-          onClick={onBack}
-          className="min-h-16 flex-1 rounded-2xl bg-[var(--fill-soft)] text-base font-semibold text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] kshort:min-h-13"
-        >
-          Atras
-        </button>
-        <button
-          onClick={() =>
-            onSubmit({
-              identification,
-              firstName: firstName.trim(),
-              lastName: lastName.trim(),
-              phone: phone.trim(),
-              email: email.trim().toLowerCase(),
-            })
-          }
-          disabled={!ready}
-          className="min-h-16 flex-[2] rounded-2xl bg-brand-600 text-lg font-bold text-white transition-colors duration-150 hover:bg-brand-500 active:bg-brand-700 disabled:bg-[var(--fill-soft)] disabled:text-[var(--text-muted)] kshort:min-h-13"
-        >
-          Continuar
-        </button>
-      </div>
-    </div>
+      <PrimaryButton
+        onClick={() =>
+          onSubmit({
+            identification,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phone: phone.trim(),
+            email: email.trim().toLowerCase(),
+          })
+        }
+        disabled={!ready}
+      >
+        Continuar
+      </PrimaryButton>
+    </KioskStep>
+  );
+}
+
+/** Campo de texto del kiosco: alto, letra grande y borde que se enciende en amarillo. */
+const CAMPO =
+  'block h-[4.4rem] w-full rounded-[1.1rem] bg-[var(--surface-sunken)] px-6 text-[1.4rem] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-brand-500 kshort:h-14 kshort:text-base';
+
+function TextField({
+  ref,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  inputMode,
+  numeric = false,
+}: {
+  ref?: React.Ref<HTMLInputElement>;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  numeric?: boolean;
+}) {
+  return (
+    <input
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      aria-label={placeholder}
+      autoComplete={autoComplete}
+      inputMode={inputMode}
+      className={`${numeric ? 'tnum ' : ''}${CAMPO}`}
+    />
   );
 }
 
@@ -347,40 +357,31 @@ function EmailField({
 
   return (
     <div>
-      <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
-        <MdOutlineMail className="h-4.5 w-4.5 text-brand-400 day:text-brand-700" aria-hidden focusable="false" />
-        Correo electronico
+      <label className="mb-2 flex items-center gap-2.5 text-lg font-semibold text-[var(--text-primary)] kshort:text-sm">
+        <MdOutlineMail className="h-6 w-6" aria-hidden focusable="false" />
+        Correo electrónico
       </label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value.trim())}
         placeholder="nombre@correo.com"
-        aria-label="Correo electronico"
+        aria-label="Correo electrónico"
         aria-describedby="ayuda-correo"
         inputMode="email"
         type="email"
         autoComplete="email"
         autoFocus={autoFocus}
-        className="mt-2 block w-full rounded-xl bg-[var(--surface-sunken)] px-4 py-4 text-lg text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:text-[var(--text-muted)] focus:ring-brand-500 focus:outline-none kshort:py-3 kshort:text-base"
+        className={CAMPO}
       />
       {looksWrong ? (
-        <p role="alert" className="mt-1.5 text-sm text-bad-400 day:text-bad-600">
+        <p role="alert" className="mt-2 text-lg text-bad-600 night:text-bad-300 kshort:text-sm">
           Revisa el correo: parece incompleto.
         </p>
       ) : (
-        <p id="ayuda-correo" className="mt-1.5 text-sm text-[var(--text-muted)]">
-          Aqui te enviaremos tu factura electronica.
+        <p id="ayuda-correo" className="mt-2 text-lg text-[var(--text-muted)] kshort:text-sm">
+          Aquí te enviaremos tu factura electrónica.
         </p>
       )}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-[var(--text-muted)]">{label}</dt>
-      <dd className="text-right font-medium text-[var(--text-primary)]">{value}</dd>
     </div>
   );
 }

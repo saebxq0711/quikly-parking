@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { AppError, scrubSecrets } from '@/lib/errors';
 
 /**
@@ -45,7 +46,16 @@ export class SiigoClient {
   }
 
   private async getToken(): Promise<string> {
-    const cacheKey = `${this.config.baseUrl}|${this.config.username}`;
+    /*
+      La clave (resumida, no en claro) y el Partner-Id son parte de la llave: con
+      solo el usuario, al cambiar la clave se seguia usando el token de la anterior
+      y una clave nueva equivocada pasaba la verificacion sin que nadie lo notara.
+    */
+    const huella = createHash('sha256')
+      .update(`${this.config.accessKey}|${this.config.partnerId}`)
+      .digest('hex')
+      .slice(0, 16);
+    const cacheKey = `${this.config.baseUrl}|${this.config.username}|${huella}`;
     const cached = tokenCache.get(cacheKey);
     // Margen de 60s para no usar un token que expira mientras viaja.
     if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
@@ -70,9 +80,12 @@ export class SiigoClient {
     });
 
     if (!response.ok) {
+      const rechazo = response.status >= 400 && response.status < 500 && response.status !== 429;
       throw new AppError('UPSTREAM_UNAVAILABLE', {
-        publicMessage: 'El servicio de facturacion rechazo las credenciales.',
-        detail: { status: response.status },
+        publicMessage: rechazo
+          ? 'SIIGO rechazo el usuario o la clave de acceso de este parqueadero.'
+          : 'El servicio de facturacion no respondio. Se reintentara.',
+        detail: { status: response.status, credencialesRechazadas: rechazo },
       });
     }
 

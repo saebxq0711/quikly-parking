@@ -21,15 +21,20 @@ export function Stat({
   tone?: 'plain' | 'accent';
 }) {
   return (
-    <div className="rounded-2xl bg-[var(--surface-raised)] p-5 ring-1 ring-[var(--line-subtle)]">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
-        {label}
-      </p>
-      <p
-        className={`tnum mt-2 text-3xl font-semibold tracking-tight ${
-          tone === 'accent' ? 'text-brand-300' : 'text-ink-50'
-        }`}
-      >
+    /*
+      La cifra principal de cada pantalla va sobre el amarillo palido de la marca
+      (el mismo del "Total a pagar" del kiosco); las demas, sobre blanco. Una sola
+      por pantalla: si todas fueran amarillas, ninguna seria la principal.
+    */
+    <div
+      className={`rounded-2xl p-5 ring-1 ${
+        tone === 'accent'
+          ? 'bg-[var(--accent-soft)] ring-[var(--accent-soft-line)]'
+          : 'bg-[var(--surface-raised)] ring-[var(--line-subtle)]'
+      }`}
+    >
+      <p className="text-[13px] font-medium text-[var(--text-secondary)]">{label}</p>
+      <p className="tnum mt-1.5 text-[2rem] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
         {value}
       </p>
       {hint ? (
@@ -60,24 +65,24 @@ export function SourceNotice({
     <div
       className={`flex gap-3 rounded-2xl p-5 ring-1 ${
         pending
-          ? 'bg-white/[0.03] ring-[var(--line-subtle)]'
-          : 'bg-warn-500/[0.07] ring-warn-400/25'
+          ? 'bg-[var(--fill-soft)] ring-[var(--line-subtle)]'
+          : 'bg-warn-100/50 ring-warn-400/25'
       }`}
     >
       <Glyph
         className={`mt-0.5 h-5 w-5 shrink-0 ${
-          pending ? 'text-[var(--text-muted)]' : 'text-warn-400'
+          pending ? 'text-[var(--text-muted)]' : 'text-warn-600'
         }`}
         aria-hidden
         focusable="false"
       />
       <div className="min-w-0">
-        <p className="text-sm font-medium text-ink-100">
-          {pending ? `${what}: no disponible por ahora` : `${what}: sin conexion con el parqueadero`}
+        <p className="text-sm font-medium text-[var(--text-primary)]">
+          {pending ? `${what}: no disponible por ahora` : `${what}: sin conexión con el parqueadero`}
         </p>
         <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)]">
           {pending
-            ? 'Esta informacion todavia no esta habilitada para tu parqueadero.'
+            ? 'Esta información todavía no está habilitada para tu parqueadero.'
             : 'No pudimos consultar el sistema del parqueadero. Intenta de nuevo en unos minutos.'}
         </p>
       </div>
@@ -111,7 +116,7 @@ export function Th({
 export function TableHead({ children }: { children: React.ReactNode }) {
   return (
     <thead>
-      <tr className="border-b border-[var(--line-subtle)] text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+      <tr className="border-b border-[var(--line-subtle)] text-[13px] text-[var(--text-secondary)]">
         {children}
       </tr>
     </thead>
@@ -126,7 +131,7 @@ export function TableBody({ children }: { children: React.ReactNode }) {
 
 export function Row({ children }: { children: React.ReactNode }) {
   return (
-    <tr className="transition-colors duration-100 hover:bg-white/[0.03]">
+    <tr className="transition-colors duration-100 hover:bg-[var(--fill-soft)]">
       {children}
     </tr>
   );
@@ -145,7 +150,7 @@ export function CardTitle({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line-subtle)] px-5 py-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink-100">{title}</h2>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
         {description ? (
           <p className="mt-1 text-xs text-[var(--text-muted)]">{description}</p>
         ) : null}
@@ -181,9 +186,9 @@ export function formatUpstreamDate(value: string | null): string {
 }
 
 const TICKET_STATUS: Record<string, { label: string; className: string }> = {
-  IN: { label: 'Adentro', className: 'bg-brand-500/15 text-brand-200 ring-brand-400/25' },
-  PAID: { label: 'Pagado', className: 'bg-ok-500/12 text-ok-300 ring-ok-400/25' },
-  OUT: { label: 'Salio', className: 'bg-white/[0.06] text-ink-200 ring-[var(--line-subtle)]' },
+  IN: { label: 'Adentro', className: 'bg-brand-100 text-ink-950 ring-brand-300' },
+  PAID: { label: 'Pagado', className: 'bg-ok-50 text-ok-700 ring-ok-400/25' },
+  OUT: { label: 'Salio', className: 'bg-[var(--fill-soft-hover)] text-[var(--text-primary)] ring-[var(--line-subtle)]' },
 };
 
 export function TicketStatus({
@@ -195,7 +200,7 @@ export function TicketStatus({
 }) {
   if (cancelled) {
     return (
-      <span className="inline-flex rounded-full bg-bad-500/12 px-2.5 py-1 text-[11px] font-medium text-bad-300 ring-1 ring-bad-400/25">
+      <span className="inline-flex rounded-full bg-bad-50 px-2.5 py-1 text-[11px] font-medium text-bad-700 ring-1 ring-bad-400/25">
         Anulado
       </span>
     );
@@ -205,7 +210,7 @@ export function TicketStatus({
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${
         known?.className ??
-        'bg-white/[0.06] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
+        'bg-[var(--fill-soft-hover)] text-[var(--text-secondary)] ring-[var(--line-subtle)]'
       }`}
     >
       {known?.label ?? status ?? '—'}

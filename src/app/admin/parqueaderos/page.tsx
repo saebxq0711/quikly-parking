@@ -44,7 +44,7 @@ export default async function ParkingLotsPage() {
         description="Cada parqueadero tiene su propio sistema, sus kioscos de pago y su facturacion. Sus usuarios solo ven la informacion de su sitio."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <Card className="overflow-hidden">
           {lots.length === 0 ? (
             <EmptyState
@@ -68,18 +68,18 @@ export default async function ParkingLotsPage() {
                   <li key={lot.id}>
                     <Link
                       href={`/admin/parqueaderos/${lot.slug}`}
-                      className="flex items-center gap-4 px-5 py-4 transition-colors duration-150 hover:bg-white/[0.03]"
+                      className="flex items-center gap-4 px-5 py-4 transition-colors duration-150 hover:bg-[var(--fill-soft)]"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate font-medium text-ink-100">
+                          <p className="truncate font-medium text-[var(--text-primary)]">
                             {lot.name}
                           </p>
                           <span className="font-mono text-xs text-[var(--text-muted)]">
                             /{lot.slug}
                           </span>
                           {!lot.active ? (
-                            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-ink-400 ring-1 ring-inset ring-white/15">
+                            <span className="rounded-full bg-[var(--fill-soft-hover)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] ring-1 ring-inset ring-[var(--ring-soft)]">
                               Inactivo
                             </span>
                           ) : null}
@@ -87,11 +87,11 @@ export default async function ParkingLotsPage() {
 
                         <p className="mt-1.5 text-xs">
                           {pending.length === 0 ? (
-                            <span className="text-ok-300">
+                            <span className="text-ok-700">
                               Listo para operar
                             </span>
                           ) : (
-                            <span className="text-warn-300">
+                            <span className="text-warn-700">
                               Falta configurar: {pending.join(', ')}
                             </span>
                           )}
@@ -154,10 +154,10 @@ export default async function ParkingLotsPage() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+      <dt className="text-[13px] text-[var(--text-secondary)]">
         {label}
       </dt>
-      <dd className="tnum text-sm font-medium text-ink-200">{value}</dd>
+      <dd className="tnum text-sm font-medium text-[var(--text-primary)]">{value}</dd>
     </div>
   );
 }

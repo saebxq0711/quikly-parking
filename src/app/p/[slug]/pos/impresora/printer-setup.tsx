@@ -119,7 +119,7 @@ export function PrinterSetup({
             <p className="text-[var(--text-secondary)]">Buscando impresora...</p>
           ) : estado.tipo === 'sin-soporte' ? (
             <div className="flex gap-3">
-              <MdWarningAmber className="mt-0.5 h-6 w-6 shrink-0 text-warn-400 day:text-warn-600" aria-hidden focusable="false" />
+              <MdWarningAmber className="mt-0.5 h-6 w-6 shrink-0 text-warn-600 night:text-warn-400" aria-hidden focusable="false" />
               <div className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
                 <p className="font-medium text-[var(--text-primary)]">Este navegador no conecta impresoras USB directamente.</p>
                 <p className="mt-1">
@@ -138,7 +138,7 @@ export function PrinterSetup({
             </div>
           ) : (
             <div className="flex gap-3">
-              <MdCheckCircle className="mt-0.5 h-6 w-6 shrink-0 text-ok-400 day:text-ok-700" aria-hidden focusable="false" />
+              <MdCheckCircle className="mt-0.5 h-6 w-6 shrink-0 text-ok-700 night:text-ok-400" aria-hidden focusable="false" />
               <div>
                 <p className="font-medium text-[var(--text-primary)]">{nombreImpresora(estado.dispositivo)}</p>
                 <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
@@ -154,8 +154,8 @@ export function PrinterSetup({
             role="status"
             className={`mt-4 rounded-xl px-4 py-3 text-[15px] leading-relaxed ring-1 ${
               mensaje.ok
-                ? 'bg-ok-500/10 text-ok-300 day:text-ok-700 ring-ok-400/25'
-                : 'bg-bad-500/10 text-bad-300 day:text-bad-600 ring-bad-400/25'
+                ? 'bg-ok-500/10 text-ok-700 night:text-ok-300 ring-ok-400/25'
+                : 'bg-bad-500/10 text-bad-600 night:text-bad-300 ring-bad-400/25'
             }`}
           >
             {mensaje.texto}
@@ -177,7 +177,7 @@ export function PrinterSetup({
               type="button"
               onClick={probar}
               disabled={ocupado || estado.tipo !== 'lista'}
-              className={`${boton} bg-brand-600 text-white hover:bg-brand-500`}
+              className={`${boton} bg-brand-500 text-ink-950 hover:bg-brand-400`}
             >
               <MdPrint className="h-5 w-5" aria-hidden focusable="false" />
               {ocupado ? 'Imprimiendo...' : 'Imprimir prueba'}

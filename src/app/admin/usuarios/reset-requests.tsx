@@ -42,7 +42,7 @@ export function ResetRequests({
             className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-ink-100">
+              <p className="truncate text-sm font-medium text-[var(--text-primary)]">
                 {request.email}
               </p>
               <p className="text-xs text-[var(--text-muted)]">
@@ -70,7 +70,7 @@ function DismissButton() {
     <button
       type="submit"
       disabled={pending}
-      className="shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.06] hover:text-ink-100 disabled:opacity-50"
+      className="shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)] hover:text-[var(--text-primary)] disabled:opacity-50"
     >
       {pending ? '...' : 'Descartar'}
     </button>

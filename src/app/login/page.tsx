@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, homePathForRole } from '@/lib/auth/guards';
+import { BrandSwoosh } from '@/components/brand-swoosh';
 import { LoginForm } from './login-form';
 
 export const metadata = { title: 'Iniciar sesion' };
@@ -16,17 +17,13 @@ export default async function LoginPage({
   const { next } = await searchParams;
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+    <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
       {/*
-        Resplandor de marca detras del formulario: lavanda arriba, aqua abajo,
-        los dos colores primarios del manual. Es la unica decoracion de todo el
-        producto y esta aqui a proposito — es la primera pantalla, la unica que
-        no esta haciendo un trabajo.
+        El trazo amarillo del logo, llevado a la esquina: la unica decoracion del
+        ingreso. Es la primera pantalla que ve cualquiera y la unica que no esta
+        haciendo un trabajo, asi que es la que presenta la marca.
       */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_32rem_at_50%_-10%,rgb(181_143_255/0.16),transparent_70%),radial-gradient(40rem_24rem_at_50%_110%,rgb(92_225_230/0.1),transparent_70%)]"
-      />
+      <BrandSwoosh className="swoosh-in pointer-events-none absolute -bottom-24 -right-24 -z-10 h-72 w-72 text-brand-500 sm:-bottom-10 sm:-right-10 sm:h-[30rem] sm:w-[30rem]" />
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           {/*
@@ -35,7 +32,7 @@ export default async function LoginPage({
             panel se usa la horizontal, que cabe en la barra lateral.
           */}
           <Image
-            src="/quikly-parking.png"
+            src="/quikly-parking-positivo.png"
             alt="Quikly Parking"
             width={783}
             height={269}
@@ -43,11 +40,11 @@ export default async function LoginPage({
             className="mx-auto h-24 w-auto"
           />
           <p className="mt-5 text-sm text-[var(--text-secondary)]">
-            Gestion y cobro de parqueaderos
+            Gestión y cobro de parqueaderos
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border-t-2 border-gold-500 bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)] shadow-[var(--shadow-card)]">
+        <div className="rounded-3xl bg-[var(--surface-raised)] p-7 ring-1 ring-[var(--line-subtle)] shadow-[var(--shadow-lift)]">
           <LoginForm nextPath={next} />
         </div>
 

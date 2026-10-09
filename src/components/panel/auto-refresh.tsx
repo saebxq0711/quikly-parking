@@ -44,7 +44,7 @@ export function AutoRefresh({ seconds = 30 }: { seconds?: number }) {
   const hace = Math.max(0, Math.round((ahora - ultima) / 1000));
 
   return (
-    <span className="inline-flex h-8 items-center gap-2 rounded-full bg-white/[0.04] px-3 text-xs font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-white/10">
+    <span className="inline-flex h-8 items-center gap-2 rounded-full bg-[var(--fill-soft)] px-3 text-xs font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--ring-soft)]">
       <span
         className={`live-dot h-2 w-2 rounded-full ${pending ? 'bg-brand-400' : 'bg-ok-400'}`}
         aria-hidden="true"

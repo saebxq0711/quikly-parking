@@ -15,7 +15,7 @@ export default async function LegacyPosPage() {
     return (
       <main className="flex min-h-dvh items-center justify-center px-6 text-center">
         <div className="max-w-md">
-          <h1 className="text-2xl font-semibold text-ink-100">
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
             Sin parqueadero asignado
           </h1>
           <p className="mt-3 leading-relaxed text-[var(--text-secondary)]">

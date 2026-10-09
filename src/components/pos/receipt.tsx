@@ -5,12 +5,44 @@ import QRCode from 'qrcode';
 import type { ReceiptDocument } from '@/lib/printing/receipt-data';
 
 /**
+ * El documento viene de `receipt-data.ts`, que se escribe en ASCII porque lo
+ * mismo sale por la impresora termica, que no imprime tildes. En pantalla si se
+ * pueden: estas son las palabras de ese documento que las llevan. Solo palabras
+ * completas, para no tocar placas, codigos ni nombres.
+ */
+const TILDES: Record<string, string> = {
+  Vehiculo: 'Vehículo',
+  Telefono: 'Teléfono',
+  Direccion: 'Dirección',
+  Autorizacion: 'Autorización',
+  Codigo: 'Código',
+  Regimen: 'Régimen',
+  Poliza: 'Póliza',
+  Numero: 'Número',
+  Electronica: 'Electrónica',
+  electronica: 'electrónica',
+  datafono: 'datáfono',
+  Datafono: 'Datáfono',
+  dias: 'días',
+  Atencion: 'Atención',
+  atencion: 'atención',
+};
+
+function conTildes(texto: string): string {
+  return texto.replace(/[A-Za-z]+/g, (palabra) => TILDES[palabra] ?? palabra);
+}
+
+/**
  * Comprobante de pago en la pantalla del kiosco.
  *
- * Es lo que ve el cliente cuando el kiosco no tiene impresora (o no respondio): el
- * mismo documento del papel (`receipt-data.ts`), con un QR que abre su factura en el
- * celular. No se imprime por el navegador; el servidor le envia este comprobante al
- * correo en cuanto se aprueba el pago.
+ * Es lo que ve el cliente cuando el kiosco no tiene impresora (o no respondió):
+ * el mismo documento del papel (`receipt-data.ts`), con un QR que abre su factura
+ * en el celular. No se imprime por el navegador; el servidor le envía este
+ * comprobante al correo en cuanto se aprueba el pago.
+ *
+ * Se lee de pie y a medio metro, como el resto del kiosco: una sola columna, a
+ * tamaño de kiosco (todo en `rem`, que crece con la pantalla) y sin rótulos en
+ * versalitas. Los títulos de cada bloque son el nombre del bloque, nada más.
  */
 export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
   const [qr, setQr] = useState<string | null>(null);
@@ -33,39 +65,40 @@ export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
   return (
     <section
       aria-label="Comprobante de pago"
-      className="receipt-in mt-6 max-h-[50dvh] overflow-y-auto rounded-2xl bg-[var(--surface-raised)] text-left ring-1 ring-[var(--line-subtle)] kland:mt-4 kland:max-h-[58dvh]"
+      className="receipt-in rounded-[1.4rem] bg-[var(--surface-raised)] text-left shadow-[var(--shadow-card)] ring-1 ring-[var(--line-subtle)]"
     >
-      <header className="border-b border-dashed border-[var(--line-strong)] px-5 py-4 text-center">
-        <p className="text-[15px] font-semibold text-[var(--text-primary)]">{doc.title}</p>
+      <header className="border-b border-dashed border-[var(--line-strong)] px-7 py-5 text-center kland:px-5 kland:py-3">
+        <p className="text-xl font-semibold text-[var(--text-primary)]">{conTildes(doc.title)}</p>
         {doc.headerLines.map((linea, index) => (
-          <p key={`${index}-${linea}`} className="text-xs leading-relaxed text-[var(--text-muted)]">
-            {linea}
+          <p key={`${index}-${linea}`} className="text-base leading-snug text-[var(--text-muted)]">
+            {conTildes(linea)}
           </p>
         ))}
       </header>
 
-      <div className="flex items-end justify-between gap-4 px-5 py-4">
+      <div className="flex items-end justify-between gap-6 px-7 py-5 kland:px-5 kland:py-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-            {doc.heading}
+          <p className="text-lg font-semibold text-[var(--text-primary)]">
+            {conTildes(doc.heading)}
+            {doc.number ? <span className="tnum ml-2 text-[var(--text-secondary)]">{doc.number}</span> : null}
           </p>
-          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{doc.issuedAt}</p>
+          <p className="tnum text-base text-[var(--text-secondary)]">{doc.issuedAt}</p>
         </div>
-        <p className="tnum text-3xl font-bold tracking-tight text-[var(--text-primary)]">{doc.total}</p>
+        <p className="tnum text-[2.2rem] font-bold leading-none tracking-[-0.02em] text-[var(--text-primary)]">
+          {doc.total}
+        </p>
       </div>
 
-      <div className="grid gap-5 border-t border-[var(--line-subtle)] px-5 py-4 sm:grid-cols-2 kland:grid-cols-3">
+      <div className="divide-y divide-[var(--line-subtle)] border-t border-[var(--line-subtle)] px-7 kland:px-5">
         {doc.sections.map((seccion) => (
-          <div key={seccion.title} className="min-w-0">
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-              {seccion.title}
-            </p>
-            <dl className="space-y-1 text-sm">
+          <div key={seccion.title} className="py-4 kland:py-3">
+            <p className="mb-1.5 text-lg font-semibold text-[var(--text-primary)]">{conTildes(seccion.title)}</p>
+            <dl className="space-y-1">
               {seccion.rows.map((fila) => (
-                <div key={fila.label} className="flex justify-between gap-3">
-                  <dt className="shrink-0 text-[var(--text-muted)]">{fila.label}</dt>
-                  <dd className="min-w-0 break-words text-right font-medium text-[var(--text-primary)]">
-                    {fila.value}
+                <div key={fila.label} className="flex items-baseline justify-between gap-6 text-lg kshort:text-sm">
+                  <dt className="shrink-0 text-[var(--text-secondary)]">{conTildes(fila.label)}</dt>
+                  <dd className="tnum min-w-0 break-words text-right font-semibold text-[var(--text-primary)]">
+                    {conTildes(fila.value)}
                   </dd>
                 </div>
               ))}
@@ -75,13 +108,13 @@ export function ReceiptScreen({ doc }: { doc: ReceiptDocument }) {
       </div>
 
       {qr ? (
-        <div className="flex items-center gap-4 border-t border-[var(--line-subtle)] px-5 py-4">
+        <div className="flex items-center gap-5 border-t border-[var(--line-subtle)] px-7 py-5 kland:px-5">
           <div
-            className="h-24 w-24 shrink-0 rounded-lg bg-white p-2 [&_svg]:h-full [&_svg]:w-full"
+            className="h-32 w-32 shrink-0 rounded-xl bg-white p-2 ring-1 ring-[var(--line-subtle)] [&_svg]:h-full [&_svg]:w-full"
             dangerouslySetInnerHTML={{ __html: qr }}
           />
-          <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-            Escanea con la camara de tu celular para ver tu factura electronica.
+          <p className="text-lg leading-snug text-[var(--text-secondary)]">
+            Escanea con la cámara de tu celular para ver tu factura electrónica.
           </p>
         </div>
       ) : null}

@@ -16,3 +16,6 @@ redeban_api.md
 siigo_api.md
 # Manuales de proveedores (propietarios): no van al repositorio publico.
 *.pdf
+
+# Capturas de revision de diseno (Impeccable): trabajo local, no se versionan.
+.impeccable/review/

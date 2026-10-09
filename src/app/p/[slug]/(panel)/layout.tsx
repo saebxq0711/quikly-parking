@@ -72,7 +72,7 @@ export default async function ParkingLotLayout({
       contextHint={lot.city ?? undefined}
     >
       {lot.testMode ? (
-        <div className="mb-5 rounded-xl bg-warn-500/10 px-4 py-3 text-sm text-warn-300 ring-1 ring-warn-400/25">
+        <div className="mb-5 rounded-xl bg-warn-100/60 px-4 py-3 text-sm text-warn-700 ring-1 ring-warn-400/25">
           Modo de pruebas: el kiosco usa un parqueadero simulado. Los datos del sistema del
           parqueadero no estan disponibles mientras dure.
         </div>

@@ -112,7 +112,7 @@ export default async function ParkingLotDetailPage({
         back={
           <Link
             href="/admin/parqueaderos"
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-ink-100"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)]"
           >
             <MdArrowBack className="h-4 w-4" aria-hidden focusable="false" />
             Parqueaderos
@@ -159,7 +159,7 @@ export default async function ParkingLotDetailPage({
               action={
                 <Link
                   href="/admin/usuarios"
-                  className="shrink-0 text-[13px] font-medium text-brand-300 transition-colors duration-150 hover:text-brand-200"
+                  className="shrink-0 text-[13px] font-medium text-[var(--text-primary)] underline decoration-brand-500 decoration-2 underline-offset-4 transition-colors duration-150 hover:decoration-[var(--text-primary)]"
                 >
                   Administrar
                 </Link>
@@ -172,7 +172,7 @@ export default async function ParkingLotDetailPage({
                 {lot.users.map((user) => (
                   <li key={user.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink-100">{user.name}</p>
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">{user.name}</p>
                       <p className="truncate text-xs text-[var(--text-muted)]">{user.email}</p>
                     </div>
                     {!user.active ? <span className="text-xs text-[var(--text-muted)]">Inactivo</span> : null}
@@ -190,7 +190,7 @@ export default async function ParkingLotDetailPage({
             parkingLotId={lot.id}
             catalogs={catalogs}
             baseUrl={siigoValues.baseUrl ?? 'https://api.siigo.com'}
-            partnerId={siigoValues.partnerId ?? 'PuntoPagoParking'}
+            partnerId={siigoValues.partnerId ?? 'QuiklyParking'}
             enabled={siigo.enabled}
             missing={siigo.missing}
             username={siigo.username ?? ''}
