@@ -27,6 +27,9 @@ const CSP = [
   ...(esDesarrollo ? [] : ['upgrade-insecure-requests']),
 ].join('; ');
 
+/** Imagenes publicas de la marca que se usan fuera del sitio (correos, servidor del parqueadero). */
+const IMAGENES_DE_MARCA = 'quikly-parking[a-z-]*\\.png|icon\\.png|apple-icon\\.png';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -55,12 +58,29 @@ const nextConfig: NextConfig = {
           // usb=(self): el kiosco imprime el comprobante por WebUSB (`lib/printing/usb-printer.ts`).
           // Con usb=() la impresora quedaba bloqueada; solo este sitio puede pedirla.
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=(self)' },
-          // Aisla la ventana de otras pestañas y no deja que otro sitio cargue nuestros recursos.
+          // Aisla la ventana de otras pestañas.
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
           { key: 'X-DNS-Prefetch-Control', value: 'off' },
           // Herramienta privada: que ningun buscador la indexe.
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
+      {
+        // Ningun otro sitio carga nuestros recursos... salvo las imagenes de la marca (abajo).
+        source: `/((?!${IMAGENES_DE_MARCA}).*)`,
+        headers: [{ key: 'Cross-Origin-Resource-Policy', value: 'same-origin' }],
+      },
+      {
+        /*
+          El logo y los iconos los muestran los CORREOS (comprobante, restablecer
+          contrasena), que se abren desde otro sitio: Outlook/Hotmail web, apps de
+          correo. Con `same-origin` el navegador los bloqueaba y el correo salia con la
+          imagen rota. Son publicos y no cambian a menudo: un dia de cache.
+        */
+        source: `/:archivo(${IMAGENES_DE_MARCA})`,
+        headers: [
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Cache-Control', value: 'public, max-age=86400' },
         ],
       },
     ];
