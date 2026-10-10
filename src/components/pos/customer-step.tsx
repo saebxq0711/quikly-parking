@@ -30,10 +30,15 @@ export interface CustomerData {
   identification: string;
   firstName: string;
   lastName: string;
+  /** Vacio en un cliente que ya existe: el servidor conserva el guardado. */
   phone: string;
+  /** Vacio en un cliente que ya existe y tiene correo: el servidor conserva el guardado. */
   email: string;
+  /** Si la factura le llegara por correo (para el aviso del final). */
+  hasEmail: boolean;
 }
 
+/** `phone` y `email` llegan enmascarados (`ju•••@hotmail.com`): solo para mostrar. */
 export interface CustomerLookup {
   found: boolean;
   identification: string;
@@ -109,9 +114,8 @@ export function CustomerStep({
   /* --------------------------------- Cliente conocido: se le saluda ------ */
   if (lookup?.found) {
     const needsEmail = !lookup.email;
-    const email = needsEmail ? missingEmail : (lookup.email ?? '');
     // El correo no se exige (hay quien no tiene): solo se valida si lo escriben.
-    const emailOk = email === '' || EMAIL.test(email);
+    const emailOk = missingEmail === '' || EMAIL.test(missingEmail);
 
     return (
       <KioskStep>
@@ -141,8 +145,11 @@ export function CustomerStep({
                 identification: lookup.identification,
                 firstName: lookup.firstName,
                 lastName: lookup.lastName,
-                phone: lookup.phone ?? '',
-                email: email.trim().toLowerCase(),
+                // Lo que se ve esta enmascarado: no se reenvia. Solo viaja el
+                // correo que escriba quien no tenia uno.
+                phone: '',
+                email: needsEmail ? missingEmail.trim().toLowerCase() : '',
+                hasEmail: !needsEmail || missingEmail !== '',
               })
             }
             disabled={!emailOk}
@@ -313,6 +320,7 @@ function NewCustomerForm({
             lastName: lastName.trim(),
             phone: phone.trim(),
             email: email.trim().toLowerCase(),
+            hasEmail: email.trim() !== '',
           })
         }
         disabled={!ready}

@@ -613,7 +613,7 @@ export function PosFlow({
             error={error}
             onDone={reset}
             impresoraUsb={hasPrinter && impresoraUsb}
-            conCorreo={Boolean(customer?.email)}
+            conCorreo={Boolean(customer?.hasEmail)}
             issuer={issuer}
           />
         ) : null}
