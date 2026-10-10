@@ -34,24 +34,8 @@ import {
   describeSipFailure,
   publicMessageForCode,
 } from '@/integrations/sipconnector/codes';
-import { queueInvoice } from '../billing/service';
-import { after } from 'next/server';
-
-/**
- * Trabajo que sigue despues de responder (la factura de SIIGO).
- *
- * En un servidor propio `void promesa` bastaba, pero en Vercel la funcion se congela en
- * cuanto sale la respuesta y la factura podia quedarse sin emitir. `after()` le pide a la
- * plataforma que la termine. Fuera de una peticion (scripts) `after` no existe: se lanza
- * igual que antes.
- */
-function enSegundoPlano(tarea: () => Promise<unknown>): void {
-  try {
-    after(tarea);
-  } catch {
-    void tarea();
-  }
-}
+import { invoiceAbandonedPayments } from '../billing/service';
+import { enSegundoPlano } from '../background';
 
 /**
  * Orquestacion del cobro (CLAUDE.md secciones 15, 16 y 23).
@@ -749,27 +733,24 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
     await assignReceiptNumber(updated.id, updated.parkingLotId).catch((error) =>
       console.error('[payments] no se pudo numerar el comprobante', { paymentId, error }),
     );
-    // El parqueadero tiene que enterarse para liberar el vehiculo, y hay que
-    // facturar. Ninguna de las dos cosas puede invalidar un cobro ya hecho.
+    // El parqueadero tiene que enterarse para liberar el vehiculo. Eso no puede
+    // invalidar un cobro ya hecho.
     await confirmToParkingSystem(updated).catch((error) =>
       console.error('[payments] no se pudo confirmar al parqueadero', {
         paymentId,
         error,
       }),
     );
+    /*
+      La factura NO se emite aqui: despues del pago el kiosco le pregunta al cliente
+      si la quiere a su nombre o a consumidor final, y se emite al elegir
+      (`invoice-choice.ts`), igual que el comprobante al correo. Aqui solo se rescatan
+      los pagos de clientes que se fueron sin elegir hace mas de unos minutos.
+    */
     enSegundoPlano(() =>
-      queueInvoice(updated.id).catch((error) =>
-        console.error('[payments] fallo al encolar la factura', { paymentId, error }),
+      invoiceAbandonedPayments().catch((error) =>
+        console.error('[payments] fallo al facturar pagos sin eleccion', { paymentId, error }),
       ),
-    );
-    // El comprobante al correo del cliente: es su soporte cuando el kiosco no imprime.
-    // Import dinamico: `receipt-email` usa `serialize`, que importa este archivo.
-    enSegundoPlano(() =>
-      import('./receipt-email')
-        .then(({ sendReceiptEmail }) => sendReceiptEmail(updated.id))
-        .catch((error) =>
-          console.error('[payments] no se pudo enviar el comprobante', { paymentId, error }),
-        ),
     );
   }
 

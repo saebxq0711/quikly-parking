@@ -7,6 +7,7 @@ import { findLivePayment, startCardPayment } from '@/lib/payments/service';
 import { getPaymentPoint } from '@/lib/parking/payment-point';
 import { saveCustomer } from '@/lib/payments/customers';
 import { serializePayment } from '@/lib/payments/serialize';
+import { customerInputSchema } from '@/lib/payments/customer-schema';
 
 const schema = z.object({
   vehicleType: z.enum(['CAR', 'MOTORCYCLE', 'BICYCLE', 'SCOOTER']),
@@ -27,31 +28,10 @@ const schema = z.object({
   expectedAmount: z.number().int().positive().optional(),
 
   /**
-   * Cliente que paga, identificado en el kiosco por su documento.
-   * Es lo que permite emitir la factura a su nombre en vez de a consumidor
-   * final.
+   * Cliente que paga. El kiosco ya no lo manda aqui: la factura se elige despues de
+   * pagar (`/api/pos/payments/[id]/factura`). Se sigue aceptando por compatibilidad.
    */
-  customer: z
-    .object({
-      identification: z.string().min(1).max(20),
-      firstName: z.string().min(1).max(80),
-      lastName: z.string().max(80).optional().default(''),
-      phone: z.string().max(30).optional(),
-      /**
-       * A donde van el comprobante y la factura electronica. No se exige: hay clientes
-       * sin correo. Sin el, la factura se emite igual y el comprobante queda en pantalla.
-       */
-      email: z
-        .string()
-        .trim()
-        .max(120)
-        .refine(
-          (valor) => valor === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor),
-          'Escribe un correo valido: ahi te enviamos la factura electronica.',
-        )
-        .optional(),
-    })
-    .optional(),
+  customer: customerInputSchema.optional(),
 });
 
 /** Inicia un cobro con tarjeta contra el datafono. */
