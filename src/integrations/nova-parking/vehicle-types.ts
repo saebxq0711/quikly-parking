@@ -115,3 +115,56 @@ export function isValidIdentifier(
   */
   return /^[A-HJ-NP-Z][0-9][A-HJ-NP-Z][0-9]{2}$/.test(value) || /^\d{1,14}$/.test(value);
 }
+
+/** Lo que se busca en el sistema del parqueadero, ya reconocido. */
+export interface SearchTerm {
+  kind: VehicleIdentifierKind;
+  value: string;
+}
+
+/** Forma exacta del QR del tiquete: el numero con ceros a la izquierda, 10 digitos. */
+const NUMERO_DEL_QR = /^\d{10}$/;
+const CODIGO = /^[A-HJ-NP-Z][0-9][A-HJ-NP-Z][0-9]{2}$/;
+
+/**
+ * Reconoce lo que escribio el cliente o leyo el escaner.
+ *
+ * Desde el 2026-10-10 Nova Parking busca el vehiculo por cuatro datos en
+ * `find-ticket/car/` (MODIFICACIONES_CLAUDE_SERVIDOR.md): la placa, el numero del QR
+ * con ceros (`0000000170`, lo que entrega el lector), el codigo (`Z1M14`) o el enlace
+ * del QR (`https://.../t/Z1M14`). Antes el kiosco solo entendia placa o codigo, segun
+ * el tipo elegido, y cortaba lo leido a 7 caracteres: el QR del tiquete no encontraba
+ * nada.
+ *
+ * El numero solo se acepta con la forma del QR (10 digitos). El numero de tiquete es
+ * secuencial: aceptar "170" escrito a mano dejaria a cualquiera recorrer los vehiculos
+ * de otros probando numeros. Se conserva el numero corto solo donde ya se aceptaba
+ * (`TICKET_ID` y el respaldo transitorio de `CODE`).
+ *
+ * Devuelve null si no es nada reconocible.
+ */
+export function recognizeSearchTerm(
+  raw: string,
+  configured: VehicleIdentifierKind,
+): SearchTerm | null {
+  const texto = raw.trim();
+  // Un enlace: lo que importa es el ultimo tramo de la ruta (`/t/Z1M14`).
+  const tramo = texto.includes('/')
+    ? (texto.split(/[?#]/)[0].replace(/\/+$/, '').split('/').pop() ?? '')
+    : texto;
+  const limpio = tramo.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!limpio) return null;
+
+  if (/^\d+$/.test(limpio)) {
+    if (NUMERO_DEL_QR.test(limpio)) return { kind: 'TICKET_ID', value: limpio };
+    if (configured !== 'PLATE' && /^\d{1,14}$/.test(limpio)) return { kind: 'TICKET_ID', value: limpio };
+    return null;
+  }
+
+  // I y O no existen en los codigos: se leen como 1 y 0 (se confunden a la vista).
+  const comoCodigo = limpio.replace(/I/g, '1').replace(/O/g, '0');
+  if (CODIGO.test(comoCodigo)) return { kind: 'CODE', value: comoCodigo };
+
+  if (configured === 'PLATE' && /^[A-Z0-9]{5,7}$/.test(limpio)) return { kind: 'PLATE', value: limpio };
+  return null;
+}

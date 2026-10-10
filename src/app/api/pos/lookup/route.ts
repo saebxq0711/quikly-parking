@@ -8,7 +8,9 @@ import { getPaymentPoint } from '@/lib/parking/payment-point';
 
 const schema = z.object({
   vehicleType: z.enum(['CAR', 'MOTORCYCLE', 'BICYCLE', 'SCOOTER']),
-  identifier: z.string().min(1).max(20),
+  // Hasta 200: el QR puede traer el enlace completo (`https://.../t/Z1M14`). Que sea
+  // valido lo decide `recognizeSearchTerm`, no el largo.
+  identifier: z.string().min(1).max(200),
 });
 
 /**

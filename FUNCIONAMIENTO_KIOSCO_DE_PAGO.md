@@ -210,6 +210,25 @@ GET /api/parking/find-ticket/<tipo>/?term=<dato>&exact=true  →  el tiquete
 GET /api/parking/ticket/<codigo>/pay-checkout/               →  cuánto debe
 ```
 
+**Escanear el QR del tiquete (desde el 2026-10-10).** El QR impreso no trae la
+placa ni el código: trae el **número del tiquete con ceros a la izquierda**
+(`0000000170`), o un enlace que termina en el código (`https://…/t/Z1M14`).
+Nova Parking busca por cualquiera de esas formas en `find-ticket/car/`, sin
+filtrar por tipo, así que el QR sirve desde cualquier vehículo elegido, carro
+incluido. De nuestro lado, `recognizeSearchTerm` (`integrations/nova-parking/vehicle-types.ts`)
+reconoce qué se leyó: placa, código, número del QR o enlace. Si no es placa,
+busca primero en `car` y, si no aparece, en las rutas de código de siempre.
+
+- El número solo se acepta con la forma del QR (10 dígitos). El número de
+  tiquete es secuencial: aceptar `170` escrito a mano dejaría a cualquiera
+  recorrer los vehículos de otros probando números.
+- Un tiquete encontrado por QR o código se cotiza con el tipo que eligió el
+  cliente si entró como "Por Definir"; si ya tiene tipo, solo se cobra si el
+  cliente eligió ese mismo tipo. Al confirmar se manda el tipo para que quede
+  tipado.
+- En la pantalla, lo que entrega el lector ya no se corta a los 7 caracteres
+  de una placa: antes `0000000170` quedaba en `0000000` y no se encontraba nada.
+
 ### 3.2.1. El cliente reconoce su vehículo
 
 Antes de pedirle un solo dato se le muestra **la foto que tomó la cámara cuando
