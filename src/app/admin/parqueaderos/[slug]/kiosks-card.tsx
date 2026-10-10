@@ -92,7 +92,13 @@ export function KiosksCard({
                   <PasswordInput name="confirmPassword" required minLength={10} autoComplete="new-password" />
                 </Field>
               </div>
-              <Checkbox name="hasPrinter" label="Este kiosco imprime el comprobante" />
+              <div className="space-y-1.5">
+                <Checkbox name="hasPrinter" label="Este kiosco tiene su propia impresora" />
+                <p className="pl-6.5 text-xs leading-relaxed text-[var(--text-muted)]">
+                  Déjala sin marcar si no tiene: el comprobante sale en pantalla. También se
+                  marca sola al conectar la impresora desde el kiosco.
+                </p>
+              </div>
             </ActionForm>
           </div>
         </details>

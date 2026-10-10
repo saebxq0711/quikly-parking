@@ -46,11 +46,26 @@ export default async function PrinterPage({
   if (!lot) notFound();
   scopeToParkingLot(user, lot.id);
 
+  // La impresora que se conecte aqui queda ligada a ESTE kiosco (el de la sesion).
+  const kiosco = user.paymentPointId
+    ? await db.paymentPoint.findFirst({
+        where: { id: user.paymentPointId, parkingLotId: lot.id },
+        select: { id: true, name: true, hasPrinter: true },
+      })
+    : null;
+  if (!kiosco) notFound();
+
   return (
     <>
       {/* Mismo tema dia/noche que el kiosco: se configura en la misma pantalla. */}
       <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_KIOSCO }} />
-      <PrinterSetup issuer={emisorDe(lot)} backHref={`/p/${slug}/pos`} />
+      <PrinterSetup
+        issuer={emisorDe(lot)}
+        backHref={`/p/${slug}/pos`}
+        kioskId={kiosco.id}
+        kioskName={kiosco.name}
+        hasPrinter={kiosco.hasPrinter}
+      />
     </>
   );
 }

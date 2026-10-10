@@ -44,28 +44,92 @@ export function nombreImpresora(dispositivo: USBDevice): string {
   );
 }
 
-/** La impresora que este navegador ya tiene autorizada, si hay una conectada. */
-export async function impresoraEmparejada(): Promise<USBDevice | null> {
-  if (!navigator.usb) return null;
-  const dispositivos = await navigator.usb.getDevices();
-  return dispositivos.find(esImpresora) ?? null;
+/*
+  CADA IMPRESORA ES DE SU KIOSCO.
+
+  La autorizacion de WebUSB es del NAVEGADOR, no del kiosco: si dos kioscos se abren en
+  el mismo equipo (o se prueba un kiosco nuevo en el PC del principal), los dos veian la
+  misma impresora y los dos imprimian en ella. Por eso cada kiosco recuerda CUAL es la
+  suya (fabricante, modelo y serie) y solo usa esa.
+
+  Se guarda en el navegador, junto a la autorizacion de la que depende: es el mismo
+  equipo el que tiene la impresora conectada.
+*/
+
+const claveDelKiosco = (kioscoId: string) => `quikly:impresora:${kioscoId}`;
+
+/** Identidad de una impresora: fabricante, modelo y numero de serie (si lo trae). */
+export function idImpresora(dispositivo: USBDevice): string {
+  return [dispositivo.vendorId, dispositivo.productId, dispositivo.serialNumber ?? ''].join(':');
+}
+
+function impresoraLigada(kioscoId: string): string | null {
+  try {
+    return window.localStorage.getItem(claveDelKiosco(kioscoId));
+  } catch {
+    return null;
+  }
+}
+
+function ligarImpresora(kioscoId: string, dispositivo: USBDevice): void {
+  try {
+    window.localStorage.setItem(claveDelKiosco(kioscoId), idImpresora(dispositivo));
+  } catch {
+    // Sin almacenamiento (modo privado): el kiosco usa la autorizada, como antes.
+  }
+}
+
+/** Desliga la impresora de este kiosco. La autorizacion del navegador queda: puede ser de otro kiosco. */
+export function olvidarImpresora(kioscoId: string): void {
+  try {
+    window.localStorage.removeItem(claveDelKiosco(kioscoId));
+  } catch {
+    // nada que olvidar
+  }
 }
 
 /**
- * Detecta la impresora sola: avisa si hay una autorizada conectada al empezar y cada vez
+ * La impresora de ESTE kiosco, si esta autorizada y conectada.
+ *
+ * Con una ligada, solo esa: aunque el navegador tenga otras autorizadas, esas son de
+ * otros kioscos. Sin ninguna ligada (kioscos instalados antes de esto), toma la que el
+ * navegador ya tiene autorizada y la liga, asi el kiosco que ya imprimia sigue igual.
+ * `ligarSiFalta: false` solo mira, para la pantalla de configuracion.
+ */
+export async function impresoraDelKiosco(
+  kioscoId: string,
+  { ligarSiFalta = true }: { ligarSiFalta?: boolean } = {},
+): Promise<USBDevice | null> {
+  if (!navigator.usb) return null;
+  const impresoras = (await navigator.usb.getDevices()).filter(esImpresora);
+
+  const ligada = impresoraLigada(kioscoId);
+  if (ligada) return impresoras.find((d) => idImpresora(d) === ligada) ?? null;
+
+  if (!ligarSiFalta) return null;
+  const autorizada = impresoras[0] ?? null;
+  if (autorizada) ligarImpresora(kioscoId, autorizada);
+  return autorizada;
+}
+
+/**
+ * Detecta la impresora del kiosco sola: avisa si esta conectada al empezar y cada vez
  * que se conecta o se quita algo por USB. Devuelve la funcion para dejar de escuchar.
  *
  * "Autorizada" es por navegador: la da el toque en Conectar impresora
  * (`emparejarImpresora`) o, en un PC preparado con `scripts/windows/impresora-winusb.ps1`,
  * la politica de Chrome/Edge, sin ningun toque.
  */
-export function vigilarImpresora(alCambiar: (conectada: boolean) => void): () => void {
+export function vigilarImpresora(
+  kioscoId: string,
+  alCambiar: (conectada: boolean) => void,
+): () => void {
   const usb = typeof navigator !== 'undefined' ? navigator.usb : undefined;
   if (!usb) return () => undefined;
 
   let vigente = true;
   const revisar = () => {
-    impresoraEmparejada()
+    impresoraDelKiosco(kioscoId)
       .then((dispositivo) => {
         if (vigente) alCambiar(Boolean(dispositivo));
       })
@@ -84,12 +148,17 @@ export function vigilarImpresora(alCambiar: (conectada: boolean) => void): () =>
   };
 }
 
-/** Abre el selector de Chrome para autorizar la impresora. Tiene que venir de un toque. */
-export async function emparejarImpresora(): Promise<USBDevice> {
+/**
+ * Abre el selector de Chrome para autorizar la impresora y la liga a ESTE kiosco.
+ * Tiene que venir de un toque.
+ */
+export async function emparejarImpresora(kioscoId: string): Promise<USBDevice> {
   if (!navigator.usb) {
     throw new Error('Este navegador no permite conectar impresoras USB.');
   }
-  return navigator.usb.requestDevice({ filters: FILTROS_IMPRESORA });
+  const dispositivo = await navigator.usb.requestDevice({ filters: FILTROS_IMPRESORA });
+  ligarImpresora(kioscoId, dispositivo);
+  return dispositivo;
 }
 
 function salidaDeDatos(dispositivo: USBDevice): { interfaz: number; endpoint: number } {
