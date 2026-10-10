@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { MdArrowBack, MdCheckCircle, MdPrint, MdUsb, MdWarningAmber } from 'react-icons/md';
+import { MdArrowBack, MdCheckCircle, MdLinkOff, MdPrint, MdUsb, MdWarningAmber } from 'react-icons/md';
 import {
   emparejarImpresora,
-  impresoraEmparejada,
+  impresoraDelKiosco,
   imprimirPorUsb,
   nombreImpresora,
+  olvidarImpresora,
   usbDisponible,
 } from '@/lib/printing/usb-printer';
 import { comprobantePruebaEscPos } from '@/lib/printing/tickets';
@@ -29,13 +30,35 @@ function explicar(error: unknown): string {
   return error instanceof Error ? error.message : 'No fue posible usar la impresora.';
 }
 
+/** Le dice al servidor si ESTE kiosco tiene impresora (marca "con impresora" en su ficha). */
+async function declararImpresora(conectada: boolean, nombre?: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/pos/impresora', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conectada, nombre }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function PrinterSetup({
   issuer,
   backHref,
+  kioskId,
+  kioskName,
+  hasPrinter,
 }: {
   /** Datos reales del parqueadero: encabezan el comprobante de prueba. */
   issuer: ReceiptIssuer;
   backHref: string;
+  /** Kiosco de la sesion: la impresora que se conecte aqui queda ligada a el. */
+  kioskId: string;
+  kioskName: string;
+  /** Si la ficha del kiosco dice que imprime. */
+  hasPrinter: boolean;
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'revisando' });
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -46,20 +69,29 @@ export function PrinterSetup({
       setEstado({ tipo: 'sin-soporte' });
       return;
     }
-    impresoraEmparejada()
+    // Solo mira: una impresora autorizada en este navegador puede ser de otro kiosco.
+    impresoraDelKiosco(kioskId, { ligarSiFalta: hasPrinter })
       .then((dispositivo) =>
         setEstado(dispositivo ? { tipo: 'lista', dispositivo } : { tipo: 'sin-impresora' }),
       )
       .catch(() => setEstado({ tipo: 'sin-impresora' }));
-  }, []);
+  }, [kioskId, hasPrinter]);
 
   async function conectar() {
     setOcupado(true);
     setMensaje(null);
     try {
-      const dispositivo = await emparejarImpresora();
+      const dispositivo = await emparejarImpresora(kioskId);
       setEstado({ tipo: 'lista', dispositivo });
-      setMensaje({ ok: true, texto: 'Impresora conectada. Imprime una prueba para confirmar.' });
+      const registrada = await declararImpresora(true, nombreImpresora(dispositivo));
+      setMensaje(
+        registrada
+          ? { ok: true, texto: `Impresora conectada a ${kioskName}. Imprime una prueba para confirmar.` }
+          : {
+              ok: false,
+              texto: `La impresora quedo conectada en este equipo, pero no se pudo marcar ${kioskName} como "con impresora". Revisa la conexion y vuelve a tocar Conectar impresora.`,
+            },
+      );
     } catch (error) {
       setMensaje({ ok: false, texto: explicar(error) });
     } finally {
@@ -92,6 +124,20 @@ export function PrinterSetup({
     }
   }
 
+  async function quitar() {
+    setOcupado(true);
+    setMensaje(null);
+    olvidarImpresora(kioskId);
+    const registrada = await declararImpresora(false);
+    setEstado({ tipo: 'sin-impresora' });
+    setMensaje(
+      registrada
+        ? { ok: true, texto: `${kioskName} ya no imprime: el comprobante se muestra en pantalla.` }
+        : { ok: false, texto: 'Se quito en este equipo, pero no se pudo actualizar la ficha del kiosco. Intenta de nuevo.' },
+    );
+    setOcupado(false);
+  }
+
   const boton =
     'inline-flex min-h-15 flex-1 items-center justify-center gap-2 rounded-2xl text-lg font-semibold transition-colors duration-150 disabled:opacity-50';
 
@@ -106,12 +152,13 @@ export function PrinterSetup({
           Volver al punto de pago
         </Link>
 
-        <h1 className="mt-6 text-3xl font-semibold tracking-tight">Impresora del kiosco</h1>
+        <h1 className="mt-6 text-3xl font-semibold tracking-tight">Impresora de {kioskName}</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-          Conecta la impresora de recibos por USB y autorizala una sola vez en este
-          navegador. Desde ahi el kiosco la detecta sola cada vez que esta conectada e
-          imprime sin ventanas de impresion. En un PC con Windows preparado con el script
-          del kiosco ya aparece autorizada.
+          Conecta la impresora de recibos por USB y autorizala una sola vez. Queda ligada a
+          este kiosco: el kiosco la detecta sola cada vez que esta conectada e imprime sin
+          ventanas de impresion, y otro kiosco abierto en este mismo equipo no la usa. Si
+          este kiosco no tiene impresora, no conectes ninguna: el comprobante se muestra en
+          pantalla.
         </p>
 
         <div className="mt-6 rounded-2xl bg-[var(--surface-raised)] p-6 ring-1 ring-[var(--line-subtle)]">
@@ -132,7 +179,7 @@ export function PrinterSetup({
             <div className="flex gap-3">
               <MdUsb className="mt-0.5 h-6 w-6 shrink-0 text-[var(--text-muted)]" aria-hidden focusable="false" />
               <p className="text-[15px] leading-relaxed text-[var(--text-secondary)]">
-                Todavia no hay una impresora autorizada. Conectala, enciendela y toca{' '}
+                {kioskName} no tiene impresora. Si tiene una, conectala, enciendela y toca{' '}
                 <strong>Conectar impresora</strong>.
               </p>
             </div>
@@ -142,7 +189,7 @@ export function PrinterSetup({
               <div>
                 <p className="font-medium text-[var(--text-primary)]">{nombreImpresora(estado.dispositivo)}</p>
                 <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-                  Conectada. El kiosco la usara para imprimir.
+                  Conectada a {kioskName}. Este kiosco imprime solo en ella.
                 </p>
               </div>
             </div>
@@ -183,6 +230,19 @@ export function PrinterSetup({
               {ocupado ? 'Imprimiendo...' : 'Imprimir prueba'}
             </button>
           </div>
+        ) : null}
+
+        {estado.tipo === 'lista' || (estado.tipo === 'sin-impresora' && hasPrinter) ? (
+          /* Salida discreta: dejar el kiosco sin impresora es la excepcion, no la accion. */
+          <button
+            type="button"
+            onClick={quitar}
+            disabled={ocupado}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:text-bad-600 disabled:opacity-50"
+          >
+            <MdLinkOff className="h-4 w-4" aria-hidden focusable="false" />
+            Este kiosco no tiene impresora
+          </button>
         ) : null}
       </div>
     </main>

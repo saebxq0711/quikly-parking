@@ -40,7 +40,7 @@ import {
   SecondaryButton,
   TotalBlock,
 } from './kiosk-ui';
-import { impresoraEmparejada, imprimirPorUsb, vigilarImpresora } from '@/lib/printing/usb-printer';
+import { impresoraDelKiosco, imprimirPorUsb, vigilarImpresora } from '@/lib/printing/usb-printer';
 import { comprobante, type ReceiptIssuer } from '@/lib/printing/receipt-data';
 import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
 
@@ -143,6 +143,7 @@ export function PosFlow({
   paymentPointName,
   issuer,
   hasPrinter,
+  kioskId,
   livePayment,
   testMode = false,
 }: {
@@ -152,6 +153,8 @@ export function PosFlow({
   issuer: ReceiptIssuer;
   /** Si este kiosco imprime el comprobante. Sin impresora se muestra en pantalla. */
   hasPrinter: boolean;
+  /** Id del kiosco: cada uno imprime solo en SU impresora (`usb-printer.ts`). */
+  kioskId: string;
   /** Solo para soporte: no se muestra al cliente. */
   paymentPointName: string;
   /**
@@ -176,7 +179,10 @@ export function PosFlow({
     revisar cada vez que se conecta o desconecta algo por USB.
   */
   const [impresoraUsb, setImpresoraUsb] = useState(false);
-  useEffect(() => (hasPrinter ? vigilarImpresora(setImpresoraUsb) : undefined), [hasPrinter]);
+  useEffect(
+    () => (hasPrinter ? vigilarImpresora(kioskId, setImpresoraUsb) : undefined),
+    [hasPrinter, kioskId],
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -615,6 +621,7 @@ export function PosFlow({
             error={error}
             onDone={reset}
             impresoraUsb={hasPrinter && impresoraUsb}
+            kioskId={kioskId}
             conCorreo={facturaAlCorreo}
             issuer={issuer}
           />
@@ -1334,14 +1341,16 @@ function Result({
   error,
   onDone,
   impresoraUsb,
+  kioskId,
   conCorreo,
   issuer,
 }: {
   payment: PaymentDTO;
   error: string | null;
   onDone: () => void;
-  /** Hay una impresora USB autorizada y conectada: el papel sale por ahi. */
+  /** La impresora USB de este kiosco esta autorizada y conectada: el papel sale por ahi. */
   impresoraUsb: boolean;
+  kioskId: string;
   /** El cliente dio correo: el comprobante y la factura le llegan alli. */
   conCorreo: boolean;
   issuer: ReceiptIssuer;
@@ -1430,7 +1439,7 @@ function Result({
 
     let vigente = true;
     (async () => {
-      const impresora = await impresoraEmparejada().catch(() => null);
+      const impresora = await impresoraDelKiosco(kioskId).catch(() => null);
       if (!vigente) return;
       if (!impresora) {
         setSinPapel(true);
@@ -1458,7 +1467,7 @@ function Result({
     return () => {
       vigente = false;
     };
-  }, [imprimir, impresion, factura, payment, issuer]);
+  }, [imprimir, impresion, factura, payment, issuer, kioskId]);
 
   /*
     La pantalla vuelve sola: nadie del parqueadero esta ahi para dejarla lista

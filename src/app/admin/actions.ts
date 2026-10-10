@@ -731,7 +731,7 @@ export async function createKiosk(
       parkingLotId: lot.id,
       entity: 'PaymentPoint',
       entityId: point.id,
-      metadata: { creado: true, name, email },
+      metadata: { creado: true, name, email, hasPrinter: point.hasPrinter },
     });
 
     revalidatePath('/admin/parqueaderos');
