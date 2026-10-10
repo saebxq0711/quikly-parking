@@ -47,6 +47,26 @@ export interface CustomerLookup {
 const MAX_ID = 15;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
+/**
+ * El kiosco lo usan muchas personas en el mismo navegador: nada de lo que una
+ * escriba puede aparecerle sugerido a la siguiente. Por eso ningun campo pide
+ * ayuda al navegador (sin `name`, sin `given-name`/`email`/`tel`, el correo es
+ * `type="text"`) y todos llevan esto:
+ *   - autoComplete off: el navegador no guarda ni ofrece lo escrito antes.
+ *   - autoCorrect/spellCheck off: el teclado en pantalla no aprende ni propone
+ *     nombres o correos de otros clientes.
+ *   - data-lpignore / data-1p-ignore / data-form-type: los gestores de
+ *     contrasenas (LastPass, 1Password, Dashlane) no se ofrecen a rellenar.
+ */
+const SIN_SUGERENCIAS = {
+  autoComplete: 'off',
+  autoCorrect: 'off',
+  spellCheck: false,
+  'data-lpignore': 'true',
+  'data-1p-ignore': 'true',
+  'data-form-type': 'other',
+} as const;
+
 export function CustomerStep({
   onReady,
   onBack,
@@ -177,6 +197,7 @@ export function CustomerStep({
                 if (e.key === 'Enter') handleLookup();
               }}
               inputMode="numeric"
+              {...SIN_SUGERENCIAS}
               autoFocus
               aria-label="Número de documento"
               placeholder="1098765432"
@@ -263,13 +284,13 @@ function NewCustomerForm({
             value={firstName}
             onChange={setFirstName}
             placeholder="Nombres"
-            autoComplete="given-name"
+            autoCapitalize="words"
           />
           <TextField
             value={lastName}
             onChange={setLastName}
             placeholder="Apellidos"
-            autoComplete="family-name"
+            autoCapitalize="words"
           />
         </div>
 
@@ -279,7 +300,6 @@ function NewCustomerForm({
           value={phone}
           onChange={(v) => setPhone(v.replace(/[^\d+]/g, ''))}
           placeholder="Teléfono (opcional)"
-          autoComplete="tel"
           inputMode="tel"
           numeric
         />
@@ -312,7 +332,7 @@ function TextField({
   value,
   onChange,
   placeholder,
-  autoComplete,
+  autoCapitalize = 'off',
   inputMode,
   numeric = false,
 }: {
@@ -320,7 +340,7 @@ function TextField({
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  autoComplete?: string;
+  autoCapitalize?: 'off' | 'words';
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   numeric?: boolean;
 }) {
@@ -331,7 +351,8 @@ function TextField({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       aria-label={placeholder}
-      autoComplete={autoComplete}
+      {...SIN_SUGERENCIAS}
+      autoCapitalize={autoCapitalize}
       inputMode={inputMode}
       className={`${numeric ? 'tnum ' : ''}${CAMPO}`}
     />
@@ -367,9 +388,13 @@ function EmailField({
         placeholder="nombre@correo.com"
         aria-label="Correo electrónico"
         aria-describedby="ayuda-correo"
+        // Texto y no `type="email"`: ese tipo es lo que mas empuja al navegador a
+        // ofrecer correos guardados. El teclado sigue siendo el de correo (inputMode)
+        // y la validacion es la de EMAIL.
         inputMode="email"
-        type="email"
-        autoComplete="email"
+        type="text"
+        {...SIN_SUGERENCIAS}
+        autoCapitalize="off"
         autoFocus={autoFocus}
         className={CAMPO}
       />
