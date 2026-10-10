@@ -17,8 +17,8 @@ import {
 } from '../idempotency';
 import type { CurrentUser } from '../auth/guards';
 import {
-  isValidIdentifier,
-  normalizeIdentifier,
+  recognizeSearchTerm,
+  type SearchTerm,
 } from '@/integrations/nova-parking/vehicle-types';
 import { getVehicleRule, novaClientFor } from '../parking/config';
 import { redebanClientFor } from '../parking/redeban';
@@ -132,6 +132,38 @@ export interface VehicleLookupResult {
  * Busca el vehiculo y obtiene el valor a cobrar en un solo paso.
  * El monto SIEMPRE viene del sistema del parqueadero.
  */
+/**
+ * Busca el tiquete segun lo que se reconocio.
+ *
+ * - Placa: en la ruta configurada para el tipo (la del carro), como siempre.
+ * - Numero del QR o codigo: primero `find-ticket/car/`, que desde el 2026-10-10 los
+ *   busca sin filtrar por tipo (un numero de tiquete identifica UN vehiculo, sea carro,
+ *   moto o "Por Definir"). Si no aparece, las rutas de codigo de siempre: la del tipo
+ *   elegido y la otra (`bike` encuentra los "Por Definir", `moto` los ya tipados).
+ * Sin riesgo de cruzar vehiculos: numero y codigo son unicos en su sistema, y toda
+ * busqueda va con `exact=true`.
+ */
+async function findTicketForTerm(
+  client: Awaited<ReturnType<typeof novaClientFor>>,
+  config: { searchSegment: string; searchQuery: string | null },
+  termino: SearchTerm,
+) {
+  if (termino.kind === 'PLATE') {
+    return client.findTicket(config.searchSegment, termino.value, config.searchQuery);
+  }
+
+  const rutas = ['car', config.searchSegment, config.searchSegment === 'bike' ? 'moto' : 'bike'];
+  for (const ruta of [...new Set(rutas)]) {
+    const ticket = await client.findTicket(
+      ruta,
+      termino.value,
+      ruta === config.searchSegment ? config.searchQuery : null,
+    );
+    if (ticket) return ticket;
+  }
+  return null;
+}
+
 export async function lookupVehicle(params: {
   user: CurrentUser;
   parkingLotId: string;
@@ -139,9 +171,9 @@ export async function lookupVehicle(params: {
   identifier: string;
 }): Promise<VehicleLookupResult> {
   const config = await getVehicleRule(params.parkingLotId, params.vehicleType);
-  const identifier = normalizeIdentifier(params.identifier, config.identifierKind);
+  const termino = recognizeSearchTerm(params.identifier, config.identifierKind);
 
-  if (!isValidIdentifier(identifier, config.identifierKind)) {
+  if (!termino) {
     // El nombre del dato sale de la configuracion del sitio ("Placa del
     // vehiculo", "Codigo del tiquete"), para que el mensaje coincida con lo que
     // el cliente acaba de leer en pantalla.
@@ -156,26 +188,10 @@ export async function lookupVehicle(params: {
     action: AuditAction.VEHICLE_SEARCH,
     actorId: params.user.id,
     parkingLotId: params.parkingLotId,
-    metadata: { vehicleType: params.vehicleType, identifier },
+    metadata: { vehicleType: params.vehicleType, identifier: termino.value, forma: termino.kind },
   });
 
-  let ticket = await client.findTicket(
-    config.searchSegment,
-    identifier,
-    config.searchQuery,
-  );
-
-  /*
-    Respaldo entre las dos rutas de codigo. Los vehiculos que la camara no leyo
-    entran como "Por Definir" y solo los encuentra `find-ticket/bike/` (filtra por
-    ausencia de placa); `find-ticket/moto/` solo encuentra los que ya quedaron
-    tipados como Motocicleta. Se prueba la otra antes de decir "no encontrado".
-    Sin riesgo de cruzar vehiculos: el codigo es unico en todo su sistema.
-  */
-  if (!ticket && config.identifierKind !== 'PLATE') {
-    const otra = config.searchSegment === 'bike' ? 'moto' : 'bike';
-    ticket = await client.findTicket(otra, identifier, null);
-  }
+  const ticket = await findTicketForTerm(client, config, termino);
 
   if (!ticket) {
     return {
@@ -225,8 +241,10 @@ export async function lookupVehicle(params: {
     si el tiquete ya tiene tipo se usa el valor que trae el parqueadero tal cual (y solo
     si el cliente eligio ese tipo); si esta "Por Definir", se cotiza con el tipo elegido.
   */
+  // Por placa es un carro que ya entro tipado. Por QR, numero o codigo puede ser
+  // cualquier vehiculo, "Por Definir" incluido: se cotiza con el tipo elegido.
   const vehicleTypeId =
-    config.identifierKind === 'PLATE'
+    termino.kind === 'PLATE'
       ? null
       : await vehicleTypeIdForQuote(client, params.parkingLotId, ticket.id, params.vehicleType);
 
@@ -333,8 +351,15 @@ export async function startCardPayment(
       tiquete con tipo definido, con el valor que ya trae el parqueadero. La validacion
       se repite aqui: el cobro no depende de que la pantalla haya buscado antes.
     */
+    // Se reconoce igual que en la busqueda: lo cotizado aqui es lo que se mostro.
+    const termino = recognizeSearchTerm(input.identifier, config.identifierKind);
+    if (!termino) {
+      throw new AppError('VALIDATION', {
+        publicMessage: `${config.inputLabel}: revisa el dato ingresado.`,
+      });
+    }
     const vehicleTypeId =
-      config.identifierKind === 'PLATE'
+      termino.kind === 'PLATE'
         ? null
         : await vehicleTypeIdForQuote(nova, input.parkingLotId, input.ticketId, input.vehicleType);
     const checkout = await nova.getCheckout(input.ticketId, vehicleTypeId);
@@ -394,16 +419,19 @@ export async function startCardPayment(
     }
 
     const providerTransactionId = buildProviderTransactionId();
-    const identifier = normalizeIdentifier(input.identifier, config.identifierKind);
-
     const payment = await db.payment.create({
       data: {
         parkingLotId: lot.id,
         paymentPointId: input.paymentPoint.id,
         userId: input.user.id,
         vehicleType: input.vehicleType,
-        vehicleIdentifier: identifier,
-        identifierKind: config.identifierKind,
+        vehicleIdentifier: termino.value,
+        /*
+          La forma REAL con que se encontro, no la del tipo elegido: al confirmar, un
+          tiquete que no se encontro por placa (QR de un "Por Definir") manda el tipo
+          elegido para que el parqueadero lo deje tipado.
+        */
+        identifierKind: termino.kind,
         plate: checkout.ticket.plate,
         externalTicketId: input.ticketId,
         // Para el comprobante: el cliente se lleva su codigo, entrada y permanencia.

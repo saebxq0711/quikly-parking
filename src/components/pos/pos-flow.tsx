@@ -762,6 +762,12 @@ function Identify({
       const limpio = numeric
         ? tramo.replace(/\D/g, '')
         : tramo.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      /*
+        El QR del tiquete trae el NUMERO con ceros a la izquierda (`0000000170`, 10
+        digitos). Cortarlo a los 7 de una placa lo dejaba en "0000000" y no se
+        encontraba nada: un numero no se corta antes de sus 10 digitos.
+      */
+      if (/^\d+$/.test(limpio)) return limpio.slice(0, Math.max(maxLength, 10));
       return limpio.slice(0, maxLength);
     };
 
@@ -819,7 +825,7 @@ function Identify({
           */}
           <KioskTitle
             title={porCodigo ? 'Ingresa el código' : 'Ingresa la placa'}
-            subtitle={porCodigo ? undefined : 'Digita la placa de tu vehículo'}
+            subtitle={porCodigo ? undefined : 'Digita la placa o acerca el QR de tu tiquete al escáner'}
           />
 
           {porCodigo ? (
