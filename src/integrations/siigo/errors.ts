@@ -24,7 +24,8 @@ function traducir(error: SiigoErrorItem): string | null {
       return 'El comprobante no admite el envio a la DIAN que esta configurado: usa un comprobante de factura electronica con el envio activado, o uno no electronico con el envio desactivado.';
     }
     if (/seller/i.test(params) || /seller/i.test(message)) {
-      return 'El vendedor configurado no esta habilitado para ese comprobante en SIIGO.';
+      // Visto en el 122: el comprobante tenia "vendedor por item" activado.
+      return 'El comprobante configurado no acepta el vendedor de la factura (suele ser porque tiene "vendedor por item" activado en SIIGO). Elige otro comprobante de factura electronica en la configuracion de SIIGO del parqueadero.';
     }
     return 'SIIGO no permite esa combinacion con el comprobante configurado. Revisa el comprobante en SIIGO Nube.';
   }

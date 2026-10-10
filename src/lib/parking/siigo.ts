@@ -283,6 +283,23 @@ export async function verifySiigoConfig(
         `El comprobante "${String(doc.name)}" es de factura electronica: SIIGO exige enviarlo a la DIAN. Activa "Enviar la factura a la DIAN".`,
       );
     }
+
+    /*
+      Dos opciones del comprobante que la factura del kiosco no cumple, y que SIIGO
+      solo reporta al facturar. El 10/10/2026 el 122 quedo con un comprobante con
+      "vendedor por item" y cada factura volvia con "seller" rechazado: la factura
+      lleva UN vendedor para todo el documento, no uno por item.
+    */
+    if (doc.seller_by_item === true) {
+      problemas.push(
+        `El comprobante "${String(doc.name)}" (codigo ${String(doc.code)}) tiene activado "vendedor por item", y la factura del kiosco lleva un solo vendedor. Elige un comprobante sin esa opcion o desactivala en SIIGO Nube.`,
+      );
+    }
+    if (doc.cost_center_mandatory === true) {
+      problemas.push(
+        `El comprobante "${String(doc.name)}" (codigo ${String(doc.code)}) exige centro de costo, y la factura del kiosco no lo envia. Elige un comprobante que no lo exija o desactiva la obligacion en SIIGO Nube.`,
+      );
+    }
   }
 
   const pago = filas(pagos).find((p) => Number(p.id) === config.paymentTypeId);
