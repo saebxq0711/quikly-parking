@@ -29,7 +29,11 @@ import {
   vehicleTypeIdForConfirm,
   vehicleTypeIdForQuote,
 } from '@/lib/parking/nova-vehicle-types';
-import { SIP_CODE, publicMessageForCode } from '@/integrations/sipconnector/codes';
+import {
+  SIP_CODE,
+  describeSipFailure,
+  publicMessageForCode,
+} from '@/integrations/sipconnector/codes';
 import { queueInvoice } from '../billing/service';
 import { after } from 'next/server';
 
@@ -529,6 +533,14 @@ export async function startCardPayment(
         });
       }
 
+      // El cliente lee `publico`; el motivo real queda en `providerRaw` y el panel
+      // de pagos lo muestra (`enviarDatosFailureFromRaw`).
+      const fallo = describeSipFailure(sent.code, sent.message);
+      console.warn('[payments] el datafono no recibio el cobro', {
+        paymentId: payment.id,
+        code: sent.code,
+        motivo: fallo.motivo,
+      });
       return db.payment.update({
         where: { id: payment.id },
         data: {
@@ -536,7 +548,7 @@ export async function startCardPayment(
           terminalStage: 'RESOLVED',
           providerCode: sent.code,
           resolvedAt: new Date(),
-          failureReason: publicMessageForCode(sent.code),
+          failureReason: fallo.publico,
           providerRaw: scrubSecrets({ enviarDatos: sent.raw }) as object,
         },
       });

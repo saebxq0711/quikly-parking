@@ -2,6 +2,22 @@ import { db } from '../db';
 import { AppError } from '../errors';
 import { getCredentials } from '../credentials';
 import { SipConnectorClient } from '@/integrations/sipconnector/client';
+import { describeSipFailure } from '@/integrations/sipconnector/codes';
+
+/**
+ * Codigo unico como lo exige SIPConnector: 10 digitos, con ceros a la izquierda.
+ * `93554365` responde "Codigo Unico no registrado"; `0093554365` funciona
+ * (comprobado en produccion). Mas largo se deja tal cual: no se adivina.
+ */
+export function normalizeCodigoUnico(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits && digits.length < 10 ? digits.padStart(10, '0') : digits;
+}
+
+/** Codigo del datafono: mayusculas y sin espacios, como lo imprime el voucher. */
+export function normalizeCodigoTerminal(value: string): string {
+  return value.replace(/\s+/g, '').toUpperCase();
+}
 
 /**
  * Configuracion de SIPConnector POR KIOSCO.
@@ -70,8 +86,9 @@ export async function getRedebanStatus(
     configured: missing.length === 0,
     missing,
     baseUrl: values.baseUrl ?? null,
-    codigoUnico: values.codigoUnico ?? null,
-    codigoTerminal: values.codigoTerminal ?? null,
+    // Se muestra como se usa: con sus 10 digitos.
+    codigoUnico: values.codigoUnico ? normalizeCodigoUnico(values.codigoUnico) : null,
+    codigoTerminal: values.codigoTerminal ? normalizeCodigoTerminal(values.codigoTerminal) : null,
     red: values.red ?? '0',
   };
 }
@@ -111,10 +128,11 @@ export async function redebanClientFor(
 
   return new SipConnectorClient({
     baseUrl: values.baseUrl,
-    codigoUnico: values.codigoUnico,
+    // Tambien al leer: un codigo guardado antes sin sus ceros sigue funcionando.
+    codigoUnico: normalizeCodigoUnico(values.codigoUnico),
     usuario: values.usuario,
     clave: values.clave,
-    codigoTerminal: values.codigoTerminal,
+    codigoTerminal: normalizeCodigoTerminal(values.codigoTerminal),
     red: values.red ?? '0',
   });
 }
@@ -138,25 +156,25 @@ export async function testRedebanConnection(
     // `Version` no necesita token: comprueba red y codigo unico.
     const version = await client.version();
     if (!version.ok) {
-      return {
-        ok: false,
-        message: `El servicio respondio con el codigo ${version.code}.`,
-      };
+      return { ok: false, message: describeSipFailure(version.code, version.message).motivo };
     }
 
     // `Token` comprueba ademas usuario y clave.
     await client.token(true);
     return {
       ok: true,
-      message: `Conectado. ${version.version ?? 'Servicio disponible'}. Credenciales validas.`,
+      // El codigo del datafono no tiene prueba propia: el servicio solo lo valida
+      // al recibir un cobro. Se dice para que "Conectado" no se lea como "todo listo".
+      message: `Conectado. ${version.version ?? 'Servicio disponible'}. Codigo unico y credenciales validos. El datafono se comprueba con el primer cobro.`,
     };
   } catch (error) {
-    return {
-      ok: false,
-      message:
-        error instanceof AppError
-          ? error.publicMessage
-          : 'No fue posible comunicarse con el medio de pago.',
-    };
+    if (error instanceof AppError) {
+      const detail = error.detail as { code?: unknown; message?: unknown } | undefined;
+      if (typeof detail?.code === 'string' && typeof detail.message === 'string') {
+        return { ok: false, message: describeSipFailure(detail.code, detail.message).motivo };
+      }
+      return { ok: false, message: error.publicMessage };
+    }
+    return { ok: false, message: 'No fue posible comunicarse con el medio de pago.' };
   }
 }
