@@ -1,4 +1,5 @@
 import type { SiigoClient } from './client';
+import { documentType } from '@/lib/document-types';
 
 /**
  * Clientes en SIIGO.
@@ -73,8 +74,11 @@ export async function findCustomerByIdentification(
 
 export interface NewCustomer {
   identification: string;
+  /** Codigo de SIIGO (13 cedula, 31 NIT...). Ver `document-types.ts`. */
   idType: string;
+  /** Nombres, o la razon social si es empresa. */
   firstName: string;
+  /** Apellidos. Vacio en una empresa. */
   lastName: string;
   phone: string | null;
   email: string | null;
@@ -92,11 +96,18 @@ export async function createCustomer(
   client: SiigoClient,
   input: NewCustomer,
 ): Promise<SiigoCustomer | null> {
+  /*
+    Persona o empresa segun el documento (documentacion de SIIGO, "Crear cliente"):
+    una persona lleva el nombre en dos campos [nombres, apellidos]; una empresa (NIT)
+    es `Company` y lleva la razon social en UNO solo. El digito de verificacion del
+    NIT no se envia: SIIGO lo calcula.
+  */
+  const empresa = documentType(input.idType).company;
   const created = await client.post<RawCustomer>('/v1/customers', {
-    person_type: 'Person',
+    person_type: empresa ? 'Company' : 'Person',
     id_type: input.idType,
     identification: input.identification,
-    name: [input.firstName, input.lastName],
+    name: empresa ? [input.firstName] : [input.firstName, input.lastName || input.firstName],
     active: true,
     vat_responsible: false,
     address: {
@@ -107,7 +118,7 @@ export async function createCustomer(
     contacts: [
       {
         first_name: input.firstName,
-        last_name: input.lastName || input.firstName,
+        last_name: empresa ? undefined : input.lastName || input.firstName,
         email: input.email ?? undefined,
         phone: input.phone ? { number: input.phone } : undefined,
       },

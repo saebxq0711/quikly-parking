@@ -41,7 +41,8 @@ function extractSiigoError(detail: unknown): string | null {
 export async function queueInvoice(paymentId: string): Promise<void> {
   const payment = await db.payment.findUnique({
     where: { id: paymentId },
-    include: { parkingLot: true, invoice: true },
+    // El cliente da el tipo de documento de la factura (cedula, NIT...).
+    include: { parkingLot: true, invoice: true, customer: true },
   });
 
   if (!payment) return;

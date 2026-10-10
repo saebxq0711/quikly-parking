@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       ? await saveCustomer({
           parkingLotId,
           input: {
+            idType: parsed.data.customer.idType,
             identification: parsed.data.customer.identification,
             firstName: parsed.data.customer.firstName,
             lastName: parsed.data.customer.lastName ?? '',

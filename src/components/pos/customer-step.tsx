@@ -13,6 +13,13 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from './kiosk-ui';
+import {
+  DEFAULT_DOCUMENT_TYPE,
+  DOCUMENT_TYPES,
+  documentType,
+  formatDocument,
+  isValidDocument,
+} from '@/lib/document-types';
 
 /**
  * Identificacion del cliente, antes de pagar.
@@ -27,8 +34,12 @@ import {
  */
 
 export interface CustomerData {
+  /** Tipo de documento, con el codigo de SIIGO (13 cedula, 31 NIT...). */
+  idType: string;
   identification: string;
+  /** Nombres, o la razon social si es una empresa. */
   firstName: string;
+  /** Apellidos. Vacio en una empresa. */
   lastName: string;
   /** Vacio en un cliente que ya existe: el servidor conserva el guardado. */
   phone: string;
@@ -41,6 +52,8 @@ export interface CustomerData {
 /** `phone` y `email` llegan enmascarados (`ju•••@hotmail.com`): solo para mostrar. */
 export interface CustomerLookup {
   found: boolean;
+  /** Lo devuelve el servidor; si faltara, vale el tipo elegido en pantalla. */
+  idType?: string;
   identification: string;
   firstName: string;
   lastName: string;
@@ -49,7 +62,8 @@ export interface CustomerLookup {
   email: string | null;
 }
 
-const MAX_ID = 15;
+/** Los cuatro de siempre, a la vista; el resto detras de "Otro". */
+const TIPOS_A_LA_VISTA = ['13', '31', '22', '41'];
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
 /**
@@ -79,14 +93,21 @@ export function CustomerStep({
   onReady: (customer: CustomerData) => void;
   onBack: () => void;
 }) {
+  const [idType, setIdType] = useState(DEFAULT_DOCUMENT_TYPE);
+  const [masTipos, setMasTipos] = useState(false);
   const [identification, setIdentification] = useState('');
+  const tipo = documentType(idType);
+  const valido = isValidDocument(idType, identification);
+  /** Lo que se escribe, limpio para el tipo elegido: digitos, o letras y digitos. */
+  const limpiar = (valor: string) =>
+    (tipo.numeric ? valor.replace(/\D/g, '') : valor.toUpperCase().replace(/[^A-Z0-9]/g, '')).slice(0, tipo.max);
   const [lookup, setLookup] = useState<CustomerLookup | null>(null);
   const [missingEmail, setMissingEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleLookup() {
-    if (busy || identification.length < 5) return;
+    if (busy || !valido) return;
     setBusy(true);
     setError(null);
 
@@ -94,7 +115,7 @@ export function CustomerStep({
       const response = await fetch('/api/pos/customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identification }),
+        body: JSON.stringify({ idType, identification }),
       });
       const data = await response.json();
 
@@ -124,7 +145,7 @@ export function CustomerStep({
         <InfoCard>
           <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
             <InfoRow label="Nombre" value={lookup.fullName} />
-            <InfoRow label="Documento" value={lookup.identification} />
+            <InfoRow label="Documento" value={formatDocument(lookup.idType ?? idType, lookup.identification)} />
             {lookup.phone ? <InfoRow label="Teléfono" value={lookup.phone} /> : null}
             {lookup.email ? <InfoRow label="Correo" value={lookup.email} /> : null}
           </dl>
@@ -142,6 +163,7 @@ export function CustomerStep({
           <PrimaryButton
             onClick={() =>
               onReady({
+                idType: lookup.idType ?? idType,
                 identification: lookup.identification,
                 firstName: lookup.firstName,
                 lastName: lookup.lastName,
@@ -174,6 +196,7 @@ export function CustomerStep({
   if (lookup && !lookup.found) {
     return (
       <NewCustomerForm
+        idType={lookup.idType ?? idType}
         identification={lookup.identification}
         onSubmit={onReady}
         onBack={() => {
@@ -190,24 +213,62 @@ export function CustomerStep({
       <div className="kland:grid kland:grid-cols-2 kland:items-center kland:gap-10">
         <div className="space-y-7 kland:space-y-4">
           <KioskTitle
-            title="Número de documento"
+            title="Tu documento"
             subtitle="Lo usamos para emitir tu factura electrónica."
           />
+
+          {/*
+            Tipo de documento: cedula por defecto, y a un toque el NIT de una empresa o
+            el documento de un extranjero. Cambiar de tipo borra lo escrito: un numero
+            de cedula no sirve como pasaporte.
+          */}
+          <div role="radiogroup" aria-label="Tipo de documento" className="flex flex-wrap justify-center gap-2.5">
+            {DOCUMENT_TYPES.filter(
+              (t) => masTipos || TIPOS_A_LA_VISTA.includes(t.code) || t.code === idType,
+            ).map((t) => (
+              <button
+                key={t.code}
+                type="button"
+                role="radio"
+                aria-checked={t.code === idType}
+                onClick={() => {
+                  setIdType(t.code);
+                  setIdentification('');
+                  setError(null);
+                }}
+                className={`min-h-14 rounded-2xl px-5 text-lg font-semibold transition-colors duration-150 kshort:min-h-11 kshort:text-sm ${
+                  t.code === idType
+                    ? 'bg-brand-500 text-ink-950'
+                    : 'bg-[var(--surface-tile)] text-[var(--text-primary)] hover:bg-[var(--surface-tile-hover)]'
+                }`}
+              >
+                {t.short}
+              </button>
+            ))}
+            {!masTipos ? (
+              <button
+                type="button"
+                onClick={() => setMasTipos(true)}
+                className="min-h-14 rounded-2xl px-5 text-lg font-semibold text-[var(--text-secondary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:text-[var(--text-primary)] kshort:min-h-11 kshort:text-sm"
+              >
+                Otro…
+              </button>
+            ) : null}
+          </div>
 
           <div className="relative">
             <input
               value={identification}
-              onChange={(e) =>
-                setIdentification(e.target.value.replace(/\D/g, '').slice(0, MAX_ID))
-              }
+              onChange={(e) => setIdentification(limpiar(e.target.value))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleLookup();
               }}
-              inputMode="numeric"
+              inputMode={tipo.numeric ? 'numeric' : 'text'}
               {...SIN_SUGERENCIAS}
+              autoCapitalize="characters"
               autoFocus
               aria-label="Número de documento"
-              placeholder="1098765432"
+              placeholder={tipo.company ? '900123456' : tipo.numeric ? '1098765432' : 'AB123456'}
               className="tnum h-[6.2rem] w-full rounded-[1.4rem] bg-[var(--surface-sunken)] px-20 text-center text-[3.2rem] font-bold tracking-[0.1em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:font-semibold placeholder:text-[var(--ring-strong)] focus:outline-none focus:ring-brand-500 kland:h-20 kland:text-4xl kshort:h-16 kshort:text-3xl"
             />
             {identification ? (
@@ -222,17 +283,23 @@ export function CustomerStep({
             ) : null}
           </div>
 
+          {tipo.code === '31' ? (
+            <p className="text-center text-lg text-[var(--text-muted)] kshort:text-sm">
+              Sin el dígito de verificación: lo calculamos nosotros.
+            </p>
+          ) : null}
+
           {error ? <Notice tone="bad">{error}</Notice> : null}
         </div>
 
         <div className="mt-8 space-y-6 kland:mt-0 kland:space-y-4">
           <Keypad
-            mode="numeric"
-            onKey={(key) => setIdentification((v) => (v + key).slice(0, MAX_ID))}
+            mode={tipo.numeric ? 'numeric' : 'alphanumeric'}
+            onKey={(key) => setIdentification((v) => limpiar(v + key))}
             onBackspace={() => setIdentification((v) => v.slice(0, -1))}
             onClear={() => setIdentification('')}
           />
-          <PrimaryButton onClick={handleLookup} disabled={busy || identification.length < 5}>
+          <PrimaryButton onClick={handleLookup} disabled={busy || !valido}>
             {busy ? 'Consultando...' : 'Continuar'}
           </PrimaryButton>
         </div>
@@ -249,10 +316,12 @@ export function CustomerStep({
  * se exige. El telefono es opcional y lo dice.
  */
 function NewCustomerForm({
+  idType,
   identification,
   onSubmit,
   onBack,
 }: {
+  idType: string;
   identification: string;
   onSubmit: (customer: CustomerData) => void;
   onBack: () => void;
@@ -267,39 +336,58 @@ function NewCustomerForm({
     firstField.current?.focus();
   }, []);
 
+  // Una empresa (NIT) tiene razon social, no nombres y apellidos.
+  const empresa = documentType(idType).company;
+
   const ready =
     firstName.trim().length >= 2 &&
-    lastName.trim().length >= 2 &&
+    (empresa || lastName.trim().length >= 2) &&
     (email === '' || EMAIL.test(email));
 
   return (
     <KioskStep pie={<BackLink onClick={onBack} />}>
       <KioskTitle
         title="Es tu primera vez aquí"
-        subtitle="Completa tus datos una sola vez. La próxima te reconoceremos con tu documento."
+        subtitle={
+          empresa
+            ? 'Completa los datos de la empresa una sola vez. La próxima la reconoceremos con su NIT.'
+            : 'Completa tus datos una sola vez. La próxima te reconoceremos con tu documento.'
+        }
       />
 
       <div className="space-y-4">
         <div className="flex items-center justify-between rounded-[1.1rem] bg-[var(--surface-tile)] px-6 py-4 text-lg kshort:text-sm">
           <span className="text-[var(--text-secondary)]">Documento</span>
-          <span className="tnum font-semibold text-[var(--text-primary)]">{identification}</span>
+          <span className="tnum font-semibold text-[var(--text-primary)]">
+            {formatDocument(idType, identification)}
+          </span>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        {empresa ? (
           <TextField
             ref={firstField}
             value={firstName}
             onChange={setFirstName}
-            placeholder="Nombres"
+            placeholder="Razón social"
             autoCapitalize="words"
           />
-          <TextField
-            value={lastName}
-            onChange={setLastName}
-            placeholder="Apellidos"
-            autoCapitalize="words"
-          />
-        </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              ref={firstField}
+              value={firstName}
+              onChange={setFirstName}
+              placeholder="Nombres"
+              autoCapitalize="words"
+            />
+            <TextField
+              value={lastName}
+              onChange={setLastName}
+              placeholder="Apellidos"
+              autoCapitalize="words"
+            />
+          </div>
+        )}
 
         <EmailField value={email} onChange={setEmail} />
 
@@ -315,9 +403,10 @@ function NewCustomerForm({
       <PrimaryButton
         onClick={() =>
           onSubmit({
+            idType,
             identification,
             firstName: firstName.trim(),
-            lastName: lastName.trim(),
+            lastName: empresa ? '' : lastName.trim(),
             phone: phone.trim(),
             email: email.trim().toLowerCase(),
             hasEmail: email.trim() !== '',

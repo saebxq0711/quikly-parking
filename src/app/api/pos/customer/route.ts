@@ -4,9 +4,12 @@ import { requireRole, scopeToParkingLot } from '@/lib/auth/guards';
 import { AppError, toErrorResponse } from '@/lib/errors';
 import { consumeRateLimit } from '@/lib/rate-limit';
 import { lookupCustomer } from '@/lib/payments/customers';
+import { DEFAULT_DOCUMENT_TYPE, DOCUMENT_TYPE_CODES } from '@/lib/document-types';
 
 const schema = z.object({
-  identification: z.string().min(1).max(20),
+  // Sin tipo, cedula: es lo que mandaban los kioscos antes de elegir el tipo.
+  idType: z.enum(DOCUMENT_TYPE_CODES).optional().default(DEFAULT_DOCUMENT_TYPE),
+  identification: z.string().min(1).max(30),
 });
 
 /**
@@ -37,6 +40,7 @@ export async function POST(request: Request) {
     const parkingLotId = scopeToParkingLot(user);
     const customer = await lookupCustomer({
       parkingLotId,
+      idType: parsed.data.idType,
       identification: parsed.data.identification,
     });
 
