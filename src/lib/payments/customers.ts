@@ -19,6 +19,15 @@ import {
  * cobro sigue funcionando: la factura se emite despues.
  */
 
+/**
+ * Lo que ve el kiosco de un cliente.
+ *
+ * `email` y `phone` salen ENMASCARADOS (`ju•••@hotmail.com`, `••• 4567`): basta
+ * con escribir un documento para llegar aqui, y quien sepa la cedula de otro no
+ * debe poder leer su correo ni su telefono. Al cliente le alcanza para reconocer
+ * los suyos. Los datos completos no salen del servidor: al cobrar, `saveCustomer`
+ * conserva los guardados si el kiosco no manda otros.
+ */
 export interface CustomerView {
   found: boolean;
   identification: string;
@@ -27,6 +36,24 @@ export interface CustomerView {
   fullName: string;
   phone: string | null;
   email: string | null;
+}
+
+const OCULTO = '•••';
+
+/** `jsebas@hotmail.com` -> `js•••@hotmail.com`. El dominio queda: es de todos. */
+export function maskEmail(email: string): string {
+  const arroba = email.lastIndexOf('@');
+  if (arroba < 1) return OCULTO;
+  const usuario = email.slice(0, arroba);
+  // Con un usuario muy corto, dos letras serian casi todo: se deja una.
+  const visibles = usuario.length > 4 ? 2 : 1;
+  return `${usuario.slice(0, visibles)}${OCULTO}${email.slice(arroba)}`;
+}
+
+/** `3001234567` -> `••• 4567`. Largo fijo: tampoco se revela cuantos digitos tiene. */
+export function maskPhone(phone: string): string {
+  const digitos = phone.replace(/\D/g, '');
+  return digitos.length > 4 ? `${OCULTO} ${digitos.slice(-4)}` : OCULTO;
 }
 
 /** Solo digitos: un documento no lleva puntos ni espacios. */
@@ -51,8 +78,8 @@ function toView(customer: {
     firstName: customer.firstName,
     lastName: customer.lastName,
     fullName: [customer.firstName, customer.lastName].filter(Boolean).join(' '),
-    phone: customer.phone,
-    email: customer.email,
+    phone: customer.phone ? maskPhone(customer.phone) : null,
+    email: customer.email ? maskEmail(customer.email) : null,
   };
 }
 
@@ -146,12 +173,12 @@ export async function saveCustomer(params: {
 }): Promise<Customer> {
   const identification = normalizeIdentification(params.input.identification);
 
+  const phone = params.input.phone?.trim() || null;
+  const email = params.input.email?.trim().toLowerCase() || null;
   const data = {
     identification,
     firstName: params.input.firstName.trim(),
     lastName: params.input.lastName.trim(),
-    phone: params.input.phone?.trim() || null,
-    email: params.input.email?.trim().toLowerCase() || null,
   };
 
   const customer = await db.customer.upsert({
@@ -161,8 +188,10 @@ export async function saveCustomer(params: {
         identification,
       },
     },
-    update: data,
-    create: { parkingLotId: params.parkingLotId, ...data },
+    // El kiosco nunca tiene el correo ni el telefono completos de un cliente que
+    // ya existe (ver CustomerView): si no manda uno nuevo, se conserva el guardado.
+    update: { ...data, ...(phone ? { phone } : {}), ...(email ? { email } : {}) },
+    create: { parkingLotId: params.parkingLotId, ...data, phone, email },
   });
 
   if (customer.siigoId) return customer;
