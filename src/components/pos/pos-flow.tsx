@@ -23,7 +23,7 @@ import type { PaymentDTO } from '@/lib/payments/serialize';
 import type { InvoiceDocumentDTO, InvoicePrintDTO } from '@/lib/billing/invoice-print';
 import { Keypad } from './keypad';
 import { ExitGate } from './exit-gate';
-import { CustomerStep, type CustomerData } from './customer-step';
+import { InvoiceStep } from './invoice-step';
 import { ReceiptScreen } from './receipt';
 import { ThemeToggle } from './theme';
 import {
@@ -70,18 +70,23 @@ export interface PosVehicle {
 }
 
 /**
- * El flujo del kiosco. `customer` va despues de identificar el vehiculo porque
- * primero hay que saber si hay algo que cobrar: pedirle los datos a alguien
- * cuyo tiquete no existe seria hacerle perder el tiempo.
+ * El flujo del kiosco. La factura (`invoice`) se pregunta DESPUES de un pago
+ * aprobado: a nombre propio o consumidor final. Pedir los datos antes obligaba a
+ * llenarlos aunque el cobro no pasara, y a todos, aunque no quisieran factura propia.
  */
 type Step =
   | 'type'
   | 'identify'
   | 'confirm'
-  | 'customer'
   | 'summary'
   | 'waiting'
+  | 'invoice'
   | 'result';
+
+/** Tras un cobro resuelto: si se aprobo, primero la factura; si no, el resultado. */
+function pasoTrasResolver(payment: PaymentDTO): Step {
+  return payment.status === 'APPROVED' ? 'invoice' : 'result';
+}
 
 interface LookupResult {
   found: boolean;
@@ -161,7 +166,8 @@ export function PosFlow({
   const [vehicle, setVehicle] = useState<PosVehicle | null>(null);
   const [identifier, setIdentifier] = useState('');
   const [lookup, setLookup] = useState<LookupResult | null>(null);
-  const [customer, setCustomer] = useState<CustomerData | null>(null);
+  /** El cliente eligio factura a su nombre y dio correo: ahi le llegan comprobante y factura. */
+  const [facturaAlCorreo, setFacturaAlCorreo] = useState(false);
   const [payment, setPayment] = useState<PaymentDTO | null>(livePayment);
 
   /*
@@ -179,7 +185,7 @@ export function PosFlow({
     setVehicle(null);
     setIdentifier('');
     setLookup(null);
-    setCustomer(null);
+    setFacturaAlCorreo(false);
     setPayment(null);
     setError(null);
     setBusy(false);
@@ -270,7 +276,6 @@ export function PosFlow({
           vehicleType: vehicle.vehicleType,
           identifier,
           ticketId: lookup.ticketId,
-          customer: customer ?? undefined,
           // Una clave por intento: si el operador toca dos veces o la red
           // reintenta, el servidor devuelve el MISMO cobro, no crea otro.
           idempotencyKey: crypto.randomUUID(),
@@ -291,7 +296,7 @@ export function PosFlow({
         return;
       }
       setPayment(data as PaymentDTO);
-      setStep(data.isFinal ? 'result' : 'waiting');
+      setStep(data.isFinal ? pasoTrasResolver(data as PaymentDTO) : 'waiting');
     } catch {
       setError('No fue posible iniciar el cobro. Intenta nuevamente.');
     } finally {
@@ -309,12 +314,20 @@ export function PosFlow({
       const data = await response.json();
       if (response.ok) {
         setPayment(data as PaymentDTO);
-        setStep('result');
+        // Si el datafono alcanzo a aprobar antes de cancelar, el pago vale: va a la factura.
+        setStep(pasoTrasResolver(data as PaymentDTO));
       }
     } finally {
       setBusy(false);
     }
   }
+
+  /** El cliente eligio su factura: el pago trae ya el nombre y numero de comprobante. */
+  const alElegirFactura = useCallback((actualizado: PaymentDTO, alCorreo: boolean) => {
+    setPayment(actualizado);
+    setFacturaAlCorreo(alCorreo);
+    setStep('result');
+  }, []);
 
   const paymentId = payment?.id;
   const isWaiting = step === 'waiting';
@@ -348,7 +361,6 @@ export function PosFlow({
     if (
       step !== 'identify' &&
       step !== 'confirm' &&
-      step !== 'customer' &&
       step !== 'summary'
     ) {
       return;
@@ -432,7 +444,7 @@ export function PosFlow({
         setPayment(data);
         if (data.isFinal) {
           clearInterval(timer);
-          setStep('result');
+          setStep(pasoTrasResolver(data));
         }
       } catch {
         // Un corte momentaneo de red no cancela el cobro: se reintenta.
@@ -487,7 +499,7 @@ export function PosFlow({
             Empezar de nuevo desde cualquier paso antes del cobro. Va arriba y en
             texto, lejos de la accion principal: es una salida, no una opcion mas.
           */}
-          {step !== 'type' && step !== 'identify' && step !== 'waiting' && step !== 'result' ? (
+          {step === 'confirm' || step === 'summary' ? (
             <button
               type="button"
               onClick={reset}
@@ -555,7 +567,7 @@ export function PosFlow({
             lookup={lookup}
             vehicleType={vehicle?.vehicleType ?? null}
             vehicleLabel={vehicle?.label ?? null}
-            onConfirm={() => setStep('customer')}
+            onConfirm={() => setStep('summary')}
             onReject={() => {
               // Se vuelve al campo vacio: si la foto no era su vehiculo, el dato
               // que escribio tampoco servia.
@@ -567,23 +579,9 @@ export function PosFlow({
           />
         ) : null}
 
-        {step === 'customer' ? (
-          <CustomerStep
-            onReady={(data) => {
-              setCustomer(data);
-              setStep('summary');
-            }}
-            onBack={() => {
-              setStep('confirm');
-              setError(null);
-            }}
-          />
-        ) : null}
-
         {step === 'summary' && lookup ? (
           <Summary
             lookup={lookup}
-            customer={customer}
             searched={identifier}
             vehicleType={vehicle?.vehicleType ?? null}
             vehicleLabel={vehicle?.label ?? null}
@@ -592,7 +590,7 @@ export function PosFlow({
             busy={busy}
             onPay={handlePay}
             onRetry={() => {
-              setStep(customer ? 'customer' : 'identify');
+              setStep('identify');
               setError(null);
             }}
           />
@@ -607,13 +605,17 @@ export function PosFlow({
           />
         ) : null}
 
+        {step === 'invoice' && payment ? (
+          <InvoiceStep payment={payment} onDone={alElegirFactura} />
+        ) : null}
+
         {step === 'result' && payment ? (
           <Result
             payment={payment}
             error={error}
             onDone={reset}
             impresoraUsb={hasPrinter && impresoraUsb}
-            conCorreo={Boolean(customer?.hasEmail)}
+            conCorreo={facturaAlCorreo}
             issuer={issuer}
           />
         ) : null}
@@ -995,11 +997,10 @@ function horaDeEntrada(iso: string | null): string {
   return `${dia.replace('.', '')} - ${hora}`;
 }
 
-/* ------------------------------------------------------- Paso 5: resumen */
+/* ------------------------------------------------------- Paso 4: resumen */
 
 function Summary({
   lookup,
-  customer,
   searched,
   vehicleType,
   vehicleLabel,
@@ -1010,7 +1011,6 @@ function Summary({
   onRetry,
 }: {
   lookup: LookupResult;
-  customer: CustomerData | null;
   /** Lo que el cliente escribio, para mostrarselo si no se encontro. */
   searched: string;
   vehicleType: VehicleType | null;
@@ -1106,9 +1106,7 @@ function Summary({
         <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
           <InfoRow label="Hora de entrada" value={horaDeEntrada(lookup.entryAt)} />
           <InfoRow label="Tiempo de estadía" value={formatDuration(lookup.minutes)} />
-          {customer ? (
-            <InfoRow label="Factura a" value={`${customer.firstName} ${customer.lastName}`.trim()} />
-          ) : lookup.customerName ? (
+          {lookup.customerName ? (
             <InfoRow label="Cliente" value={lookup.customerName} />
           ) : null}
         </dl>
@@ -1126,7 +1124,7 @@ function Summary({
   );
 }
 
-/* -------------------------------------------------------- Paso 6: espera */
+/* -------------------------------------------------------- Paso 5: espera */
 
 /**
  * Espera del datafono.
@@ -1316,7 +1314,7 @@ function StageTrail({ stage }: { stage: TerminalStage }) {
   );
 }
 
-/* ------------------------------------------------------ Paso 7: resultado */
+/* ------------------- Paso 7: resultado (el 6, la factura, vive en invoice-step.tsx) */
 
 /** Cuanto se espera a que SIIGO emita la factura antes de imprimir el comprobante en su lugar. */
 const ESPERA_FACTURA_MS = 30_000;
@@ -1500,8 +1498,12 @@ function Result({
       : impresion === 'factura-en-camino'
         ? 'Estamos generando tu factura. Espera un momento para recogerla.'
         : impresion === 'factura'
-          ? 'Puedes retirar el vehículo. Recoge tu factura. También llegará a tu correo.'
-          : 'Puedes retirar el vehículo. Recoge tu comprobante: la factura electrónica llegará a tu correo.';
+          ? conCorreo
+            ? 'Puedes retirar el vehículo. Recoge tu factura. También llegará a tu correo.'
+            : 'Puedes retirar el vehículo. Recoge tu factura.'
+          : conCorreo
+            ? 'Puedes retirar el vehículo. Recoge tu comprobante: la factura electrónica llegará a tu correo.'
+            : 'Puedes retirar el vehículo. Recoge tu comprobante.';
 
   const identificador = payment.plate ?? payment.ticketCode ?? payment.vehicleIdentifier;
 

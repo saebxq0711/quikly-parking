@@ -90,7 +90,8 @@ export function buildInvoicePrint(
   const approvedAt = (payment.resolvedAt ?? payment.createdAt).getTime();
 
   if (!invoice) {
-    // `queueInvoice` crea la fila apenas se aprueba el pago: si aun no existe, va en camino.
+    // La fila se crea cuando el cliente elige a nombre de quien va: si aun no existe,
+    // no ha elegido, o esta por crearse.
     return Date.now() - approvedAt < EMISION_MS
       ? { status: 'PENDING', document: null }
       : NOT_READY;
@@ -98,8 +99,11 @@ export function buildInvoicePrint(
 
   const status = String(invoice.status);
   if (status === 'PENDING') {
-    // Con motivo registrado ya no se va a emitir sola en estos segundos.
-    if (invoice.lastError || Date.now() - approvedAt >= EMISION_MS) return NOT_READY;
+    // El plazo cuenta desde que se pidio la factura (al elegir), no desde el pago:
+    // el cliente pudo tardar un minuto escribiendo sus datos.
+    if (invoice.lastError || Date.now() - invoice.createdAt.getTime() >= EMISION_MS) {
+      return NOT_READY;
+    }
     return { status: 'PENDING', document: null };
   }
   if (status !== 'SENT' && status !== 'ACCEPTED') return NOT_READY;
