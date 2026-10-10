@@ -1,5 +1,6 @@
-import type { Payment } from '@prisma/client';
+import type { Customer, Payment } from '@prisma/client';
 import { diaEnBogota } from '@/lib/dates';
+import { documentType } from '@/lib/document-types';
 
 /**
  * Construccion del payload de factura para SIIGO.
@@ -84,7 +85,8 @@ const toIsoDate = diaEnBogota;
  * aprobo un valor distinto, la factura debe reflejar lo que realmente se cobro.
  */
 export function buildInvoicePayload(
-  payment: Payment,
+  /** Con su cliente, si eligio factura a su nombre: de ahi sale el tipo de documento. */
+  payment: Payment & { customer?: Pick<Customer, 'identification' | 'idType'> | null },
   settings: SiigoInvoiceSettings,
   parkingLot: { name: string },
 ): Record<string, unknown> {
@@ -103,7 +105,21 @@ export function buildInvoicePayload(
   const identification =
     payment.customerDocument ?? settings.defaultCustomerIdentification!;
   const name = payment.customerName ?? settings.defaultCustomerName ?? 'Consumidor final';
-  // SIIGO espera el nombre como arreglo [nombres, apellidos].
+
+  /*
+    Tipo de documento: el del cliente que eligio factura a su nombre (cedula, NIT,
+    pasaporte...); el configurado para consumidor final si no hay cliente. Solo se usa
+    el del cliente si es el mismo documento del pago (el pago guarda copia).
+  */
+  const delCliente =
+    payment.customerDocument && payment.customer?.identification === payment.customerDocument
+      ? payment.customer.idType
+      : null;
+  const idType = delCliente ?? (payment.customerDocument ? '13' : settings.defaultCustomerIdType ?? '13');
+  // Una empresa (NIT) va como Company y con la razon social en un solo campo.
+  const empresa = documentType(idType).company && delCliente !== null;
+
+  // Una persona va como [nombres, apellidos].
   const nameParts = name.trim().split(/\s+/);
   const firstName = nameParts.slice(0, Math.ceil(nameParts.length / 2)).join(' ');
   const lastName = nameParts.slice(Math.ceil(nameParts.length / 2)).join(' ') || firstName;
@@ -114,13 +130,12 @@ export function buildInvoicePayload(
     document: { id: settings.documentId },
     date: toIsoDate(payment.resolvedAt ?? payment.createdAt),
     customer: {
-      person_type: 'Person',
-      // `id_type` "13" = Cedula de ciudadania, el valor usado en el ejemplo
-      // entregado. Configurable porque puede variar por comercio.
-      id_type: settings.defaultCustomerIdType ?? '13',
+      person_type: empresa ? 'Company' : 'Person',
+      // Codigos de SIIGO: 13 cedula, 31 NIT... (`document-types.ts`).
+      id_type: idType,
       identification,
       branch_office: 0,
-      name: [firstName, lastName],
+      name: empresa ? [name.trim()] : [firstName, lastName],
     },
     seller: settings.sellerId,
     stamp: { send: settings.sendStamp },

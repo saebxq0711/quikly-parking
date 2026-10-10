@@ -6,6 +6,12 @@ import {
   createCustomer,
   findCustomerByIdentification,
 } from '@/integrations/siigo/customers';
+import {
+  DEFAULT_DOCUMENT_TYPE,
+  documentType,
+  isValidDocument,
+  normalizeDocument,
+} from '@/lib/document-types';
 
 /**
  * Clientes del kiosco.
@@ -30,6 +36,8 @@ import {
  */
 export interface CustomerView {
   found: boolean;
+  /** Tipo de documento (codigo de SIIGO: 13 cedula, 31 NIT...). */
+  idType: string;
   identification: string;
   firstName: string;
   lastName: string;
@@ -56,16 +64,8 @@ export function maskPhone(phone: string): string {
   return digitos.length > 4 ? `${OCULTO} ${digitos.slice(-4)}` : OCULTO;
 }
 
-/** Solo digitos: un documento no lleva puntos ni espacios. */
-export function normalizeIdentification(value: string): string {
-  return value.replace(/\D/g, '');
-}
-
-export function isValidIdentification(value: string): boolean {
-  return /^\d{5,15}$/.test(value);
-}
-
 function toView(customer: {
+  idType: string;
   identification: string;
   firstName: string;
   lastName: string;
@@ -74,6 +74,7 @@ function toView(customer: {
 }): CustomerView {
   return {
     found: true,
+    idType: customer.idType,
     identification: customer.identification,
     firstName: customer.firstName,
     lastName: customer.lastName,
@@ -91,13 +92,16 @@ function toView(customer: {
  */
 export async function lookupCustomer(params: {
   parkingLotId: string;
+  /** Codigo de SIIGO del tipo de documento. Sin el, cedula (los kioscos de antes). */
+  idType?: string;
   identification: string;
 }): Promise<CustomerView> {
-  const identification = normalizeIdentification(params.identification);
+  const idType = params.idType ?? DEFAULT_DOCUMENT_TYPE;
+  const identification = normalizeDocument(idType, params.identification);
 
-  if (!isValidIdentification(identification)) {
+  if (!isValidDocument(idType, identification)) {
     throw new AppError('VALIDATION', {
-      publicMessage: 'El numero de documento no es valido.',
+      publicMessage: `El numero de ${documentType(idType).label.toLowerCase()} no es valido.`,
     });
   }
 
@@ -109,13 +113,20 @@ export async function lookupCustomer(params: {
       },
     },
   });
-  if (local) return toView(local);
+  /*
+    Mismo numero con OTRO tipo (la cedula 900123456 y el NIT 900123456 son
+    terceros distintos): no se saluda a esa persona. Se piden los datos y, al
+    guardar, el registro queda con el tipo que se eligio ahora.
+  */
+  if (local) {
+    return local.idType === idType ? toView(local) : notFound(idType, identification);
+  }
 
   try {
     const client = await siigoClientFor(params.parkingLotId);
     const remote = await findCustomerByIdentification(client, identification);
 
-    if (remote) {
+    if (remote && remote.idType === idType) {
       // Se guarda localmente para que la proxima vez el saludo no dependa de
       // que la facturacion responda.
       const saved = await db.customer.create({
@@ -140,8 +151,13 @@ export async function lookupCustomer(params: {
     });
   }
 
+  return notFound(idType, identification);
+}
+
+function notFound(idType: string, identification: string): CustomerView {
   return {
     found: false,
+    idType,
     identification,
     firstName: '',
     lastName: '',
@@ -152,7 +168,10 @@ export async function lookupCustomer(params: {
 }
 
 export interface CustomerInput {
+  /** Codigo de SIIGO del tipo de documento. Sin el, cedula. */
+  idType?: string;
   identification: string;
+  /** Nombres, o la razon social si es una empresa (NIT). */
   firstName: string;
   lastName: string;
   phone?: string | null;
@@ -171,26 +190,39 @@ export async function saveCustomer(params: {
   parkingLotId: string;
   input: CustomerInput;
 }): Promise<Customer> {
-  const identification = normalizeIdentification(params.input.identification);
+  const idType = params.input.idType ?? DEFAULT_DOCUMENT_TYPE;
+  const identification = normalizeDocument(idType, params.input.identification);
+  if (!isValidDocument(idType, identification)) {
+    throw new AppError('VALIDATION', {
+      publicMessage: `El numero de ${documentType(idType).label.toLowerCase()} no es valido.`,
+    });
+  }
 
   const phone = params.input.phone?.trim() || null;
   const email = params.input.email?.trim().toLowerCase() || null;
   const data = {
     identification,
+    idType,
     firstName: params.input.firstName.trim(),
-    lastName: params.input.lastName.trim(),
+    // Una empresa tiene razon social, no apellidos.
+    lastName: documentType(idType).company ? '' : params.input.lastName.trim(),
   };
 
+  const llave = { parkingLotId_identification: { parkingLotId: params.parkingLotId, identification } };
+  // Mismo numero con otro tipo de documento: en SIIGO es otro tercero, hay que crearlo.
+  const anterior = await db.customer.findUnique({ where: llave, select: { idType: true } });
+  const otroTercero = anterior !== null && anterior.idType !== idType;
+
   const customer = await db.customer.upsert({
-    where: {
-      parkingLotId_identification: {
-        parkingLotId: params.parkingLotId,
-        identification,
-      },
-    },
+    where: llave,
     // El kiosco nunca tiene el correo ni el telefono completos de un cliente que
     // ya existe (ver CustomerView): si no manda uno nuevo, se conserva el guardado.
-    update: { ...data, ...(phone ? { phone } : {}), ...(email ? { email } : {}) },
+    update: {
+      ...data,
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
+      ...(otroTercero ? { siigoId: null } : {}),
+    },
     create: { parkingLotId: params.parkingLotId, ...data, phone, email },
   });
 
@@ -202,7 +234,7 @@ export async function saveCustomer(params: {
       identification: customer.identification,
       idType: customer.idType,
       firstName: customer.firstName,
-      lastName: customer.lastName || customer.firstName,
+      lastName: customer.lastName,
       phone: customer.phone,
       email: customer.email,
     });

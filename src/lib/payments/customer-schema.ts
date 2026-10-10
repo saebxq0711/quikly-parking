@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_DOCUMENT_TYPE, DOCUMENT_TYPE_CODES } from '@/lib/document-types';
 
 /**
  * Datos del cliente tal como llegan del kiosco, para la factura a su nombre.
@@ -6,8 +7,11 @@ import { z } from 'zod';
  * pagar (`/api/pos/payments/[id]/factura`).
  */
 export const customerInputSchema = z.object({
-  identification: z.string().min(1).max(20),
-  firstName: z.string().min(1).max(80),
+  /** Codigo de SIIGO del tipo de documento (13 cedula, 31 NIT...). Sin el, cedula. */
+  idType: z.enum(DOCUMENT_TYPE_CODES).optional().default(DEFAULT_DOCUMENT_TYPE),
+  identification: z.string().min(1).max(30),
+  /** Nombres, o la razon social si es una empresa. */
+  firstName: z.string().min(1).max(100),
   lastName: z.string().max(80).optional().default(''),
   phone: z.string().max(30).optional(),
   /**
