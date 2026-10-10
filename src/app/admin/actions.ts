@@ -12,7 +12,11 @@ import { revokeAllSessions } from '@/lib/auth/session';
 import { AuditAction, recordAudit } from '@/lib/audit';
 import { getCredentials, setCredential } from '@/lib/credentials';
 import { novaClientFor } from '@/lib/parking/config';
-import { testRedebanConnection } from '@/lib/parking/redeban';
+import {
+  normalizeCodigoTerminal,
+  normalizeCodigoUnico,
+  testRedebanConnection,
+} from '@/lib/parking/redeban';
 import {
   getSiigoSettings,
   isSiigoCredentialError,
@@ -339,10 +343,11 @@ const redebanSchema = z.object({
   parkingLotId: z.string().min(1),
   paymentPointId: z.string().min(1, 'Falta el kiosco.'),
   baseUrl: z.string().url('La URL del servicio no es valida.'),
+  // Llega ya normalizado: solo digitos y completado a 10 con ceros.
   codigoUnico: z
     .string()
     .min(1, 'El codigo unico es obligatorio')
-    .max(20)
+    .max(20, 'El codigo unico es demasiado largo.')
     .regex(/^\d+$/, 'El codigo unico solo puede tener digitos.'),
   usuario: z.string().min(1, 'El usuario es obligatorio').max(120),
   clave: z.string().max(200).optional(),
@@ -373,10 +378,10 @@ export async function saveRedebanConfig(
     parkingLotId: formData.get('parkingLotId'),
     paymentPointId: formData.get('paymentPointId'),
     baseUrl: String(formData.get('baseUrl') ?? '').trim(),
-    codigoUnico: String(formData.get('codigoUnico') ?? '').trim(),
+    codigoUnico: normalizeCodigoUnico(String(formData.get('codigoUnico') ?? '')),
     usuario: String(formData.get('usuario') ?? '').trim(),
     clave: String(formData.get('clave') ?? '').trim() || undefined,
-    codigoTerminal: String(formData.get('codigoTerminal') ?? '').trim().toUpperCase(),
+    codigoTerminal: normalizeCodigoTerminal(String(formData.get('codigoTerminal') ?? '')),
     red: String(formData.get('red') ?? '0'),
   });
   if (!parsed.success) return fail(parsed.error.issues[0].message);
@@ -424,7 +429,13 @@ export async function saveRedebanConfig(
   });
 
   revalidatePath('/admin/parqueaderos');
-  return ok('Datafono del kiosco guardado.');
+
+  // Se prueba en el acto: hoy un codigo unico sin sus ceros se guardo como
+  // "correcto" y solo se supo en el kiosco, con el cliente esperando.
+  const prueba = await testRedebanConnection(parsed.data.parkingLotId, point.id);
+  return prueba.ok
+    ? ok(`Datafono del kiosco guardado. ${prueba.message}`)
+    : fail(`Se guardo, pero Redeban no lo acepta: ${prueba.message}`);
 }
 
 export async function testRedeban(

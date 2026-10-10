@@ -16,6 +16,7 @@ import { PaymentFilters } from './filters';
 import { AutoRefresh } from '@/components/panel/auto-refresh';
 import { permanencia } from '@/lib/printing/receipt-data';
 import { Pager } from '@/components/pager';
+import { enviarDatosFailureFromRaw } from '@/integrations/sipconnector/codec';
 
 export const metadata = { title: 'Pagos' };
 
@@ -223,6 +224,9 @@ export default async function PaymentsPage({
                           Sin registrar en el parqueadero
                         </span>
                       ) : null}
+                      {payment.status !== 'APPROVED' ? (
+                        <FailureReason payment={payment} />
+                      ) : null}
                     </td>
                     <td className="px-5 py-3 text-[var(--text-secondary)]">
                       {payment.invoice
@@ -269,5 +273,24 @@ function SummaryCard({
       </p>
       <p className="mt-0.5 text-xs text-[var(--text-muted)]">{hint}</p>
     </Card>
+  );
+}
+
+/**
+ * Por que no se cobro. Si el cobro ni llego al datafono, el motivo real de
+ * Redeban (codigo unico, terminal sin registrar...), que el cliente del kiosco
+ * no ve; si llego, lo que respondio el datafono o el banco.
+ */
+function FailureReason({
+  payment,
+}: {
+  payment: { providerRaw: Prisma.JsonValue; failureReason: string | null };
+}) {
+  const motivo = enviarDatosFailureFromRaw(payment.providerRaw) ?? payment.failureReason;
+  if (!motivo) return null;
+  return (
+    <span className="mt-1 block max-w-[18rem] text-[11px] leading-snug text-[var(--text-muted)]">
+      {motivo}
+    </span>
   );
 }

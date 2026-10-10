@@ -83,6 +83,46 @@ export function publicMessageForCode(code: string): string {
   );
 }
 
+const NO_HABILITADO =
+  'Este punto de pago no esta habilitado para cobrar con tarjeta. Acercate a la oficina del parqueadero.';
+
+/**
+ * Lo que respondio el servicio, en dos versiones: `publico` para el cliente del
+ * kiosco y `motivo` para quien administra (panel de pagos, prueba de conexion).
+ *
+ * `Cod:99` es "error tecnico" y lo que paso viene en el texto. Dos de esos
+ * textos son de CONFIGURACION y reintentar no los arregla; vistos en produccion
+ * el 10/10/2026, cuando el kiosco solo decia "no fue posible comunicarse":
+ *   "Codigo Unico no registrado en el sistema"        -> codigo sin sus ceros, o comercio sin alta
+ *   "La terminal KA0VZ559, no está registrada en SIP" -> datafono no asociado al comercio
+ */
+export function describeSipFailure(
+  code: string,
+  message: string,
+): { publico: string; motivo: string } {
+  if (/c[oó]digo\s+[uú]nico\s+no\s+registrado/i.test(message)) {
+    return {
+      publico: NO_HABILITADO,
+      motivo:
+        'Redeban no reconoce el codigo unico del comercio. Revisa que tenga sus 10 digitos, con los ceros a la izquierda.',
+    };
+  }
+
+  const terminal = message.match(/terminal\s+([A-Z0-9]+)\s*,?\s*no\s+est[aá]\s+registrada/i);
+  if (terminal) {
+    return {
+      publico: NO_HABILITADO,
+      motivo: `Redeban no tiene registrada la terminal ${terminal[1]} para este comercio. Revisa el codigo del datafono (el cero y la letra O se confunden) o pide a Redeban que la asocie en SIPConnector.`,
+    };
+  }
+
+  const significado = SIP_CODE_MEANING[code] ?? `Codigo ${code}.`;
+  return {
+    publico: publicMessageForCode(code),
+    motivo: message ? `Redeban respondio: ${message} (codigo ${code})` : significado,
+  };
+}
+
 /**
  * Redes que procesan el pago (Anexo 5). El campo `Red` viaja en cada metodo.
  */

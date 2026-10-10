@@ -1,4 +1,4 @@
-import { SIP_OPERATION } from './codes';
+import { SIP_CODE, SIP_OPERATION, describeSipFailure } from './codes';
 
 /**
  * Codificacion y decodificacion del protocolo de texto de SIPConnector V1.5.
@@ -41,6 +41,20 @@ export function parseEnvelope(raw: string): SipEnvelope {
     message: msgIndex >= 0 ? text.slice(msgIndex + 4).trim() : '',
     raw: text,
   };
+}
+
+/**
+ * Motivo para el panel de un cobro que no llego al datafono, a partir de lo
+ * que se guardo en `providerRaw` (`{ enviarDatos: "Cod:99,Msj:..." }`). Null si
+ * el cobro si llego: su resultado ya lo explica `failureReason`.
+ */
+export function enviarDatosFailureFromRaw(providerRaw: unknown): string | null {
+  if (!providerRaw || typeof providerRaw !== 'object') return null;
+  const raw = (providerRaw as { enviarDatos?: unknown }).enviarDatos;
+  if (typeof raw !== 'string') return null;
+  const envelope = parseEnvelope(raw);
+  if (envelope.code === SIP_CODE.OK) return null;
+  return describeSipFailure(envelope.code, envelope.message).motivo;
 }
 
 /* --------------------------------------------------------- Datos de envio */

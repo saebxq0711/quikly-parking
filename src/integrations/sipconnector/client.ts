@@ -129,7 +129,12 @@ export class SipConnectorClient {
    * Es el unico metodo que va por GET (el manual dice POST, pero el servicio
    * responde 405; comprobado contra el ambiente de pruebas).
    */
-  async version(): Promise<{ ok: boolean; version: string | null; code: string }> {
+  async version(): Promise<{
+    ok: boolean;
+    version: string | null;
+    code: string;
+    message: string;
+  }> {
     const envelope = await this.call(
       'Version',
       { CodigoUnico: this.config.codigoUnico },
@@ -139,6 +144,7 @@ export class SipConnectorClient {
       ok: envelope.code === SIP_CODE.OK,
       version: envelope.code === SIP_CODE.OK ? envelope.message : null,
       code: envelope.code,
+      message: envelope.message,
     };
   }
 
@@ -160,7 +166,9 @@ export class SipConnectorClient {
     if (envelope.code !== SIP_CODE.OK || !envelope.message) {
       throw new AppError('UPSTREAM_UNAVAILABLE', {
         publicMessage: publicMessageForCode(envelope.code),
-        detail: { method: 'Token', code: envelope.code },
+        // En un fallo el mensaje es el motivo ("Codigo Unico no registrado..."),
+        // nunca un token: se conserva para explicarlo en la prueba de conexion.
+        detail: { method: 'Token', code: envelope.code, message: envelope.message },
       });
     }
 

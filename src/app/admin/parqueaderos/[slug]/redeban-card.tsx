@@ -51,18 +51,25 @@ export function RedebanForm({
         <input type="hidden" name="paymentPointId" value={paymentPointId} />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Código único" hint="Con sus ceros a la izquierda.">
+          <Field
+            label="Código único"
+            hint="10 dígitos. Si escribes menos, se completan con ceros a la izquierda."
+          >
             <Input
               name="codigoUnico"
               required
               inputMode="numeric"
+              maxLength={20}
               defaultValue={codigoUnico ?? ''}
               placeholder="0000000000"
               spellCheck={false}
               autoComplete="off"
             />
           </Field>
-          <Field label="Código del datáfono">
+          <Field
+            label="Código del datáfono"
+            hint="Tal como sale en el voucher. Ojo: el cero (0) y la letra O se confunden."
+          >
             <Input
               name="codigoTerminal"
               required
