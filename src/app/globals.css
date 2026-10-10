@@ -218,6 +218,18 @@ textarea {
 }
 
 /*
+  Kiosco sin zoom (`components/pos/no-zoom.tsx` pone `.sin-zoom`): sin pellizco ni
+  doble toque, pero con el desplazamiento normal. El navegador tampoco agranda el
+  texto por su cuenta en pantallas tactiles.
+*/
+html.sin-zoom,
+html.sin-zoom body {
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/*
   Variante `night:` — solo dentro del tema noche del kiosco. Casi todo se
   resuelve con las variables; esta variante es para los tonos de estado, que
   cambian de paso: un verde oscuro que se lee sobre blanco desaparece en negro.

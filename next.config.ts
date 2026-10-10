@@ -52,7 +52,9 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()' },
+          // usb=(self): el kiosco imprime el comprobante por WebUSB (`lib/printing/usb-printer.ts`).
+          // Con usb=() la impresora quedaba bloqueada; solo este sitio puede pedirla.
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=(self)' },
           // Aisla la ventana de otras pestañas y no deja que otro sitio cargue nuestros recursos.
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
