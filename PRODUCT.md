@@ -41,7 +41,7 @@ No reemplaza ni recalcula nada del parqueadero: el valor a cobrar siempre lo cal
 - Color oficial de la línea Parking: **amarillo #F7B500** (documento "LOGO PARKING COLORIMETRIA"). Pedido explícito del dueño (Fabián): la plataforma usa solo amarillo, blanco y negro; nada de morado.
 - Tipografía institucional en digital: Poppins (Manual de Marca Quikly).
 - Logo con la "Q" y el trazo amarillo, en versión positiva (texto negro) y negativa (texto blanco).
-- Referencia visual aprobada por el dueño: `../Paleta de colores.jpeg` (8 pantallas del kiosco). Se toma el estilo, no las funciones que no existen (método de pago, cupón, tarifa, reimprimir, llamar al operador).
+- Referencia visual aprobada por el dueño: `../Marca Quikly/Manual y colores/Paleta de colores.jpeg` (8 pantallas del kiosco). Se toma el estilo, no las funciones que no existen (método de pago, cupón, tarifa, reimprimir, llamar al operador).
 
 ## Evidence on Hand
 

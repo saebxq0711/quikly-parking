@@ -23,6 +23,6 @@ STORY: El cliente ve "Bienvenido", toca su vehículo, escribe la placa, reconoce
 
 FIRST VIEWPORT: Arriba el logo Quikly Parking a la izquierda, parqueadero y luna a la derecha. "Bienvenido" monumental centrado al 30% de alto; debajo, rejilla 2×2 de mosaicos de vehículo de ~420px, el seleccionado/hover en amarillo. En el tercio inferior, el sedán plateado saliendo por la esquina derecha sobre la franja amarilla.
 
-FORM: Mundo fijado por la referencia aprobada del dueño (`../Paleta de colores.jpeg`), que manda sobre el sorteo; disciplina donada por el retador "señalética amarilla de aeropuerto": amarillo reservado al siguiente paso, cifras monumentales, una decisión por pantalla. Seed 062b98fd.
+FORM: Mundo fijado por la referencia aprobada del dueño (`../Marca Quikly/Manual y colores/Paleta de colores.jpeg`), que manda sobre el sorteo; disciplina donada por el retador "señalética amarilla de aeropuerto": amarillo reservado al siguiente paso, cifras monumentales, una decisión por pantalla. Seed 062b98fd.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
