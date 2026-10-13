@@ -122,8 +122,14 @@ export interface SearchTerm {
   value: string;
 }
 
-/** Forma exacta del QR del tiquete: el numero con ceros a la izquierda, 10 digitos. */
-const NUMERO_DEL_QR = /^\d{10}$/;
+/**
+ * El numero del tiquete que trae el QR: solo digitos, CON o SIN ceros a la izquierda
+ * (`0000000238` o `238`). Desde el 2026-10-13 el tiquete de entrada imprime el numero
+ * sin ceros, y el sistema del parqueadero lo encuentra igual por `find-ticket/car/`.
+ * Una placa colombiana siempre lleva letras, asi que un valor solo de digitos nunca es
+ * una placa.
+ */
+const NUMERO_DEL_QR = /^\d{1,14}$/;
 const CODIGO = /^[A-HJ-NP-Z][0-9][A-HJ-NP-Z][0-9]{2}$/;
 
 /**
@@ -156,9 +162,7 @@ export function recognizeSearchTerm(
   if (!limpio) return null;
 
   if (/^\d+$/.test(limpio)) {
-    if (NUMERO_DEL_QR.test(limpio)) return { kind: 'TICKET_ID', value: limpio };
-    if (configured !== 'PLATE' && /^\d{1,14}$/.test(limpio)) return { kind: 'TICKET_ID', value: limpio };
-    return null;
+    return NUMERO_DEL_QR.test(limpio) ? { kind: 'TICKET_ID', value: limpio } : null;
   }
 
   // I y O no existen en los codigos: se leen como 1 y 0 (se confunden a la vista).
