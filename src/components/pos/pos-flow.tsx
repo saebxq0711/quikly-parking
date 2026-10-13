@@ -842,7 +842,8 @@ function Identify({
         {SOLO_EN_DESARROLLO ? <BusquedaDePrueba onSubmit={onSubmit} /> : null}
       </div>
 
-      <FlechaAlLector />
+      <EspacioParaFlecha />
+      <FlechaHacia etiqueta="Lector QR" donde="lector" />
     </KioskStep>
   );
 }
@@ -882,22 +883,37 @@ function BusquedaDePrueba({ onSubmit }: { onSubmit: (valor: string) => void }) {
 }
 
 /**
- * Flecha hacia el lector QR, que esta DEBAJO de la pantalla, a la derecha (abajo a la
- * izquierda esta la impresora y en el centro el datafono). Sin ella la gente busca
- * donde escribir; con ella, baja la mano al lector.
+ * Flecha hacia un aparato que esta DEBAJO de la pantalla del kiosco. Vistos de frente,
+ * de izquierda a derecha: la impresora, el datafono (al centro, un poco a la derecha) y
+ * el lector QR (bien a la derecha). Sin la flecha la gente busca en la pantalla; con
+ * ella, baja la mano al aparato.
+ *
+ * Va fija al pie y la pantalla le reserva su espacio (`EspacioParaFlecha`): nunca queda
+ * encima de un boton ni de un recuadro. Su animacion solo baja (`.senalar`).
  */
-function FlechaAlLector() {
+const POSICION_DEL_APARATO = {
+  lector: 'right-[6%]',
+  datafono: 'left-[58%] -translate-x-1/2',
+} as const;
+
+function FlechaHacia({
+  etiqueta,
+  donde,
+}: {
+  etiqueta: string;
+  donde: keyof typeof POSICION_DEL_APARATO;
+}) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed bottom-3 right-[6%] z-20 flex flex-col items-center gap-2 kland:bottom-1"
+      className={`pointer-events-none fixed bottom-5 z-20 flex flex-col items-center gap-3 kland:bottom-3 ${POSICION_DEL_APARATO[donde]}`}
     >
       <span className="rounded-full bg-brand-500 px-5 py-2 text-xl font-bold text-ink-950 shadow-[0_8px_24px_rgb(11_11_11/0.22)] kshort:px-3 kshort:py-1 kshort:text-sm">
-        Lector QR
+        {etiqueta}
       </span>
       <svg
         viewBox="0 0 64 128"
-        className="h-[9rem] w-[4.5rem] text-brand-500 drop-shadow-[0_6px_12px_rgb(11_11_11/0.25)] motion-safe:animate-bounce kland:h-24 kland:w-12 kshort:h-20 kshort:w-10"
+        className="senalar h-[7rem] w-[3.5rem] text-brand-500 drop-shadow-[0_6px_12px_rgb(11_11_11/0.25)] kland:h-20 kland:w-10 kshort:h-16 kshort:w-8"
       >
         <path d="M32 6 V104" stroke="currentColor" strokeWidth="11" strokeLinecap="round" fill="none" />
         <path
@@ -911,6 +927,11 @@ function FlechaAlLector() {
       </svg>
     </div>
   );
+}
+
+/** Espacio al final de la pantalla para la flecha fija: el contenido termina antes. */
+function EspacioParaFlecha() {
+  return <div aria-hidden="true" className="h-[11.5rem] shrink-0 kland:h-[7.5rem] kshort:h-[6.5rem]" />;
 }
 
 /* ------------------------------------- Paso 3: confirmar que es su vehiculo */
@@ -1217,6 +1238,9 @@ function Waiting({
         <SecondaryButton onClick={onCancel} disabled={busy}>
           {busy ? 'Cancelando...' : 'Cancelar cobro'}
         </SecondaryButton>
+
+        <EspacioParaFlecha />
+        <FlechaHacia etiqueta="Datáfono" donde="datafono" />
       </KioskStep>
     );
   }
@@ -1258,6 +1282,9 @@ function Waiting({
         <TotalBlock amount={formatCOP(payment.amount)} label="Valor a pagar" />
 
         <Notice tone="warn">{aviso ?? 'Cobro en curso. Espera aquí hasta ver el resultado.'}</Notice>
+
+        <EspacioParaFlecha />
+        <FlechaHacia etiqueta="Datáfono" donde="datafono" />
       </KioskStep>
     );
   }

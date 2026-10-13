@@ -672,6 +672,25 @@ button:disabled,
     opacity 150ms ease;
 }
 
+/*
+  Flecha del kiosco hacia el lector QR o el datafono (pos-flow): baja hacia el aparato
+  y vuelve, sin subir nunca. El rebote de Tailwind (`animate-bounce`) la subia y se
+  montaba sobre su etiqueta y sobre el contenido de la pantalla.
+*/
+@keyframes senalar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.9rem);
+  }
+}
+
+.senalar {
+  animation: senalar 1.2s ease-in-out infinite;
+}
+
 /* Tiempo que corre (permanencia de un vehiculo adentro). */
 @keyframes latido {
   50% {
@@ -688,6 +707,7 @@ button:disabled,
   .photo-overlay,
   .receipt-in,
   .live-dot,
+  .senalar,
   .skeleton::after,
   .orbit,
   .swoosh-in,
