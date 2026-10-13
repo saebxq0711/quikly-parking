@@ -1222,11 +1222,19 @@ function Waiting({
   }
 
   /*
-    Ya se inicio en el datafono (Cod:01): ahora el aparato le pide la tarjeta. Se le
-    muestra la misma pantalla que tiene enfrente, con lo que puede hacer: acercar,
-    insertar o deslizar la tarjeta, o pagar con QR desde el datafono.
+    Ya se inicio en el datafono: ahora el aparato le pide la tarjeta. Se le muestra la
+    misma pantalla que tiene enfrente, con lo que puede hacer: acercar, insertar o
+    deslizar la tarjeta, o pagar con QR desde el datafono.
+
+    Vale para Cod:01 (iniciada) y para Cod:02 SIN datos de tarjeta: el datafono de
+    pruebas salta directo a Cod:02 con BIN y franquicia vacios al presionar el boton
+    verde (visto el 2026-10-13), y eso es "pasa tu tarjeta", no "leyendo tarjeta". Cuando
+    ya llegan los datos de la tarjeta, se pasa a "Procesando tu pago".
   */
-  if (payment.stage === 'STARTED') {
+  const esperandoTarjeta =
+    payment.stage === 'STARTED' ||
+    (payment.stage === 'READING_CARD' && !payment.cardBrand && !payment.cardMask);
+  if (esperandoTarjeta) {
     return (
       <KioskStep>
         <div aria-live="polite">
