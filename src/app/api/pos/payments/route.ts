@@ -9,6 +9,9 @@ import { saveCustomer } from '@/lib/payments/customers';
 import { serializePayment } from '@/lib/payments/serialize';
 import { customerInputSchema } from '@/lib/payments/customer-schema';
 
+/** Con los reintentos ante la nube de SIP (regla 7), una llamada puede pasar de 10 s. */
+export const maxDuration = 60;
+
 const schema = z.object({
   vehicleType: z.enum(['CAR', 'MOTORCYCLE', 'BICYCLE', 'SCOOTER']),
   // Hasta 200: el QR puede traer el enlace completo (`https://.../t/Z1M14`). Que sea

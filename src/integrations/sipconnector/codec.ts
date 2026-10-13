@@ -96,6 +96,24 @@ function num(value: number, max: number): string {
   return String(int).slice(0, max);
 }
 
+/** El mayor valor que cabe en los 8 digitos del campo de valor. */
+export const MAX_AMOUNT = 99_999_999;
+
+/**
+ * El valor de una compra o anulacion: entero, mayor que cero y que quepa en el campo.
+ *
+ * Segunda barrera, aparte de la del servicio de pagos: en la certificacion de Redeban
+ * una compra de $0 fue APROBADA por el datafono, y `num()` convertia un negativo en 0
+ * y recortaba en silencio un valor de 9 digitos ($123.456.789 salia como
+ * $12.345.678). Un valor asi nunca debe llegar a armarse.
+ */
+function amountField(value: number): string {
+  if (!Number.isInteger(value) || value <= 0 || value > MAX_AMOUNT) {
+    throw new Error(`Valor de cobro invalido para el datafono: ${value}`);
+  }
+  return String(value);
+}
+
 /**
  * Arma la trama de una operacion de COMPRA (Anexo 1.1).
  *
@@ -109,7 +127,7 @@ function num(value: number, max: number): string {
  * devuelve ese sistema.
  */
 export function buildCompraData(input: CompraInput): string {
-  const total = num(input.amount, 8);
+  const total = amountField(input.amount);
 
   return [
     SIP_OPERATION.COMPRA, //  1 Tipo Operacion
@@ -149,7 +167,7 @@ export interface AnulacionInput
  * supervisor.
  */
 export function buildAnulacionData(input: AnulacionInput): string {
-  const total = num(input.amount, 8);
+  const total = amountField(input.amount);
 
   return [
     SIP_OPERATION.ANULACION, //  1 Tipo Operacion
@@ -268,6 +286,83 @@ export function parseTransactionResult(message: string): SipTransactionResult {
     merchantName: toText(fields[29]),
     fields,
   };
+}
+
+/**
+ * Minimo de campos de un resultado financiero real (Anexo 2). Los vistos en el
+ * ambiente real traen ~32 (aprobada y rechazada). Un `Cod:00` con menos, como
+ * `OK,20240128173215,LRC`, NO es un pago: es una confirmacion tecnica.
+ */
+const MIN_CAMPOS_RESULTADO = 10;
+
+/** Mensajes de `Cod:99` que son la nube de SIP fallando, no la operacion. */
+const SIP_TRANSITORIO = /webstatus\s*:\s*timeout|timed out|time ?out|tiempo de espera/i;
+
+export type SipConsulta =
+  /** La orden esta en la nube; el datafono aun no la toma (Cod:00 vacio). */
+  | { kind: 'esperando' }
+  /** El datafono la tomo (Cod:01). */
+  | { kind: 'iniciada' }
+  /** El datafono esta leyendo la tarjeta (Cod:02): BIN, tipo de cuenta, franquicia. */
+  | { kind: 'leyendo'; lectura: string }
+  /** Resultado financiero completo. */
+  | { kind: 'resuelta'; result: SipTransactionResult }
+  /** La vigencia se agoto: el datafono ya no la puede cobrar. */
+  | { kind: 'vencida'; mensaje: string }
+  /** El servicio no tiene esa operacion (Cod:99 "No existe IdTransaccion"). */
+  | { kind: 'no_existe'; mensaje: string }
+  /**
+   * No se sabe todavia: un `Cod:00` corto, un `Cod:99` desconocido o un timeout de
+   * la nube. Se sigue esperando: cortar aqui puede dejar un pago aprobado que el
+   * sistema dio por fallido (regla 6 de la guia de certificacion).
+   */
+  | { kind: 'incierta'; mensaje: string }
+  /** Error de datos o de configuracion (Anexo 4): no se va a resolver solo. */
+  | { kind: 'error'; mensaje: string };
+
+/**
+ * Interpreta la respuesta del metodo `Respuesta` sin desincronizarse.
+ *
+ * `idTransaccion`, si se da, se compara con el numero de factura del resultado
+ * (campo 27 del Anexo 2, que es el IdTransaccion que se envio): un resultado de
+ * OTRA operacion no se toma como el de esta.
+ */
+export function classifyRespuesta(envelope: SipEnvelope, idTransaccion?: string): SipConsulta {
+  const { code, message } = envelope;
+
+  if (code === SIP_CODE.INICIANDO) return { kind: 'iniciada' };
+  if (code === SIP_CODE.LEYENDO_TARJETA) return { kind: 'leyendo', lectura: message };
+
+  if (code === SIP_CODE.OK) {
+    if (!message) return { kind: 'esperando' };
+    const campos = message.split(',').map((c) => c.trim());
+    // Solo un resultado con la estructura completa del Anexo 2 es un pago.
+    if (campos.length < MIN_CAMPOS_RESULTADO || !/^\d{1,2}$/.test(campos[0] ?? '')) {
+      return { kind: 'incierta', mensaje: message };
+    }
+    const result = parseTransactionResult(message);
+    if (idTransaccion && result.invoiceNumber && result.invoiceNumber !== idTransaccion) {
+      return {
+        kind: 'incierta',
+        mensaje: `El resultado es de otra operacion (${result.invoiceNumber}), no de ${idTransaccion}.`,
+      };
+    }
+    return { kind: 'resuelta', result };
+  }
+
+  if (code === SIP_CODE.ERROR_TECNICO) {
+    if (/vencid|expirad/i.test(message)) return { kind: 'vencida', mensaje: message };
+    if (/no existe/i.test(message)) return { kind: 'no_existe', mensaje: message };
+    // Timeout de la nube o un 99 que no conocemos: ante la duda, esperar.
+    return { kind: 'incierta', mensaje: message };
+  }
+
+  return { kind: 'error', mensaje: message };
+}
+
+/** Un `Cod:99` que es la nube de SIP fallando (se reintenta), no un rechazo. */
+export function isTransientSip(envelope: SipEnvelope): boolean {
+  return envelope.code === SIP_CODE.ERROR_TECNICO && SIP_TRANSITORIO.test(envelope.message);
 }
 
 /**

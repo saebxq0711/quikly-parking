@@ -393,6 +393,30 @@ export async function saveRedebanConfig(
   });
   if (!point) return fail('Kiosco no encontrado.');
 
+  /*
+    Regla 13 de la guia de certificacion de Redeban: una terminal por kiosco. Dos
+    kioscos con el mismo datafono se pisarian las operaciones: la orden del segundo
+    cancela la del primero en el aparato.
+  */
+  const otroKiosco = await db.integrationCredential.findFirst({
+    where: {
+      provider: 'REDEBAN',
+      key: 'codigoTerminal',
+      secret: false,
+      value: parsed.data.codigoTerminal,
+      paymentPointId: { not: point.id },
+    },
+    select: { paymentPoint: { select: { name: true, parkingLot: { select: { name: true } } } } },
+  });
+  if (otroKiosco) {
+    const donde = otroKiosco.paymentPoint
+      ? `"${otroKiosco.paymentPoint.name}" (${otroKiosco.paymentPoint.parkingLot.name})`
+      : 'otro kiosco';
+    return fail(
+      `El datafono ${parsed.data.codigoTerminal} ya esta asignado al kiosco ${donde}. Cada kiosco necesita su propio datafono.`,
+    );
+  }
+
   const scope = {
     provider: 'REDEBAN' as const,
     parkingLotId: parsed.data.parkingLotId,

@@ -105,10 +105,19 @@ interface LookupResult {
   photo: string | null;
 }
 
-/** El manual de SIPConnector (Anexo 3) exige no consultar mas seguido que 3 s. */
-const POLL_INTERVAL_MS = 3000;
-/** Corte de seguridad del sondeo: 4 minutos sin resolucion. */
-const POLL_TIMEOUT_MS = 240_000;
+/**
+ * El manual de SIPConnector (Anexo 3) exige no consultar mas seguido que 3 s: se
+ * consulta cada 3,5 s y nunca dos a la vez (la siguiente sale cuando termina la
+ * anterior). El servidor ademas no consulta SIP mas de una vez cada 3 s por pago.
+ */
+const POLL_INTERVAL_MS = 3_500;
+/**
+ * A partir de aqui se le avisa al cliente que seguimos esperando. NO se abandona el
+ * cobro: el servidor lo cierra solo (a los 3 min si no se inicio en el datafono, tras
+ * la vigencia si se inicio) y la pantalla no vuelve al inicio hasta saber como quedo.
+ * Volver antes dejaba el datafono con una orden viva y la pantalla lista para otra.
+ */
+const POLL_AVISO_MS = 240_000;
 
 /**
  * Segundos que se muestra el resultado antes de volver al inicio.
@@ -184,6 +193,8 @@ export function PosFlow({
     [hasPrinter, kioskId],
   );
   const [error, setError] = useState<string | null>(null);
+  /** Aviso durante el cobro: no se pudo cancelar, o llevamos mucho esperando. */
+  const [avisoCobro, setAvisoCobro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reset = useCallback(() => {
@@ -194,6 +205,7 @@ export function PosFlow({
     setFacturaAlCorreo(false);
     setPayment(null);
     setError(null);
+    setAvisoCobro(null);
     setBusy(false);
   }, []);
 
@@ -269,8 +281,12 @@ export function PosFlow({
     return () => clearInterval(timer);
   }, [enResumen, requote]);
 
+  /** Candado inmediato: dos toques seguidos no alcanzan a ver `busy` actualizado. */
+  const pagando = useRef(false);
+
   async function handlePay() {
-    if (!vehicle || !lookup?.ticketId || busy) return;
+    if (!vehicle || !lookup?.ticketId || busy || pagando.current) return;
+    pagando.current = true;
     setBusy(true);
     setError(null);
 
@@ -306,6 +322,7 @@ export function PosFlow({
     } catch {
       setError('No fue posible iniciar el cobro. Intenta nuevamente.');
     } finally {
+      pagando.current = false;
       setBusy(false);
     }
   }
@@ -313,16 +330,23 @@ export function PosFlow({
   async function handleCancel() {
     if (!payment || busy) return;
     setBusy(true);
+    setAvisoCobro(null);
     try {
       const response = await fetch(`/api/pos/payments/${payment.id}/cancel`, {
         method: 'POST',
       });
-      const data = await response.json();
-      if (response.ok) {
+      const data = await response.json().catch(() => null);
+      if (response.ok && data) {
         setPayment(data as PaymentDTO);
         // Si el datafono alcanzo a aprobar antes de cancelar, el pago vale: va a la factura.
         setStep(pasoTrasResolver(data as PaymentDTO));
+        return;
       }
+      // No se pudo cancelar (ya se inicio en el datafono, o no respondio): se sigue
+      // esperando el resultado y se dice por que.
+      setAvisoCobro(data?.error?.message ?? 'No se pudo cancelar el cobro. Intenta de nuevo.');
+    } catch {
+      setAvisoCobro('No se pudo cancelar el cobro. Intenta de nuevo.');
     } finally {
       setBusy(false);
     }
@@ -427,39 +451,41 @@ export function PosFlow({
     if (!isWaiting || !paymentId) return;
 
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
     const startedAt = Date.now();
 
-    const timer = setInterval(async () => {
+    // Una consulta a la vez: la siguiente se programa cuando termina la anterior.
+    const consultar = async () => {
       if (cancelled) return;
-
-      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        clearInterval(timer);
-        setError(
-          'No recibimos respuesta del datáfono. Si el cobro salió de tu cuenta, acércate a la oficina del parqueadero con este mensaje.',
-        );
-        setStep('result');
-        return;
-      }
-
       try {
-        const response = await fetch(`/api/pos/payments/${paymentId}`);
-        if (!response.ok) return; // un fallo puntual no resuelve el pago
-        const data = (await response.json()) as PaymentDTO;
-        if (cancelled) return;
-
-        setPayment(data);
-        if (data.isFinal) {
-          clearInterval(timer);
-          setStep(pasoTrasResolver(data));
+        const response = await fetch(`/api/pos/payments/${paymentId}`, { cache: 'no-store' });
+        // Un fallo puntual no resuelve el pago: se vuelve a preguntar.
+        if (response.ok) {
+          const data = (await response.json()) as PaymentDTO;
+          if (cancelled) return;
+          setPayment(data);
+          if (data.isFinal) {
+            setAvisoCobro(null);
+            setStep(pasoTrasResolver(data));
+            return;
+          }
         }
       } catch {
         // Un corte momentaneo de red no cancela el cobro: se reintenta.
       }
-    }, POLL_INTERVAL_MS);
+      if (cancelled) return;
+      if (Date.now() - startedAt > POLL_AVISO_MS) {
+        setAvisoCobro(
+          'Seguimos esperando la respuesta del datáfono. No retires la tarjeta ni vuelvas a pagar hasta ver el resultado.',
+        );
+      }
+      timer = setTimeout(consultar, POLL_INTERVAL_MS);
+    };
+    timer = setTimeout(consultar, POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      clearTimeout(timer);
     };
   }, [isWaiting, paymentId]);
 
@@ -605,6 +631,7 @@ export function PosFlow({
         {step === 'waiting' && payment ? (
           <Waiting
             payment={payment}
+            aviso={avisoCobro}
             vehicleType={vehicle?.vehicleType ?? (payment.vehicleType as VehicleType)}
             onCancel={handleCancel}
             busy={busy}
@@ -1147,11 +1174,14 @@ function Summary({
  */
 function Waiting({
   payment,
+  aviso,
   vehicleType,
   onCancel,
   busy,
 }: {
   payment: PaymentDTO;
+  /** No se pudo cancelar, o llevamos mucho esperando. */
+  aviso: string | null;
   vehicleType: VehicleType;
   onCancel: () => void;
   busy: boolean;
@@ -1198,6 +1228,8 @@ function Waiting({
 
         <TotalBlock amount={formatCOP(payment.amount)} label="Valor a pagar" />
 
+        {aviso ? <Notice tone="warn">{aviso}</Notice> : null}
+
         <SecondaryButton onClick={onCancel} disabled={busy}>
           {busy ? 'Cancelando...' : 'Cancelar cobro'}
         </SecondaryButton>
@@ -1233,7 +1265,7 @@ function Waiting({
         </p>
       ) : null}
 
-      <Notice tone="warn">Cobro en curso. Espera aquí hasta ver el resultado.</Notice>
+      <Notice tone="warn">{aviso ?? 'Cobro en curso. Espera aquí hasta ver el resultado.'}</Notice>
     </KioskStep>
   );
 }

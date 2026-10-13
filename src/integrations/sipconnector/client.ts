@@ -2,12 +2,13 @@ import { AppError } from '@/lib/errors';
 import {
   buildAnulacionData,
   buildCompraData,
+  classifyRespuesta,
+  isTransientSip,
   parseEnvelope,
-  parseTransactionResult,
   type AnulacionInput,
   type CompraInput,
+  type SipConsulta,
   type SipEnvelope,
-  type SipTransactionResult,
 } from './codec';
 import { SIP_CODE, publicMessageForCode } from './codes';
 
@@ -29,7 +30,33 @@ import { SIP_CODE, publicMessageForCode } from './codes';
  *  - Los parametros viajan en la cadena de consulta, no en el cuerpo.
  *  - La respuesta es texto entrecomillado, no JSON.
  *  - El token dura 3 minutos.
+ *  - La nube es inestable: a veces responde `Cod:99,Msj:WebStatus:Timeout` o se
+ *    cae la conexion. Eso se reintenta aqui (regla 7 de la guia de certificacion)
+ *    y, si persiste, se lanza un error marcado como TRANSITORIO: quien llama sabe
+ *    que no hay respuesta, no que la operacion fallo.
  */
+
+/** Intentos por metodo ante un fallo pasajero. `Respuesta` se reintenta en el siguiente sondeo. */
+const INTENTOS: Record<string, number> = {
+  Version: 2,
+  Token: 3,
+  EnviarDatos: 3,
+  Respuesta: 2,
+  Borrar: 3,
+};
+const PAUSA_REINTENTO_MS = 1_200;
+
+/** Error de la nube de SIP que no dice nada de la operacion: no hubo respuesta. */
+export function isSipTransient(error: unknown): boolean {
+  return (
+    error instanceof AppError &&
+    typeof error.detail === 'object' &&
+    error.detail !== null &&
+    (error.detail as { transitorio?: unknown }).transitorio === true
+  );
+}
+
+const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface SipConnectorConfig {
   /** Ej: https://sipconnectortest.azurewebsites.net */
@@ -64,14 +91,21 @@ export class SipConnectorClient {
 
   constructor(config: SipConnectorConfig) {
     this.config = { ...config, baseUrl: config.baseUrl.replace(/\/+$/, '') };
-    this.timeoutMs = config.timeoutMs ?? 20_000;
+    // Por intento. Con reintentos, una llamada completa puede tardar mas.
+    this.timeoutMs = config.timeoutMs ?? 12_000;
   }
 
   private get cacheKey(): string {
     return `${this.config.baseUrl}|${this.config.codigoUnico}|${this.config.usuario}`;
   }
 
-  /** Llamada cruda. Devuelve la envoltura `Cod:/Msj:` ya separada. */
+  /**
+   * Llamada cruda. Devuelve la envoltura `Cod:/Msj:` ya separada.
+   *
+   * Reintenta lo pasajero (sin conexion, tiempo agotado, 5xx, `Cod:99` de timeout).
+   * Reintentar es seguro en todos los metodos: `EnviarDatos` va con el MISMO
+   * IdTransaccion y `Sobreescribir=S`, asi que repetirlo no crea otra operacion.
+   */
   private async call(
     method: string,
     params: Record<string, string>,
@@ -82,42 +116,55 @@ export class SipConnectorClient {
       url.searchParams.set(key, value);
     }
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: verb,
-        headers: { Accept: 'text/plain, application/json' },
-        signal: AbortSignal.timeout(this.timeoutMs),
-        cache: 'no-store',
-      });
-    } catch (error) {
-      const timedOut =
-        error instanceof Error &&
-        (error.name === 'TimeoutError' || error.name === 'AbortError');
-      throw new AppError(
-        timedOut ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_UNAVAILABLE',
-        {
+    const intentos = INTENTOS[method] ?? 1;
+    let ultimo = '';
+    for (let intento = 0; intento < intentos; intento += 1) {
+      if (intento > 0) await esperar(PAUSA_REINTENTO_MS);
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: verb,
+          headers: { Accept: 'text/plain, application/json' },
+          signal: AbortSignal.timeout(this.timeoutMs),
+          cache: 'no-store',
+        });
+      } catch (error) {
+        const timedOut =
+          error instanceof Error &&
+          (error.name === 'TimeoutError' || error.name === 'AbortError');
+        ultimo = timedOut ? 'tiempo agotado' : 'sin conexion';
+        continue;
+      }
+
+      const text = await response.text();
+      if (response.status >= 500) {
+        ultimo = `HTTP ${response.status}`;
+        continue;
+      }
+      if (!response.ok) {
+        throw new AppError('UPSTREAM_UNAVAILABLE', {
           publicMessage:
-            'No fue posible comunicarse con el medio de pago. Intenta nuevamente.',
-          // La URL lleva el token y la clave en la cadena de consulta:
-          // se registra solo el metodo, nunca la URL completa.
-          detail: { method },
-          cause: error,
-        },
-      );
+            'El medio de pago rechazo la comunicacion. Intenta nuevamente.',
+          detail: { method, status: response.status, body: text.slice(0, 200) },
+        });
+      }
+
+      const envelope = parseEnvelope(text);
+      if (isTransientSip(envelope)) {
+        ultimo = envelope.raw.slice(0, 160);
+        continue;
+      }
+      return envelope;
     }
 
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new AppError('UPSTREAM_UNAVAILABLE', {
-        publicMessage:
-          'El medio de pago rechazo la comunicacion. Intenta nuevamente.',
-        detail: { method, status: response.status, body: text.slice(0, 200) },
-      });
-    }
-
-    return parseEnvelope(text);
+    throw new AppError('UPSTREAM_TIMEOUT', {
+      publicMessage:
+        'No fue posible comunicarse con el medio de pago. Intenta nuevamente.',
+      // La URL lleva el token y la clave en la cadena de consulta:
+      // se registra solo el metodo, nunca la URL completa.
+      detail: { method, transitorio: true, intentos, ultimo },
+    });
   }
 
   /* ------------------------------------------------------------ Version */
@@ -270,29 +317,18 @@ export class SipConnectorClient {
   /* ----------------------------------------------------------- Respuesta */
 
   /**
-   * Consulta el estado de la operacion en el datafono.
+   * Consulta el estado de la operacion en el datafono, ya interpretado
+   * (`classifyRespuesta`): esperando, iniciada, leyendo, resuelta, vencida, no
+   * existe, incierta o error. Lo incierto nunca se da por fallido.
    *
-   * Los tres desenlaces posibles, todos vistos en el ambiente real:
-   *  - `Cod:00` con mensaje VACIO: la orden esta puesta pero el datafono aun no
-   *    la tomo. El cliente todavia no ha iniciado la operacion.
-   *  - `Cod:01` / `Cod:02`: el datafono ya esta trabajando (tecla verde
-   *    presionada, o leyendo la tarjeta).
-   *  - `Cod:00` con campos: la transaccion se resolvio; el primer campo dice si
-   *    fue aprobada o rechazada.
-   *
-   * El Anexo 3 pide no consultar mas seguido que cada tres segundos.
+   * El Anexo 3 pide no consultar mas seguido que cada tres segundos: lo cuida
+   * quien llama (`refreshPaymentStatus` y la pantalla del kiosco).
    */
   async respuesta(idTransaccion: string): Promise<{
     code: string;
-    /** Todavia no hay desenlace financiero. */
-    pending: boolean;
-    /** El datafono ya inicio la operacion. */
-    started: boolean;
-    /** Datos del datafono mientras lee la tarjeta (Cod:02). */
-    reading: string | null;
-    result: SipTransactionResult | null;
     message: string;
     raw: string;
+    consulta: SipConsulta;
   }> {
     const envelope = await this.withToken((token) =>
       this.call('Respuesta', {
@@ -303,64 +339,11 @@ export class SipConnectorClient {
       }),
     );
 
-    if (envelope.code === SIP_CODE.INICIANDO) {
-      return {
-        code: envelope.code,
-        pending: true,
-        started: true,
-        reading: null,
-        result: null,
-        message: envelope.message,
-        raw: envelope.raw,
-      };
-    }
-
-    if (envelope.code === SIP_CODE.LEYENDO_TARJETA) {
-      return {
-        code: envelope.code,
-        pending: true,
-        started: true,
-        // Trae BIN, tipo de cuenta y franquicia mientras el cliente decide.
-        reading: envelope.message,
-        result: null,
-        message: envelope.message,
-        raw: envelope.raw,
-      };
-    }
-
-    if (envelope.code !== SIP_CODE.OK) {
-      return {
-        code: envelope.code,
-        pending: false,
-        started: false,
-        reading: null,
-        result: null,
-        message: envelope.message,
-        raw: envelope.raw,
-      };
-    }
-
-    // Cod:00 con mensaje vacio = la orden espera a que alguien la tome.
-    if (!envelope.message) {
-      return {
-        code: envelope.code,
-        pending: true,
-        started: false,
-        reading: null,
-        result: null,
-        message: '',
-        raw: envelope.raw,
-      };
-    }
-
     return {
       code: envelope.code,
-      pending: false,
-      started: true,
-      reading: null,
-      result: parseTransactionResult(envelope.message),
       message: envelope.message,
       raw: envelope.raw,
+      consulta: classifyRespuesta(envelope, idTransaccion),
     };
   }
 
@@ -373,12 +356,18 @@ export class SipConnectorClient {
    * siguiente cobro sobre ese datafono recibe
    * `Cod:06 Ya existe una transaccion asignada a esta terminal` y la caja queda
    * bloqueada. El manual advierte que una operacion en curso no se puede
-   * borrar, asi que puede responder error y eso es correcto.
+   * borrar, asi que puede responder error y eso es correcto. En el ambiente
+   * real (guia de certificacion):
+   *   `Cod:00` borrada (no se habia iniciado);
+   *   `Cod:17` no estaba entre las borrables: ya se inicio en el datafono, o ya
+   *            no existe. NO prueba que no se vaya a cobrar: hay que consultarla;
+   *   `Cod:18` ya se resolvio: hay que consultar su resultado.
    */
   async borrar(idTransaccion: string): Promise<{
     deleted: boolean;
     code: string;
     message: string;
+    raw: string;
   }> {
     const envelope = await this.withToken((token) =>
       this.call('Borrar', {
@@ -393,6 +382,7 @@ export class SipConnectorClient {
       deleted: envelope.code === SIP_CODE.OK,
       code: envelope.code,
       message: envelope.message,
+      raw: envelope.raw,
     };
   }
 }
