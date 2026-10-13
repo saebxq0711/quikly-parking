@@ -13,6 +13,7 @@ import { getPaymentPoint } from '@/lib/parking/payment-point';
 import { saveCustomer } from '@/lib/payments/customers';
 import { serializePayment } from '@/lib/payments/serialize';
 import { customerInputSchema } from '@/lib/payments/customer-schema';
+import { CABECERA_VERSION, VERSION_DESPLEGADA } from '@/lib/version';
 
 /** Con los reintentos ante la nube de SIP (regla 7), una llamada puede pasar de 10 s. */
 export const maxDuration = 60;
@@ -106,9 +107,23 @@ export async function POST(request: Request) {
  * navegador se recarga o alguien sale y vuelve, el cliente no puede quedarse
  * con la tarjeta pasada y la pantalla en blanco.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireRole('PUNTO_PAGO');
+
+    /*
+      Un kiosco que no manda su version tiene abierta la version de ANTES del 2026-10-13
+      (la que pedia elegir el vehiculo), que no sabe recargarse sola. Solo pregunta esto
+      cuando esta libre, en la pantalla de inicio, y ante un 401 se va al inicio de
+      sesion, que con la sesion vigente lo devuelve al kiosco: asi carga la version nueva
+      sin que nadie tenga que tocarlo. La sesion no se cierra.
+    */
+    if (!request.headers.get(CABECERA_VERSION)) {
+      return NextResponse.json(
+        { error: { code: 'KIOSCO_DESACTUALIZADO', message: 'Hay una version nueva del kiosco.' } },
+        { status: 401 },
+      );
+    }
     await consumeRateLimit({ key: `pago-vivo:${user.id}`, limit: 30, windowMs: 60_000 });
     const parkingLotId = scopeToParkingLot(user);
     const point = await getPaymentPoint(user, parkingLotId);
@@ -122,7 +137,10 @@ export async function GET() {
         console.error('[payments] fallo la conciliacion', { error }),
       ),
     );
-    return NextResponse.json(live ? serializePayment(live) : null);
+    return NextResponse.json(live ? serializePayment(live) : null, {
+      // El kiosco la compara con la suya y se recarga si cambio.
+      headers: { [CABECERA_VERSION]: VERSION_DESPLEGADA },
+    });
   } catch (error) {
     return toErrorResponse(error, 'pos/payments/live');
   }

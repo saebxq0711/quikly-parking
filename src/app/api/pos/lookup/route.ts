@@ -7,7 +7,11 @@ import { lookupVehicle } from '@/lib/payments/service';
 import { getPaymentPoint } from '@/lib/parking/payment-point';
 
 const schema = z.object({
-  vehicleType: z.enum(['CAR', 'MOTORCYCLE', 'BICYCLE', 'SCOOTER']),
+  /*
+    Ya no se elige (2026-10-13): el tipo sale del tiquete. Solo lo mandan los kioscos que
+    siguen con la version anterior abierta, y para ellos se respeta, hasta que recarguen.
+  */
+  vehicleType: z.enum(['CAR', 'MOTORCYCLE', 'BICYCLE', 'SCOOTER']).optional(),
   // Hasta 200: el QR puede traer el enlace completo (`https://.../t/Z1M14`). Que sea
   // valido lo decide `recognizeSearchTerm`, no el largo.
   identifier: z.string().min(1).max(200),

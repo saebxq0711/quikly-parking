@@ -234,6 +234,10 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // El logo del parqueadero lleva su version en la URL y se guarda en el navegador
+  // (`api/logo/[id]`): con no-store se volveria a bajar en cada pagina.
+  if (pathname.startsWith('/api/logo/')) return NextResponse.next();
+
   return noStore(NextResponse.next());
 }
 

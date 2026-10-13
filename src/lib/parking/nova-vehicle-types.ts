@@ -197,6 +197,49 @@ export async function vehicleTypeIdForQuote(
 }
 
 /**
+ * Tipo del tiquete y con que tipo se COTIZA, sin preguntarle al cliente (2026-10-13).
+ *
+ * El kiosco ya no pide elegir el vehiculo. En el 122:
+ *  - el carro entra tipado (la camara lee la placa);
+ *  - la bicicleta y la patineta se crean a mano en el software del parqueadero, ya con
+ *    su tipo;
+ *  - lo que queda "Por Definir" es, por descarte, una MOTO.
+ *
+ * Con tipo definido se cobra el valor que trae el parqueadero tal cual (`null`). Si
+ * esta "Por Definir", se cotiza como Motocicleta, y al confirmar el cobro el
+ * parqueadero deja el tiquete como Motocicleta (`vehicleTypeIdForConfirm`).
+ *
+ * Un "Por Definir" que no es moto (un carro cuya placa no leyo la camara, una bicicleta
+ * que no se registro a mano) se cobra como moto: el operario lo corrige cambiando el
+ * tipo en el software del parqueadero ANTES de que el cliente pague.
+ */
+export async function tipoParaCobrar(
+  client: NovaParkingClient,
+  parkingLotId: string,
+  ticketId: string,
+): Promise<{ tipo: VehicleType; vehicleTypeId: string | null }> {
+  const guardado = await storedTicketType(client, ticketId);
+
+  if (guardado.definido) {
+    if (!guardado.tipo) {
+      // Un tipo que no es ninguno de los cuatro (lo agregaron en su catalogo): no se
+      // adivina la tarifa.
+      throw new AppError('VALIDATION', {
+        publicMessage:
+          'No reconocemos el tipo de este vehículo. Acércate a la oficina del parqueadero.',
+        detail: { ticketId, operation: 'tipoParaCobrar' },
+      });
+    }
+    return { tipo: guardado.tipo, vehicleTypeId: null };
+  }
+
+  return {
+    tipo: 'MOTORCYCLE',
+    vehicleTypeId: await novaVehicleTypeId(client, parkingLotId, 'MOTORCYCLE'),
+  };
+}
+
+/**
  * Tipo para CONFIRMAR el cobro. Solo se manda si el tiquete sigue "Por Definir": a uno
  * con tipo definido no se le cambia. No falla nunca: el dinero ya se cobro, y si no se
  * puede saber el tipo guardado se manda el elegido (ya se valido al cobrar).

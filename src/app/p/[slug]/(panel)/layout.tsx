@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/guards';
 import { AppShell, type NavItem } from '@/components/app-shell';
+import { logoUrl } from '@/lib/parking/logo';
 
 /**
  * Area del administrador de parqueadero.
@@ -32,7 +33,7 @@ export default async function ParkingLotLayout({
 
   const lot = await db.parkingLot.findUnique({
     where: { slug },
-    select: { id: true, name: true, slug: true, city: true, testMode: true },
+    select: { id: true, name: true, slug: true, city: true, testMode: true, logoUpdatedAt: true },
   });
   if (!lot) notFound();
 
@@ -70,6 +71,7 @@ export default async function ParkingLotLayout({
       role={user.role}
       contextName={lot.name}
       contextHint={lot.city ?? undefined}
+      logoUrl={logoUrl(lot)}
     >
       {lot.testMode ? (
         <div className="mb-5 rounded-xl bg-warn-100/60 px-4 py-3 text-sm text-warn-700 ring-1 ring-warn-400/25">

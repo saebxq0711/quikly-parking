@@ -2,11 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type {
-  TerminalStage,
-  VehicleIdentifierKind,
-  VehicleType,
-} from '@prisma/client';
+import type { TerminalStage, VehicleType } from '@prisma/client';
 import {
   MdCheck,
   MdClose,
@@ -16,7 +12,6 @@ import {
 } from 'react-icons/md';
 import { VehicleIcon } from '@/components/vehicle-icon';
 import { BrandSwoosh } from '@/components/brand-swoosh';
-import { WelcomeScene } from './welcome-scene';
 import { formatCOP, formatDuration } from '@/components/ui';
 import type { PaymentDTO } from '@/lib/payments/serialize';
 import type { InvoiceDocumentDTO, InvoicePrintDTO } from '@/lib/billing/invoice-print';
@@ -45,8 +40,13 @@ import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
 /**
  * Flujo del punto de pago (CLAUDE.md secciones 6, 7, 8 y 27).
  *
- *   Seleccionar vehiculo -> Identificar -> Reconocer el vehiculo (foto) ->
- *   Datos del cliente -> Ver valor -> Pagar -> Resultado
+ *   Escanear el QR del tiquete -> Reconocer el vehiculo (foto) -> Ver valor ->
+ *   Pagar -> Factura -> Resultado
+ *
+ * Desde el 2026-10-13 el cliente NO elige el tipo de vehiculo: lo dice el tiquete. El
+ * carro entra tipado por la camara, la bicicleta y la patineta se crean a mano con su
+ * tipo, y lo que queda "Por Definir" se cobra como moto (`tipoParaCobrar`). El kiosco
+ * abre directo en el escaneo.
  *
  * ORIENTACION
  * -----------
@@ -59,21 +59,12 @@ import { comprobanteEscPos, facturaEscPos } from '@/lib/printing/tickets';
  * dos columnas y ajustan las escalas.
  */
 
-export interface PosVehicle {
-  vehicleType: VehicleType;
-  label: string;
-  identifierKind: VehicleIdentifierKind;
-  inputLabel: string;
-  inputPlaceholder: string;
-}
-
 /**
  * El flujo del kiosco. La factura (`invoice`) se pregunta DESPUES de un pago
  * aprobado: a nombre propio o consumidor final. Pedir los datos antes obligaba a
  * llenarlos aunque el cobro no pasara, y a todos, aunque no quisieran factura propia.
  */
 type Step =
-  | 'type'
   | 'identify'
   | 'confirm'
   | 'summary'
@@ -92,6 +83,8 @@ interface LookupResult {
   /** Lo que el cliente reconoce de su tiquete. El `ticketId` no se muestra. */
   code: string | null;
   plate: string | null;
+  /** Tipo con que se cobra: lo decide el servidor con el tiquete. Se devuelve al cobrar. */
+  vehicleType: VehicleType | null;
   vehicleTypeLabel: string | null;
   entryAt: string | null;
   minutes: number | null;
@@ -140,8 +133,27 @@ const RECEIPT_TIMEOUT_S = 45;
  */
 const IDLE_TIMEOUT_MS = 90_000;
 
+/** Para no recargar en bucle si algo raro hace que las versiones no coincidan nunca. */
+const RECARGA_MINIMA_MS = 5 * 60_000;
+
+/**
+ * Recarga la pagina para tomar la version nueva, como mucho una vez cada 5 minutos.
+ * Sin almacenamiento (ventana privada, bloqueado) se recarga igual.
+ */
+function recargarConVersionNueva() {
+  try {
+    const ultima = Number(sessionStorage.getItem('kiosco-recargado') ?? 0);
+    if (Date.now() - ultima < RECARGA_MINIMA_MS) return;
+    sessionStorage.setItem('kiosco-recargado', String(Date.now()));
+  } catch {
+    // Sin sessionStorage: se recarga igual.
+  }
+  window.location.reload();
+}
+
 export function PosFlow({
-  vehicles,
+  version,
+  logoUrl = null,
   parkingLotName,
   paymentPointName,
   issuer,
@@ -150,7 +162,13 @@ export function PosFlow({
   livePayment,
   testMode = false,
 }: {
-  vehicles: PosVehicle[];
+  /**
+   * Version desplegada con que se pinto esta pantalla (`lib/version.ts`). Si el servidor
+   * ya tiene otra, el kiosco se recarga solo en cuanto queda libre.
+   */
+  version: string;
+  /** Logo del parqueadero. Sin el, va el de Quikly Parking. */
+  logoUrl?: string | null;
   parkingLotName: string;
   /** Datos del parqueadero para el encabezado del papel impreso. */
   issuer: ReceiptIssuer;
@@ -168,8 +186,7 @@ export function PosFlow({
   /** Modo de pruebas: el sistema del parqueadero esta simulado. Se avisa en pantalla. */
   testMode?: boolean;
 }) {
-  const [step, setStep] = useState<Step>(livePayment ? 'waiting' : 'type');
-  const [vehicle, setVehicle] = useState<PosVehicle | null>(null);
+  const [step, setStep] = useState<Step>(livePayment ? 'waiting' : 'identify');
   const [identifier, setIdentifier] = useState('');
   const [lookup, setLookup] = useState<LookupResult | null>(null);
   /** El cliente eligio factura a su nombre y dio correo: ahi le llegan comprobante y factura. */
@@ -192,8 +209,7 @@ export function PosFlow({
   const [busy, setBusy] = useState(false);
 
   const reset = useCallback(() => {
-    setStep('type');
-    setVehicle(null);
+    setStep('identify');
     setIdentifier('');
     setLookup(null);
     setFacturaAlCorreo(false);
@@ -205,7 +221,7 @@ export function PosFlow({
 
   /** `valor`: lo que leyo el lector, para no depender de que el estado ya se haya pintado. */
   async function handleLookup(valor: string = identifier) {
-    if (!vehicle || busy || valor.length === 0) return;
+    if (busy || valor.length === 0) return;
     /*
       Lo buscado es lo que despues se cobra: se guarda aqui, venga del lector o del
       recuadro de pruebas. Sin esto, el cobro salia sin identificador y el servidor lo
@@ -219,7 +235,8 @@ export function PosFlow({
       const response = await fetch('/api/pos/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleType: vehicle.vehicleType, identifier: valor }),
+        // Sin tipo: el servidor lo saca del tiquete.
+        body: JSON.stringify({ identifier: valor }),
       });
       // Una respuesta que no es JSON (corte de red, bloqueo del proveedor, pagina de
       // error) no debe romper la pantalla: se explica como problema de conexion.
@@ -256,7 +273,7 @@ export function PosFlow({
   const pagando = useRef(false);
 
   async function handlePay() {
-    if (!vehicle || !lookup?.ticketId || busy || pagando.current) return;
+    if (!lookup?.ticketId || !lookup.vehicleType || busy || pagando.current) return;
     pagando.current = true;
     setBusy(true);
     setError(null);
@@ -266,7 +283,8 @@ export function PosFlow({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          vehicleType: vehicle.vehicleType,
+          // El que decidio el servidor al buscar (va tambien dentro de la cotizacion).
+          vehicleType: lookup.vehicleType,
           identifier,
           ticketId: lookup.ticketId,
           // Una clave por intento: si el operador toca dos veces o la red
@@ -329,25 +347,36 @@ export function PosFlow({
   const isWaiting = step === 'waiting';
 
   /*
-    Sesion cerrada a distancia por el administrador del parqueadero. Mientras la pantalla
-    espera al siguiente cliente se comprueba cada minuto; si ya no hay sesion, vuelve al
-    inicio de sesion en vez de fallar cuando alguien intente pagar.
+    Mientras la pantalla espera al siguiente cliente se revisa cada minuto:
+
+    - Sesion cerrada a distancia por el administrador: vuelve al inicio de sesion en vez
+      de fallar cuando alguien intente pagar.
+    - Version nueva desplegada: se recarga sola. Un kiosco no tiene quien oprima F5, y sin
+      esto seguiria mostrando la version vieja hasta que alguien lo reinicie. Solo aqui,
+      sin nadie usandolo: nunca a media operacion.
   */
+  const libre = step === 'identify' && !busy && identifier === '';
   useEffect(() => {
-    if (step !== 'type') return;
+    if (!libre) return;
     const revisar = async () => {
       try {
-        const response = await fetch('/api/pos/payments', { cache: 'no-store' });
+        const response = await fetch('/api/pos/payments', {
+          cache: 'no-store',
+          headers: { 'x-kiosco-version': version },
+        });
         if (response.status === 401 || (response.redirected && response.url.includes('/login'))) {
           window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          return;
         }
+        const enServidor = response.headers.get('x-kiosco-version');
+        if (response.ok && enServidor && enServidor !== version) recargarConVersionNueva();
       } catch {
         // Sin red: se vuelve a intentar en el siguiente minuto.
       }
     };
     const timer = setInterval(revisar, 60_000);
     return () => clearInterval(timer);
-  }, [step]);
+  }, [libre, version]);
 
   /*
     Inactividad a media operacion: se vuelve al inicio para que el siguiente
@@ -469,9 +498,19 @@ export function PosFlow({
     <main className="touch-surface kiosk-root relative isolate flex min-h-dvh flex-col overflow-clip bg-[var(--surface-base)]">
       <header className="flex shrink-0 items-center justify-between gap-6 px-8 pb-2 pt-7 kland:px-6 kland:pt-3">
         {/*
-          El logo cambia de version con el tema, como pide el manual de marca:
-          texto negro sobre blanco de dia, texto blanco sobre negro de noche.
+          El logo del parqueadero si tiene uno (`lib/parking/logo.ts`). Si no, el de Quikly,
+          que cambia de version con el tema, como pide el manual de marca: texto negro
+          sobre blanco de dia, texto blanco sobre negro de noche.
         */}
+        {logoUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- lo sirve nuestra propia
+             ruta, ya en su tamano final y guardado por el navegador. */
+          <img
+            src={logoUrl}
+            alt={parkingLotName}
+            className="h-[7rem] w-auto max-w-[18rem] shrink-0 object-contain kland:h-16 kshort:h-12"
+          />
+        ) : (
         <div className="shrink-0">
           <Image
             src="/quikly-parking-positivo.png"
@@ -491,6 +530,7 @@ export function PosFlow({
             className="hidden h-[3.1rem] w-auto night:block kland:h-9"
           />
         </div>
+        )}
 
         <div className="flex min-w-0 items-center gap-4">
           {/*
@@ -533,28 +573,11 @@ export function PosFlow({
       </header>
 
       <div className="flex flex-1 flex-col px-8 pb-7 kland:px-6 kland:pb-4">
-        {step === 'type' ? (
-          <SelectType
-            vehicles={vehicles}
-            onSelect={(v) => {
-              setVehicle(v);
-              setIdentifier('');
-              setError(null);
-              setStep('identify');
-            }}
-          />
-        ) : null}
-
-        {step === 'identify' && vehicle ? (
+        {step === 'identify' ? (
           <Identify
-            vehicle={vehicle}
             value={identifier}
             onChange={setIdentifier}
             onSubmit={handleLookup}
-            onBack={() => {
-              setStep('type');
-              setError(null);
-            }}
             busy={busy}
             error={error}
           />
@@ -563,8 +586,6 @@ export function PosFlow({
         {step === 'confirm' && lookup ? (
           <ConfirmVehicle
             lookup={lookup}
-            vehicleType={vehicle?.vehicleType ?? null}
-            vehicleLabel={vehicle?.label ?? null}
             onConfirm={() => setStep('summary')}
             onReject={() => {
               // Se vuelve al campo vacio: si la foto no era su vehiculo, el dato
@@ -581,9 +602,6 @@ export function PosFlow({
           <Summary
             lookup={lookup}
             searched={identifier}
-            vehicleType={vehicle?.vehicleType ?? null}
-            vehicleLabel={vehicle?.label ?? null}
-            identifierKind={vehicle?.identifierKind ?? 'PLATE'}
             error={error}
             busy={busy}
             onPay={handlePay}
@@ -598,7 +616,7 @@ export function PosFlow({
           <Waiting
             payment={payment}
             aviso={avisoCobro}
-            vehicleType={vehicle?.vehicleType ?? (payment.vehicleType as VehicleType)}
+            vehicleType={payment.vehicleType as VehicleType}
             onCancel={handleCancel}
             busy={busy}
           />
@@ -621,100 +639,25 @@ export function PosFlow({
         ) : null}
       </div>
 
-      {/*
-        La franja amarilla de la esquina: el trazo del logo llevado al borde. En
-        la bienvenida va la escena completa (las dos franjas y el sedan, en
-        `welcome-scene.tsx`); en los demas pasos, solo esta.
-      */}
-      {step === 'type' ? (
-        <WelcomeScene />
-      ) : (
-        <BrandSwoosh className="swoosh-in pointer-events-none absolute -bottom-8 -right-8 -z-10 h-[12rem] w-[12rem] text-brand-500 kland:h-32 kland:w-32" />
-      )}
+      {/* La franja amarilla de la esquina: el trazo del logo llevado al borde. */}
+      <BrandSwoosh className="swoosh-in pointer-events-none absolute -bottom-8 -right-8 -z-10 h-[12rem] w-[12rem] text-brand-500 kland:h-32 kland:w-32" />
     </main>
   );
 }
 
-/* ------------------------------------------------------------ Paso 1: tipo */
-
-/**
- * Bienvenida: cuatro mosaicos iguales. La escena de abajo (franjas y sedan) la
- * pinta `WelcomeScene` a todo el ancho de la pantalla, detras del contenido.
- *
- * Ningun vehiculo viene marcado: los cuatro esperan igual, y el amarillo aparece
- * solo cuando el cliente pasa por encima (en un PC) o lo toca. Al tocarlo, el
- * mosaico se queda amarillo un instante antes de pasar al siguiente paso: es la
- * confirmacion de "esto elegiste", que en una pantalla tactil no da el cursor.
- */
-function SelectType({
-  vehicles,
-  onSelect,
-}: {
-  vehicles: PosVehicle[];
-  onSelect: (vehicle: PosVehicle) => void;
-}) {
-  const columns = vehicles.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 kland:grid-cols-4';
-  const [elegido, setElegido] = useState<VehicleType | null>(null);
-
-  function elegir(vehicle: PosVehicle) {
-    if (elegido) return;
-    setElegido(vehicle.vehicleType);
-    // Lo justo para ver el amarillo; mas, y se siente lento.
-    setTimeout(() => onSelect(vehicle), 180);
-  }
-
-  return (
-    <div className="step-in relative mx-auto flex w-full max-w-[38rem] flex-1 flex-col kland:max-w-5xl">
-      <div className="pt-[6vh] kland:pt-2">
-        <KioskTitle title="Bienvenido" subtitle="Selecciona tu vehículo para continuar" />
-      </div>
-
-      <div className={`mt-12 grid gap-5 kland:mt-6 kland:gap-4 ${columns}`}>
-        {vehicles.map((vehicle) => {
-          const activo = elegido === vehicle.vehicleType;
-          return (
-            <button
-              key={vehicle.vehicleType}
-              onClick={() => elegir(vehicle)}
-              aria-pressed={activo}
-              className={`group flex aspect-[1.22] flex-col items-center justify-center gap-5 rounded-[1.6rem] transition-[background-color,transform,color] duration-150 hover:bg-brand-500 hover:text-ink-950 active:scale-[0.97] active:bg-brand-600 active:text-ink-950 kland:aspect-auto kland:min-h-36 kland:gap-3 kshort:min-h-28 ${
-                activo
-                  ? 'scale-[0.98] bg-brand-500 text-ink-950'
-                  : 'bg-[var(--surface-tile)] text-[var(--text-primary)]'
-              }`}
-            >
-              <VehicleIcon
-                type={vehicle.vehicleType}
-                className="h-[4.4rem] w-[6rem] kland:h-14 kland:w-20 kshort:h-10 kshort:w-14"
-              />
-              <span className="text-[1.65rem] font-semibold kland:text-xl kshort:text-base">
-                {vehicle.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-    </div>
-  );
-}
-
-/* ------------------------------------------------ Paso 2: identificar */
+/* ------------------------------------------------ Paso 1: escanear el tiquete */
 
 function Identify({
   value,
   onChange,
   onSubmit,
-  onBack,
   busy,
   error,
 }: {
-  vehicle: PosVehicle;
   value: string;
   onChange: (value: string) => void;
   /** Recibe lo leido: el estado de React puede no haberse actualizado todavia. */
   onSubmit: (valor: string) => void;
-  onBack: () => void;
   busy: boolean;
   error: string | null;
 }) {
@@ -808,7 +751,7 @@ function Identify({
   }, []);
 
   return (
-    <KioskStep pie={<BackLink onClick={onBack} />}>
+    <KioskStep>
       <div className="space-y-9 text-center kland:space-y-4">
         <div className="mx-auto flex h-[12rem] w-[12rem] items-center justify-center rounded-[2.2rem] bg-[var(--surface-tile)] kland:h-28 kland:w-28 kshort:h-24 kshort:w-24">
           <MdQrCodeScanner
@@ -913,14 +856,10 @@ function EspacioParaFlecha() {
  */
 function ConfirmVehicle({
   lookup,
-  vehicleType,
-  vehicleLabel,
   onConfirm,
   onReject,
 }: {
   lookup: LookupResult;
-  vehicleType: VehicleType | null;
-  vehicleLabel: string | null;
   onConfirm: () => void;
   onReject: () => void;
 }) {
@@ -961,8 +900,8 @@ function ConfirmVehicle({
         )}
         <PlateHeader
           identifier={lookup.plate ?? lookup.ticketId ?? '—'}
-          vehicleType={vehicleType}
-          vehicleLabel={lookup.vehicleTypeLabel ?? vehicleLabel}
+          vehicleType={lookup.vehicleType}
+          vehicleLabel={lookup.vehicleTypeLabel}
         />
         <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
           <InfoRow label="Hora de entrada" value={horaDeEntrada(lookup.entryAt)} />
@@ -1004,25 +943,14 @@ function horaDeEntrada(iso: string | null): string {
 function Summary({
   lookup,
   searched,
-  vehicleType,
-  vehicleLabel,
-  identifierKind,
   error,
   busy,
   onPay,
   onRetry,
 }: {
   lookup: LookupResult;
-  /** Lo que el cliente escribio, para mostrarselo si no se encontro. */
+  /** Lo que leyo el lector, para mostrarselo si no se encontro. */
   searched: string;
-  vehicleType: VehicleType | null;
-  /**
-   * Lo que el cliente eligio en la primera pantalla. El sistema del parqueadero
-   * no siempre devuelve el tipo de vehiculo, y sin esto la fila quedaba en un
-   * guion — justo el dato que el cliente acaba de indicar.
-   */
-  vehicleLabel: string | null;
-  identifierKind: VehicleIdentifierKind;
   error: string | null;
   busy: boolean;
   onPay: () => void;
@@ -1048,9 +976,7 @@ function Summary({
                 ? 'Este tiquete ya fue pagado'
                 : sinValor
                   ? 'No hay valor por cobrar'
-                  : identifierKind === 'PLATE'
-                    ? 'No se encontró la placa'
-                    : 'No se encontró el código'
+                  : 'No se encontró tu tiquete'
             }
             subtitle={
               sinValor
@@ -1069,9 +995,8 @@ function Summary({
         {/* Ayuda concreta en vez de dejar al cliente adivinando. */}
         {noEncontrado ? (
           <p className="mx-auto max-w-[30rem] text-center text-lg leading-snug text-[var(--text-muted)] kshort:text-sm">
-            {identifierKind === 'PLATE'
-              ? 'Revisa que la placa esté completa y sin espacios. Si el problema sigue, acércate a la oficina del parqueadero.'
-              : 'Revisa el código impreso en tu tiquete: son cinco caracteres, como A7B48. Si el problema sigue, acércate a la oficina del parqueadero.'}
+            Vuelve a acercar el QR de tu tiquete al lector. Si el problema sigue, acércate a
+            la oficina del parqueadero.
           </p>
         ) : null}
 
@@ -1102,8 +1027,8 @@ function Summary({
         */}
         <PlateHeader
           identifier={lookup.plate ?? lookup.ticketId ?? '—'}
-          vehicleType={vehicleType}
-          vehicleLabel={lookup.vehicleTypeLabel ?? vehicleLabel}
+          vehicleType={lookup.vehicleType}
+          vehicleLabel={lookup.vehicleTypeLabel}
         />
         <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
           <InfoRow label="Hora de entrada" value={horaDeEntrada(lookup.entryAt)} />
