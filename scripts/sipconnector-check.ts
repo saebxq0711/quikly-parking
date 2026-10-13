@@ -74,13 +74,13 @@ async function main() {
   console.log(
     `Respuesta    Cod:${state.code} — ${SIP_CODE_MEANING[state.code] ?? '?'}`,
   );
-  if (state.pending && !state.started) {
+  if (state.consulta.kind === 'esperando') {
     console.log('  La orden esta puesta y el datafono aun no la ha tomado.');
     console.log('  Es lo esperado sin un datafono fisico conectado.');
   }
-  if (state.result) {
-    console.log(`  resultado: ${state.result.approved ? 'APROBADA' : 'RECHAZADA'}`);
-    console.log(`  valor aprobado: ${state.result.totalValue}`);
+  if (state.consulta.kind === 'resuelta') {
+    console.log(`  resultado: ${state.consulta.result.approved ? 'APROBADA' : 'RECHAZADA'}`);
+    console.log(`  valor aprobado: ${state.consulta.result.totalValue}`);
   }
 
   /* 5. Borrar — deja el ambiente limpio y libera la terminal */

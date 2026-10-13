@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { getCurrentUser, scopeToParkingLot } from '@/lib/auth/guards';
 import { getVehicleRules } from '@/lib/parking/config';
 import { getPaymentPoint } from '@/lib/parking/payment-point';
+import { getRedebanStatus } from '@/lib/parking/redeban';
 import { findLivePayment } from '@/lib/payments/service';
 import { serializePayment } from '@/lib/payments/serialize';
 import { PosFlow } from '@/components/pos/pos-flow';
@@ -80,6 +81,20 @@ export default async function PosPage({
       <Notice
         title="Fuera de servicio"
         detail="Este punto de pago esta fuera de servicio. Acercate a la oficina del parqueadero para pagar."
+      />
+    );
+  }
+
+  /*
+    Regla 13 de la guia de certificacion de Redeban: sin SU datafono (terminal, caja y
+    credenciales de este kiosco) no se puede cobrar. Se dice desde la entrada y no
+    despues de que el cliente busco su vehiculo.
+  */
+  if (!(await getRedebanStatus(parkingLotId, point.id)).configured) {
+    return (
+      <Notice
+        title="Fuera de servicio"
+        detail="Este punto de pago aun no tiene datafono configurado. Acercate a la oficina del parqueadero para pagar."
       />
     );
   }

@@ -6,6 +6,9 @@ import { cancelPayment } from '@/lib/payments/service';
 import { serializePayment } from '@/lib/payments/serialize';
 import { consumeRateLimit } from '@/lib/rate-limit';
 
+/** Con los reintentos ante la nube de SIP (regla 7), una llamada puede pasar de 10 s. */
+export const maxDuration = 60;
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },

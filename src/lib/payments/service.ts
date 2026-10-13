@@ -22,6 +22,8 @@ import {
 } from '@/integrations/nova-parking/vehicle-types';
 import { getVehicleRule, novaClientFor } from '../parking/config';
 import { redebanClientFor } from '../parking/redeban';
+import { isSipTransient, type SipConnectorClient } from '@/integrations/sipconnector/client';
+import type { CompraInput, SipTransactionResult } from '@/integrations/sipconnector/codec';
 import type { OperablePoint } from '../parking/payment-point';
 import type { NovaCheckout } from '@/integrations/nova-parking/types';
 import { declineReason, maskCard } from '@/integrations/sipconnector/codec';
@@ -29,11 +31,7 @@ import {
   vehicleTypeIdForConfirm,
   vehicleTypeIdForQuote,
 } from '@/lib/parking/nova-vehicle-types';
-import {
-  SIP_CODE,
-  describeSipFailure,
-  publicMessageForCode,
-} from '@/integrations/sipconnector/codes';
+import { SIP_CODE, describeSipFailure } from '@/integrations/sipconnector/codes';
 import { invoiceAbandonedPayments } from '../billing/service';
 import { enSegundoPlano } from '../background';
 
@@ -70,11 +68,35 @@ import { enSegundoPlano } from '../background';
 const TERMINAL_VALIDITY_MINUTES = 5;
 
 /**
- * Margen despues del cual un cobro sin resolver se da por vencido.
- * Es holgado a proposito sobre la vigencia: cerrar antes de tiempo algo que
- * quiza se aprobo seria peor que esperar de mas.
+ * Regla 3 de la guia de certificacion de Redeban: si el cliente nunca opera el
+ * datafono, el POS corta la espera a los 3 minutos y BORRA la orden en SIP, para
+ * que nadie pueda cobrarla despues (pago fantasma).
+ */
+const POS_TIMEOUT_MS = 3 * 60_000;
+
+/**
+ * Iniciada en el datafono pero sin resultado (el aparato se reinicio a mitad: SIP
+ * queda en Cod:02 para siempre). Pasada la vigencia y un margen, se cierra. Si el
+ * datafono aprobara despues, la conciliacion lo recupera (`conciliarCobrosCerrados`).
+ */
+const STARTED_TIMEOUT_MS = (TERMINAL_VALIDITY_MINUTES + 1) * 60_000;
+
+/**
+ * Regla 2 (Anexo 3): nunca consultar `Respuesta` de una operacion mas seguido que
+ * cada 3 segundos. Consultar mas rapido BLOQUEA la terminal.
+ */
+const MIN_CONSULTA_MS = 3_000;
+
+/**
+ * Ultimo recurso: un cobro que no se pudo ni consultar (la nube de SIP caida) se
+ * cierra a los 20 minutos. Normalmente lo cierran los topes de arriba.
  */
 const STALE_PAYMENT_MS = 20 * 60_000;
+
+/** Estados de un cobro vivo: ocupan el datafono de su kiosco. */
+const LIVE_STATUSES: PaymentStatus[] = ['PENDING', 'INITIATED', 'IN_PROGRESS'];
+
+const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Estados de los que un pago ya no se mueve. */
 const TERMINAL_STATUSES: PaymentStatus[] = [
@@ -388,73 +410,118 @@ export async function startCardPayment(
       });
     }
 
-    // Un tiquete no puede tener dos cobros vivos al mismo tiempo.
-    const inFlight = await db.payment.findFirst({
-      where: {
-        externalTicketId: input.ticketId,
-        parkingLotId: lot.id,
-        status: { in: ['PENDING', 'INITIATED', 'IN_PROGRESS'] },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    /*
+      Regla 13: el kiosco tiene que tener SU datafono configurado. Se comprueba antes
+      de crear el pago: sin datafono no hay a donde enviarlo, y un pago creado para
+      fallar enseguida solo ensucia el historial.
+    */
+    const redeban = await redebanClientFor(lot.id, input.paymentPoint.id);
 
-    if (inFlight) {
-      const refreshed = await refreshPaymentStatus(inFlight.id);
-      if (!isFinalStatus(refreshed.status)) {
-        await attachPaymentToKey(input.idempotencyKey, refreshed.id);
-        return refreshed;
-      }
-    }
+    // Cobros de este kiosco cerrados por tiempo: si el datafono alcanzo a aprobar
+    // alguno, se recupera (ver `conciliarCobrosCerrados`).
+    enSegundoPlano(() =>
+      conciliarCobrosCerrados(input.paymentPoint.id).catch((error) =>
+        console.error('[payments] fallo la conciliacion de cobros cerrados', { error }),
+      ),
+    );
+
+    /*
+      Regla 8, la unica que Redeban pidio corregir en su certificacion: NUNCA dos
+      operaciones a la vez en el mismo datafono. SIP no lo impide —acepta la segunda
+      con Cod:00 y el datafono cancela la primera—, asi que el control es de este
+      servidor: un cobro vivo por kiosco (cada kiosco tiene su datafono) y uno por
+      tiquete.
+
+      Primero se pone al dia el que haya (puede estar vencido y cerrarse ahora);
+      despues, con el candado del kiosco, se vuelve a mirar y se crea en la misma
+      transaccion: dos peticiones al mismo tiempo no pueden crear dos cobros.
+    */
+    const ocupan = {
+      status: { in: LIVE_STATUSES },
+      OR: [
+        { paymentPointId: input.paymentPoint.id },
+        { parkingLotId: lot.id, externalTicketId: input.ticketId },
+      ],
+    };
+    const previo = await db.payment.findFirst({ where: ocupan, orderBy: { createdAt: 'desc' } });
+    if (previo) await refreshPaymentStatus(previo.id);
 
     const providerTransactionId = buildProviderTransactionId();
-    const payment = await db.payment.create({
-      data: {
-        parkingLotId: lot.id,
-        paymentPointId: input.paymentPoint.id,
-        userId: input.user.id,
-        vehicleType: input.vehicleType,
-        vehicleIdentifier: termino.value,
-        /*
-          La forma REAL con que se encontro, no la del tipo elegido: al confirmar, un
-          tiquete que no se encontro por placa (QR de un "Por Definir") manda el tipo
-          elegido para que el parqueadero lo deje tipado.
-        */
-        identifierKind: termino.kind,
-        plate: checkout.ticket.plate,
-        externalTicketId: input.ticketId,
-        // Para el comprobante: el cliente se lleva su codigo, entrada y permanencia.
-        ticketCode: checkout.ticket.code,
-        entryAt:
-          checkout.ticket.entryAt && !Number.isNaN(Date.parse(checkout.ticket.entryAt))
-            ? new Date(checkout.ticket.entryAt)
-            : null,
-        stayMinutes:
-          checkout.ticket.minutes !== null ? Math.round(checkout.ticket.minutes) : null,
-        /*
-          Los datos del cliente los da el propio cliente en el kiosco; el
-          sistema del parqueadero solo se usa como respaldo si no se identifico.
-          La copia queda desnormalizada porque es el soporte de la factura: si
-          el cliente cambia sus datos manana, la factura ya emitida no cambia.
-        */
-        customerId: input.customer?.id ?? null,
-        customerName: input.customer
-          ? [input.customer.firstName, input.customer.lastName]
-              .filter(Boolean)
-              .join(' ')
-          : checkout.ticket.customerName,
-        customerDocument:
-          input.customer?.identification ?? checkout.ticket.customerDocument,
-        amount: checkout.amount,
-        method: 'CARD',
-        status: 'PENDING',
-        terminalStage: 'WAITING_TERMINAL',
-        providerTransactionId,
-        // Token del enlace del comprobante. 24 bytes aleatorios: el enlace es
-        // publico y abre datos de un pago real, asi que no puede adivinarse.
-        receiptToken: bytesAleatorios(24).toString('base64url'),
-      },
+    const reserva = await db.$transaction(async (tx) => {
+      // Candado por kiosco, solo mientras dura esta transaccion (sirve con pgbouncer).
+      const llave = `cobro:${input.paymentPoint.id}`;
+      await tx.$queryRaw`SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(${llave}))) AS candado`;
+
+      const vivo = await tx.payment.findFirst({ where: ocupan, orderBy: { createdAt: 'desc' } });
+      if (vivo) return { vivo, creado: null };
+
+      const creado = await tx.payment.create({
+        data: {
+          parkingLotId: lot.id,
+          paymentPointId: input.paymentPoint.id,
+          userId: input.user.id,
+          vehicleType: input.vehicleType,
+          vehicleIdentifier: termino.value,
+          /*
+            La forma REAL con que se encontro, no la del tipo elegido: al confirmar, un
+            tiquete que no se encontro por placa (QR de un "Por Definir") manda el tipo
+            elegido para que el parqueadero lo deje tipado.
+          */
+          identifierKind: termino.kind,
+          plate: checkout.ticket.plate,
+          externalTicketId: input.ticketId,
+          // Para el comprobante: el cliente se lleva su codigo, entrada y permanencia.
+          ticketCode: checkout.ticket.code,
+          entryAt:
+            checkout.ticket.entryAt && !Number.isNaN(Date.parse(checkout.ticket.entryAt))
+              ? new Date(checkout.ticket.entryAt)
+              : null,
+          stayMinutes:
+            checkout.ticket.minutes !== null ? Math.round(checkout.ticket.minutes) : null,
+          /*
+            Los datos del cliente los da el propio cliente en el kiosco; el
+            sistema del parqueadero solo se usa como respaldo si no se identifico.
+            La copia queda desnormalizada porque es el soporte de la factura: si
+            el cliente cambia sus datos manana, la factura ya emitida no cambia.
+          */
+          customerId: input.customer?.id ?? null,
+          customerName: input.customer
+            ? [input.customer.firstName, input.customer.lastName]
+                .filter(Boolean)
+                .join(' ')
+            : checkout.ticket.customerName,
+          customerDocument:
+            input.customer?.identification ?? checkout.ticket.customerDocument,
+          amount: checkout.amount,
+          method: 'CARD',
+          status: 'PENDING',
+          terminalStage: 'WAITING_TERMINAL',
+          providerTransactionId,
+          // Token del enlace del comprobante. 24 bytes aleatorios: el enlace es
+          // publico y abre datos de un pago real, asi que no puede adivinarse.
+          receiptToken: bytesAleatorios(24).toString('base64url'),
+        },
+      });
+      return { vivo: null, creado };
     });
 
+    if (reserva.vivo) {
+      const vivo = reserva.vivo;
+      // El mismo cobro (mismo tiquete, este kiosco): la pantalla recargada o un reintento.
+      if (vivo.paymentPointId === input.paymentPoint.id && vivo.externalTicketId === input.ticketId) {
+        await attachPaymentToKey(input.idempotencyKey, vivo.id);
+        return vivo;
+      }
+      throw new AppError('CONFLICT', {
+        publicMessage:
+          vivo.paymentPointId === input.paymentPoint.id
+            ? 'El datafono esta procesando otro pago. Espera a que termine e intenta de nuevo.'
+            : 'Este tiquete ya se esta cobrando en otro punto de pago.',
+        detail: { cobroVivo: vivo.id },
+      });
+    }
+
+    const payment = reserva.creado as Payment;
     await attachPaymentToKey(input.idempotencyKey, payment.id);
 
     await recordAudit({
@@ -471,10 +538,10 @@ export async function startCardPayment(
       },
     });
 
-    try {
-      const redeban = await redebanClientFor(lot.id, input.paymentPoint.id);
-
-      const orden = {
+    return await enviarAlDatafono(
+      payment,
+      redeban,
+      {
         amount: checkout.amount,
         invoiceNumber: providerTransactionId,
         cashierCode: input.paymentPoint.cashierCode ?? 'CAJA',
@@ -483,88 +550,212 @@ export async function startCardPayment(
         validityMinutes: TERMINAL_VALIDITY_MINUTES,
         // `N` para que una operacion rechazada se limpie sola y el datafono
         // quede libre para reintentar con una orden nueva.
-        persist: 'N' as const,
-      };
-
-      let sent = await redeban.enviarCompra(providerTransactionId, orden);
-
-      /*
-        La terminal quedo ocupada por una operacion anterior (Cod:06).
-
-        El datafono de este punto de pago es EXCLUSIVO nuestro —el kiosco tiene
-        su propia pantalla y su propio aparato—, asi que una operacion colgada
-        ahi solo puede ser nuestra. Por eso se puede liberar y reintentar sin
-        riesgo: no hay otro sistema al que se le este interrumpiendo un cobro.
-
-        Sin este reintento la caja se queda bloqueada hasta que alguien
-        intervenga el datafono a mano, con el cliente esperando.
-      */
-      if (sent.code === SIP_CODE.TERMINAL_OCUPADA) {
-        await redeban.borrar(providerTransactionId).catch(() => undefined);
-        sent = await redeban.enviarCompra(providerTransactionId, orden);
-      }
-
-      if (sent.accepted) {
-        return db.payment.update({
-          where: { id: payment.id },
-          data: {
-            status: 'INITIATED',
-            terminalStage: 'WAITING_TERMINAL',
-            providerCode: sent.code,
-            startedAt: new Date(),
-            providerRaw: scrubSecrets({ enviarDatos: sent.raw }) as object,
-          },
-        });
-      }
-
-      // El cliente lee `publico`; el motivo real queda en `providerRaw` y el panel
-      // de pagos lo muestra (`enviarDatosFailureFromRaw`).
-      const fallo = describeSipFailure(sent.code, sent.message);
-      console.warn('[payments] el datafono no recibio el cobro', {
-        paymentId: payment.id,
-        code: sent.code,
-        motivo: fallo.motivo,
-      });
-      return db.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: 'FAILED',
-          terminalStage: 'RESOLVED',
-          providerCode: sent.code,
-          resolvedAt: new Date(),
-          failureReason: fallo.publico,
-          providerRaw: scrubSecrets({ enviarDatos: sent.raw }) as object,
-        },
-      });
-    } catch (error) {
-      const message =
-        error instanceof AppError
-          ? error.publicMessage
-          : 'No fue posible iniciar el cobro.';
-
-      await db.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: 'FAILED',
-          terminalStage: 'RESOLVED',
-          resolvedAt: new Date(),
-          failureReason: message,
-        },
-      });
-      await recordAudit({
-        action: AuditAction.UPSTREAM_ERROR,
-        actorId: input.user.id,
-        parkingLotId: lot.id,
-        entity: 'Payment',
-        entityId: payment.id,
-        metadata: { stage: 'enviarDatos' },
-      });
-      throw error;
-    }
+        persist: 'N',
+      },
+      input.user.id,
+    );
   } catch (error) {
     await releaseIdempotencyKey(input.idempotencyKey);
     throw error;
   }
+}
+
+type OrdenDeCompra = Omit<CompraInput, 'terminalCode' | 'merchantCode'>;
+type ConsultaSip = Awaited<ReturnType<SipConnectorClient['respuesta']>>;
+
+/**
+ * Deja la orden en la nube de SIP (EnviarDatos) y registra como quedo.
+ */
+async function enviarAlDatafono(
+  payment: Payment,
+  redeban: SipConnectorClient,
+  orden: OrdenDeCompra,
+  actorId: string,
+): Promise<Payment> {
+  let id = payment.providerTransactionId as string;
+  let sent: Awaited<ReturnType<SipConnectorClient['enviarCompra']>>;
+
+  try {
+    sent = await redeban.enviarCompra(id, orden);
+
+    // Cod:09: el Id ya existia en SIP (un choque improbable). Uno nuevo, una sola vez.
+    if (sent.code === SIP_CODE.TRANSACCION_DUPLICADA) {
+      id = buildProviderTransactionId();
+      await db.payment.update({ where: { id: payment.id }, data: { providerTransactionId: id } });
+      sent = await redeban.enviarCompra(id, { ...orden, invoiceNumber: id });
+    }
+  } catch (error) {
+    // Sin respuesta de la nube aun reintentando: no se sabe si la orden quedo alla.
+    if (isSipTransient(error)) {
+      return envioIncierto({ ...payment, providerTransactionId: id }, redeban);
+    }
+    const message =
+      error instanceof AppError ? error.publicMessage : 'No fue posible iniciar el cobro.';
+    await db.payment.update({
+      where: { id: payment.id },
+      data: { status: 'FAILED', terminalStage: 'RESOLVED', resolvedAt: new Date(), failureReason: message },
+    });
+    await recordAudit({
+      action: AuditAction.UPSTREAM_ERROR,
+      actorId,
+      parkingLotId: payment.parkingLotId,
+      entity: 'Payment',
+      entityId: payment.id,
+      metadata: { stage: 'enviarDatos' },
+    });
+    throw error;
+  }
+
+  if (sent.accepted) {
+    return db.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'INITIATED',
+        terminalStage: 'WAITING_TERMINAL',
+        providerCode: sent.code,
+        startedAt: new Date(),
+        providerRaw: scrubSecrets({ enviarDatos: sent.raw }) as object,
+      },
+    });
+  }
+
+  /*
+    Cod:06, la terminal ya tiene otra operacion. Regla 8: NO se manda otra encima (antes
+    se borraba y reenviaba, y ademas se borraba el Id nuevo, no el que la ocupaba). Si lo
+    que la ocupa es una orden nuestra ya cerrada que quedo en la nube, se libera aparte.
+  */
+  if (sent.code === SIP_CODE.TERMINAL_OCUPADA) {
+    enSegundoPlano(() =>
+      liberarOrdenesCerradas(payment.paymentPointId).catch((error) =>
+        console.error('[payments] no se pudieron liberar ordenes cerradas', { error }),
+      ),
+    );
+  }
+
+  // El cliente lee `publico`; el motivo real queda en `providerRaw` y el panel
+  // de pagos lo muestra (`enviarDatosFailureFromRaw`).
+  const fallo = describeSipFailure(sent.code, sent.message);
+  console.warn('[payments] el datafono no recibio el cobro', {
+    paymentId: payment.id,
+    code: sent.code,
+    motivo: fallo.motivo,
+  });
+  return db.payment.update({
+    where: { id: payment.id },
+    data: {
+      status: 'FAILED',
+      terminalStage: 'RESOLVED',
+      providerCode: sent.code,
+      resolvedAt: new Date(),
+      failureReason: fallo.publico,
+      providerRaw: scrubSecrets({ enviarDatos: sent.raw }) as object,
+    },
+  });
+}
+
+/**
+ * EnviarDatos no respondio (regla 7): no se sabe si la orden quedo en la nube.
+ *
+ * Darlo por fallido sin mas podia dejar una orden VIVA que el cliente pagara despues
+ * (cobro fantasma) mientras el kiosco decia "no se completo". Se averigua: si no
+ * llego, o se alcanza a borrar, se da por fallido; si llego o no se sabe, queda vivo y
+ * el sondeo lo resuelve (a los 3 minutos sin iniciarse, la borra y lo cierra).
+ */
+async function envioIncierto(payment: Payment, redeban: SipConnectorClient): Promise<Payment> {
+  const id = payment.providerTransactionId as string;
+  const fallido = () =>
+    db.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'FAILED',
+        terminalStage: 'RESOLVED',
+        resolvedAt: new Date(),
+        failureReason: 'No fue posible comunicarse con el datafono. No se cobro nada; intenta nuevamente.',
+      },
+    });
+
+  await esperar(MIN_CONSULTA_MS);
+  const consulta = await redeban.respuesta(id).then((r) => r.consulta).catch(() => null);
+  if (consulta?.kind === 'no_existe') return fallido();
+  if (consulta?.kind === 'esperando') {
+    const borrado = await redeban.borrar(id).catch(() => null);
+    if (borrado?.deleted) return fallido();
+  }
+
+  console.warn('[payments] envio sin respuesta: el cobro queda vivo hasta resolverse', {
+    paymentId: payment.id,
+    consulta: consulta?.kind ?? 'sin respuesta',
+  });
+  return db.payment.update({
+    where: { id: payment.id },
+    data: {
+      status: 'INITIATED',
+      terminalStage: 'WAITING_TERMINAL',
+      startedAt: new Date(),
+      providerRaw: { enviarDatos: 'sin respuesta de la nube: se sigue consultando' },
+    },
+  });
+}
+
+/**
+ * Borra en SIP las ordenes de este kiosco que ya se cerraron aqui (no aprobadas, de
+ * los ultimos 15 minutos). Es lo que libera la terminal si una quedo colgada en la
+ * nube: cerrada para nosotros, pero viva alla y cobrable (regla 10).
+ */
+async function liberarOrdenesCerradas(paymentPointId: string | null): Promise<void> {
+  if (!paymentPointId) return;
+  const cerradas = await db.payment.findMany({
+    where: {
+      paymentPointId,
+      status: { in: ['DECLINED', 'FAILED', 'TIMEOUT', 'CANCELLED'] },
+      resolvedAt: { gte: new Date(Date.now() - 15 * 60_000) },
+      providerTransactionId: { not: null },
+    },
+    orderBy: { resolvedAt: 'desc' },
+    take: 5,
+  });
+  if (cerradas.length === 0) return;
+  const redeban = await redebanClientFor(cerradas[0].parkingLotId, paymentPointId);
+  for (const cobro of cerradas) {
+    await redeban.borrar(cobro.providerTransactionId as string).catch(() => undefined);
+  }
+}
+
+/**
+ * Cobros de este kiosco cerrados POR TIEMPO en la ultima media hora: se consulta una
+ * vez cada uno, y si el datafono alcanzo a aprobarlo se registra como aprobado.
+ *
+ * Es la red de seguridad del tope de tiempo: un cobro iniciado en el datafono que se
+ * cerro sin resultado (el aparato se reinicio, la nube no respondia) pudo aprobarse
+ * despues. Sin esto seria un cobro fantasma: el cliente pago y el sistema dice que no.
+ */
+export async function conciliarCobrosCerrados(paymentPointId: string): Promise<number> {
+  const cerrados = await db.payment.findMany({
+    where: {
+      paymentPointId,
+      status: 'TIMEOUT',
+      authorizationCode: null,
+      resolvedAt: { gte: new Date(Date.now() - 30 * 60_000) },
+      providerTransactionId: { not: null },
+    },
+    orderBy: { resolvedAt: 'desc' },
+    take: 5,
+  });
+  if (cerrados.length === 0) return 0;
+
+  const redeban = await redebanClientFor(cerrados[0].parkingLotId, paymentPointId);
+  let recuperados = 0;
+  for (const cobro of cerrados) {
+    const r = await redeban.respuesta(cobro.providerTransactionId as string).catch(() => null);
+    if (r?.consulta.kind === 'resuelta' && r.consulta.result.approved) {
+      console.error('[payments] cobro cerrado por tiempo que el datafono SI aprobo: se recupera', {
+        paymentId: cobro.id,
+      });
+      await aplicarResultado(cobro, redeban, r.code, r.raw, r.consulta.result);
+      recuperados += 1;
+    }
+  }
+  return recuperados;
 }
 
 /* -------------------------------------------------------- Estado del cobro */
@@ -572,16 +763,20 @@ export async function startCardPayment(
 /**
  * Consulta el datafono y actualiza el pago.
  *
- * El Anexo 3 pide no consultar mas seguido que cada tres segundos; el intervalo
- * lo respeta la interfaz.
+ * Reglas de la guia de certificacion de Redeban que se cumplen aqui:
+ *  - 2: nunca mas de una consulta cada 3 s por operacion, aunque la pidan a la vez
+ *       el sondeo, otra pestana, la recuperacion del kiosco y la cancelacion.
+ *  - 3: sin iniciarse a los 3 min, se borra en SIP y se cierra.
+ *  - 6: solo un resultado completo es un pago; lo incierto se sigue esperando.
+ *  - 7: un fallo puntual de la nube nunca cambia el estado.
+ *  - 10: lo rechazado, vencido o fallido se borra en SIP.
+ *  - 11: un pago ya resuelto se responde desde la base, sin consultar SIP.
  */
 export async function refreshPaymentStatus(paymentId: string): Promise<Payment> {
   const payment = await db.payment.findUniqueOrThrow({ where: { id: paymentId } });
   if (isFinalStatus(payment.status)) return payment;
 
-  const age = Date.now() - payment.createdAt.getTime();
   const transactionId = payment.providerTransactionId;
-
   if (!transactionId) {
     return db.payment.update({
       where: { id: payment.id },
@@ -594,74 +789,160 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
     });
   }
 
-  let state;
+  /*
+    Turno de consulta (regla 2). La fecha de actualizacion del pago es la de su ultima
+    consulta: si fue hace menos de 3 s, se responde lo que hay. Y el turno se toma con
+    una escritura condicionada: si dos peticiones llegan a la vez, solo una consulta.
+  */
+  if (Date.now() - payment.updatedAt.getTime() < MIN_CONSULTA_MS) return payment;
+  const turno = await db.payment.updateMany({
+    where: { id: payment.id, updatedAt: payment.updatedAt, status: { in: LIVE_STATUSES } },
+    data: { updatedAt: new Date() },
+  });
+  if (turno.count === 0) return db.payment.findUniqueOrThrow({ where: { id: payment.id } });
+
+  let redeban: SipConnectorClient;
+  let consulta: ConsultaSip;
   try {
-    const redeban = await redebanClientFor(payment.parkingLotId, payment.paymentPointId);
-    state = await redeban.respuesta(transactionId);
+    redeban = await redebanClientFor(payment.parkingLotId, payment.paymentPointId);
+    consulta = await redeban.respuesta(transactionId);
   } catch (error) {
-    // Un fallo de consulta NO resuelve el pago: sigue vivo y se reintenta.
-    console.error('[payments] no se pudo consultar el datafono', {
-      paymentId,
-      error,
-    });
-    return expireIfStale(payment, age);
+    // Un fallo de consulta NO resuelve el pago: sigue vivo y se reintenta (regla 7).
+    console.error('[payments] no se pudo consultar el datafono', { paymentId, error });
+    return expireIfStale(payment);
   }
 
-  /* --- Todavia sin desenlace: se refleja en que va el datafono --------- */
-  if (state.pending) {
-    const stage: TerminalStage = state.reading
-      ? 'READING_CARD'
-      : state.started
-        ? 'STARTED'
-        : 'WAITING_TERMINAL';
+  return aplicarConsulta(payment, redeban, consulta);
+}
 
-    const updated = await db.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: state.started ? 'IN_PROGRESS' : 'INITIATED',
-        terminalStage: stage,
-        providerCode: state.code,
-        // Cod:02 entrega BIN, tipo de cuenta y franquicia mientras el cliente
-        // decide en el aparato: se muestran para que vea que va avanzando.
-        ...(state.reading ? readingFields(state.reading) : {}),
-      },
-    });
+/** Aplica lo que respondio `Respuesta` (ya interpretado por `classifyRespuesta`). */
+async function aplicarConsulta(
+  payment: Payment,
+  redeban: SipConnectorClient,
+  r: ConsultaSip,
+): Promise<Payment> {
+  const c = r.consulta;
+  const desde = Date.now() - (payment.startedAt ?? payment.createdAt).getTime();
+  const yaIniciado = payment.terminalStage === 'STARTED' || payment.terminalStage === 'READING_CARD';
 
-    return expireIfStale(updated, age);
-  }
+  switch (c.kind) {
+    case 'esperando':
+    case 'iniciada':
+    case 'leyendo': {
+      const enDatafono = c.kind !== 'esperando';
+      const updated = await db.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: enDatafono ? 'IN_PROGRESS' : 'INITIATED',
+          terminalStage:
+            c.kind === 'leyendo' ? 'READING_CARD' : enDatafono ? 'STARTED' : 'WAITING_TERMINAL',
+          providerCode: r.code,
+          // Cod:02 entrega BIN, tipo de cuenta y franquicia mientras el cliente
+          // decide en el aparato: se muestran para que vea que va avanzando.
+          ...(c.kind === 'leyendo' ? readingFields(c.lectura) : {}),
+        },
+      });
+      if (!enDatafono && desde > POS_TIMEOUT_MS) {
+        return vencerPorTiempo(updated, redeban, false, r);
+      }
+      if (enDatafono && desde > STARTED_TIMEOUT_MS) {
+        return vencerPorTiempo(updated, redeban, true, r);
+      }
+      return updated;
+    }
 
-  /* --- Error tecnico del servicio -------------------------------------- */
-  if (!state.result) {
-    // `Cod:99 No existe IdTransaccion` significa que el servicio ya la cerro.
-    const gone =
-      state.code === SIP_CODE.ERROR_TECNICO &&
-      /no existe/i.test(state.message);
+    case 'no_existe':
+    case 'incierta': {
+      /*
+        Regla 6: no se sabe (un Cod:00 corto, un Cod:99 desconocido, un timeout de la
+        nube, o la orden aun no aparece). Se sigue esperando: cortar aqui puede dejar
+        un pago aprobado que el sistema dio por fallido. Solo el tiempo lo cierra.
+      */
+      if (c.kind === 'incierta') {
+        console.warn('[payments] respuesta incierta del datafono: se sigue esperando', {
+          paymentId: payment.id,
+          mensaje: c.mensaje.slice(0, 160),
+        });
+      }
+      if (desde > (yaIniciado ? STARTED_TIMEOUT_MS : POS_TIMEOUT_MS)) {
+        return vencerPorTiempo(payment, redeban, yaIniciado, r);
+      }
+      return payment;
+    }
 
-    if (gone && age > STALE_PAYMENT_MS) {
+    case 'vencida':
+      await borrarSinFallar(redeban, payment.providerTransactionId);
       return resolvePayment(payment, {
         status: 'TIMEOUT',
-        code: state.code,
-        reason:
-          'La operacion vencio y el medio de pago ya no la tiene registrada. Verifica en el datafono antes de volver a cobrar.',
-        raw: state.raw,
+        code: r.code,
+        reason: 'La vigencia del cobro en el datafono se agoto. No se cobro nada.',
+        raw: r.raw,
       });
-    }
 
-    if (state.code === SIP_CODE.OK || gone) {
-      return expireIfStale(payment, age);
-    }
+    case 'error':
+      await borrarSinFallar(redeban, payment.providerTransactionId);
+      return resolvePayment(payment, {
+        status: 'FAILED',
+        code: r.code,
+        reason: describeSipFailure(r.code, c.mensaje).publico,
+        raw: r.raw,
+      });
 
-    return resolvePayment(payment, {
-      status: 'FAILED',
-      code: state.code,
-      reason: publicMessageForCode(state.code),
-      raw: state.raw,
-    });
+    case 'resuelta':
+      return aplicarResultado(payment, redeban, r.code, r.raw, c.result);
   }
+}
 
-  /* --- Desenlace financiero -------------------------------------------- */
-  const result = state.result;
+/**
+ * Se acabo el tiempo del POS: se borra la orden en SIP y se cierra el cobro.
+ *
+ * Que dice Borrar decide (regla 10):
+ *  - `Cod:00`: estaba esperando y ya no se puede cobrar. Se cierra.
+ *  - `Cod:18`: ya se resolvio. NO se cierra: la siguiente consulta trae el resultado
+ *    (pudo haberse aprobado).
+ *  - `Cod:17` sin iniciarse: el cliente la acaba de iniciar. Se sigue esperando.
+ *  - Iniciada y sin resultado tras la vigencia (el datafono se reinicio): se cierra;
+ *    si aprobara despues, la conciliacion lo recupera.
+ *  - Sin respuesta de Borrar: se intenta de nuevo en la siguiente consulta.
+ */
+async function vencerPorTiempo(
+  payment: Payment,
+  redeban: SipConnectorClient,
+  iniciado: boolean,
+  r: ConsultaSip,
+): Promise<Payment> {
+  const borrado = await redeban
+    .borrar(payment.providerTransactionId as string)
+    .catch(() => null);
+  const desdeCreado = Date.now() - payment.createdAt.getTime();
+  const cerrar = () =>
+    resolvePayment(payment, {
+      status: 'TIMEOUT',
+      code: r.code,
+      reason: iniciado
+        ? 'El datafono no termino la operacion. Verifica en el aparato antes de volver a cobrar.'
+        : 'El cobro no se inicio en el datafono a tiempo. No se cobro nada.',
+      raw: borrado ? `${r.raw} | Borrar: ${borrado.raw}` : r.raw,
+    });
 
+  if (borrado?.deleted || r.consulta.kind === 'no_existe') return cerrar();
+  if (desdeCreado > STALE_PAYMENT_MS) return cerrar();
+  if (borrado?.code === SIP_CODE.YA_RESUELTA) return payment;
+  if (iniciado && borrado) return cerrar();
+  return payment;
+}
+
+/**
+ * Registra el desenlace financiero (Anexo 2) y lo que sigue: consecutivo, aviso al
+ * parqueadero y, si no se aprobo, Borrar en SIP (regla 10).
+ */
+async function aplicarResultado(
+  payment: Payment,
+  redeban: SipConnectorClient,
+  code: string,
+  raw: string,
+  result: SipTransactionResult,
+): Promise<Payment> {
   /*
     Anexo 2: "En la respuesta se debe validar el monto aprobado".
     Si la red aprobo un valor distinto al cobrado, NO se da por bueno: queda
@@ -674,7 +955,7 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
 
   if (amountMismatch) {
     console.error('[payments] monto aprobado distinto al solicitado', {
-      paymentId,
+      paymentId: payment.id,
       solicitado: payment.amount,
       aprobado: result.totalValue,
     });
@@ -691,7 +972,7 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
     data: {
       status,
       terminalStage: 'RESOLVED',
-      providerCode: state.code,
+      providerCode: code,
       resolvedAt: new Date(),
       authorizationCode: result.approvalCode,
       receiptNumber: result.receiptNumber,
@@ -710,7 +991,7 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
         : result.approved
           ? null
           : declineReason(result),
-      providerRaw: scrubSecrets({ respuesta: state.raw }) as object,
+      providerRaw: scrubSecrets({ respuesta: raw }) as object,
     },
   });
 
@@ -725,19 +1006,25 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
       amount: payment.amount,
       approvedAmount: result.totalValue,
       responseCode: result.responseCode,
+      ...(payment.status === 'TIMEOUT' ? { conciliado: true } : {}),
     },
   });
+
+  if (status === 'DECLINED') {
+    // Regla 10: rechazada, se borra en SIP (con Persiste=N ya deberia, por si acaso).
+    enSegundoPlano(() => borrarSinFallar(redeban, payment.providerTransactionId));
+  }
 
   if (status === 'APPROVED') {
     // Primero el consecutivo: el comprobante que se muestra, se imprime o se envia lo lleva.
     await assignReceiptNumber(updated.id, updated.parkingLotId).catch((error) =>
-      console.error('[payments] no se pudo numerar el comprobante', { paymentId, error }),
+      console.error('[payments] no se pudo numerar el comprobante', { paymentId: payment.id, error }),
     );
     // El parqueadero tiene que enterarse para liberar el vehiculo. Eso no puede
     // invalidar un cobro ya hecho.
     await confirmToParkingSystem(updated).catch((error) =>
       console.error('[payments] no se pudo confirmar al parqueadero', {
-        paymentId,
+        paymentId: payment.id,
         error,
       }),
     );
@@ -749,15 +1036,20 @@ export async function refreshPaymentStatus(paymentId: string): Promise<Payment> 
     */
     enSegundoPlano(() =>
       invoiceAbandonedPayments().catch((error) =>
-        console.error('[payments] fallo al facturar pagos sin eleccion', { paymentId, error }),
+        console.error('[payments] fallo al facturar pagos sin eleccion', { paymentId: payment.id, error }),
       ),
     );
+    // Tras avisar al parqueadero se relee: la pantalla necesita saber si quedo registrado.
+    return db.payment.findUniqueOrThrow({ where: { id: updated.id } });
   }
 
-  // Tras avisar al parqueadero se relee: la pantalla necesita saber si quedo registrado.
-  return status === 'APPROVED'
-    ? db.payment.findUniqueOrThrow({ where: { id: updated.id } })
-    : updated;
+  return updated;
+}
+
+/** Borra la operacion en SIP sin que un fallo cambie nada (regla 10). */
+async function borrarSinFallar(redeban: SipConnectorClient, id: string | null): Promise<void> {
+  if (!id) return;
+  await redeban.borrar(id).catch(() => undefined);
 }
 
 /** Campos que entrega el datafono mientras lee la tarjeta (Cod:02). */
@@ -800,15 +1092,12 @@ async function resolvePayment(
 }
 
 /**
- * Cierra un cobro que lleva demasiado tiempo sin resolverse.
- *
- * Hace falta porque un cobro vivo bloquea el tiquete: sin esto, un vehiculo
- * cuyo cobro quedo colgado no se podria volver a cobrar nunca.
+ * Ultimo recurso: un cobro que no se ha podido ni consultar (la nube de SIP caida)
+ * se cierra a los 20 minutos, borrandolo antes para liberar la terminal.
  */
-async function expireIfStale(payment: Payment, age: number): Promise<Payment> {
-  if (age <= STALE_PAYMENT_MS) return payment;
+async function expireIfStale(payment: Payment): Promise<Payment> {
+  if (Date.now() - payment.createdAt.getTime() <= STALE_PAYMENT_MS) return payment;
 
-  // Se libera la terminal antes de cerrar, para que la caja siga operando.
   if (payment.providerTransactionId) {
     await redebanClientFor(payment.parkingLotId, payment.paymentPointId)
       .then((client) => client.borrar(payment.providerTransactionId!))
@@ -950,7 +1239,16 @@ export async function retryParkingConfirmations(limit = 20): Promise<number> {
 
 /* --------------------------------------------------------------- Cancelar */
 
-/** Cancela un cobro que aun no se resolvio y libera el datafono. */
+/**
+ * Cancela un cobro que aun no se resolvio y libera el datafono.
+ *
+ * Solo se da por cancelado si es SEGURO que ya no se puede cobrar (regla 10):
+ *  - Borrar responde `Cod:00`: estaba esperando y se elimino.
+ *  - Borrar responde `Cod:17`/`Cod:18` y la consulta dice que la orden ya no existe o
+ *    vencio: no hay nada que cobrar.
+ * Si la consulta dice que ya se inicio en el datafono o que se resolvio, NO se cancela:
+ * se registra lo que paso (pudo aprobarse) o se responde que se termine en el aparato.
+ */
 export async function cancelPayment(
   paymentId: string,
   user: CurrentUser,
@@ -963,18 +1261,46 @@ export async function cancelPayment(
     });
   }
 
-  /*
-    Antes de cancelar se consulta una ultima vez: si el cliente acaba de pasar
-    la tarjeta y la red aprobo, cancelar aqui dejaria un cobro real sin
-    registrar. Primero se comprueba, y solo si sigue sin resolverse se cancela.
-  */
-  const latest = await refreshPaymentStatus(paymentId);
-  if (isFinalStatus(latest.status)) return latest;
+  const enCurso = new AppError('CONFLICT', {
+    publicMessage:
+      'El cobro ya se inicio en el datafono. Terminalo o cancelalo en el aparato.',
+  });
+  if (payment.terminalStage === 'STARTED' || payment.terminalStage === 'READING_CARD') {
+    throw enCurso;
+  }
 
-  if (payment.providerTransactionId) {
-    await redebanClientFor(payment.parkingLotId, payment.paymentPointId)
-      .then((client) => client.borrar(payment.providerTransactionId!))
-      .catch(() => undefined);
+  const id = payment.providerTransactionId;
+  if (id) {
+    const redeban = await redebanClientFor(payment.parkingLotId, payment.paymentPointId);
+
+    let borrado: Awaited<ReturnType<SipConnectorClient['borrar']>>;
+    try {
+      borrado = await redeban.borrar(id);
+    } catch (error) {
+      if (isSipTransient(error)) {
+        throw new AppError('CONFLICT', {
+          publicMessage: 'El medio de pago no respondio. Intenta cancelar de nuevo.',
+        });
+      }
+      throw error;
+    }
+
+    if (!borrado.deleted) {
+      // No estaba entre las borrables: antes de cancelar hay que saber que paso con ella.
+      const espera = MIN_CONSULTA_MS - (Date.now() - payment.updatedAt.getTime());
+      if (espera > 0) await esperar(espera);
+      const r = await redeban.respuesta(id).catch(() => null);
+      if (!r) {
+        throw new AppError('CONFLICT', {
+          publicMessage: 'No se pudo confirmar el estado del cobro. Intenta cancelar de nuevo.',
+        });
+      }
+      if (r.consulta.kind !== 'no_existe' && r.consulta.kind !== 'vencida') {
+        const actual = await aplicarConsulta(payment, redeban, r);
+        if (isFinalStatus(actual.status)) return actual;
+        throw enCurso;
+      }
+    }
   }
 
   const updated = await db.payment.update({
