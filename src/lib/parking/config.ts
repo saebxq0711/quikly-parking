@@ -152,6 +152,28 @@ export async function novaClientFor(
   });
 }
 
+/**
+ * El mismo cliente, guardado un minuto en la instancia. Solo para FOTOS: una
+ * galeria son 11 fotos a la vez y cada `novaClientFor` son dos consultas a la base
+ * (parqueadero y token), que con una sola conexion por instancia hacian fila hasta
+ * agotar el tiempo. Un cambio de token o de URL tarda a lo mas un minuto en llegar
+ * a las fotos; los cobros y los datos siguen leyendo la configuracion cada vez.
+ */
+const clientesFotos = new Map<string, { expira: number; cliente: Promise<NovaParkingClient> }>();
+const CLIENTE_FOTOS_MS = 60_000;
+
+export function novaClientForPhotos(parkingLotId: string): Promise<NovaParkingClient> {
+  const ahora = Date.now();
+  const guardado = clientesFotos.get(parkingLotId);
+  if (guardado && guardado.expira > ahora) return guardado.cliente;
+
+  const cliente = novaClientFor(parkingLotId);
+  clientesFotos.set(parkingLotId, { expira: ahora + CLIENTE_FOTOS_MS, cliente });
+  // Un fallo (sin configurar, base caida) no se guarda: el siguiente lo reintenta.
+  cliente.catch(() => clientesFotos.delete(parkingLotId));
+  return cliente;
+}
+
 /** Datos de conexion para mostrar en la interfaz del SuperAdmin. */
 export async function getConnectionSummary(parkingLotId: string): Promise<{
   baseUrl: string | null;

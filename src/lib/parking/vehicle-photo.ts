@@ -1,4 +1,15 @@
-import { novaClientFor } from './config';
+import { MemoryWindow } from '@/lib/security/memory-window';
+import { novaClientForPhotos } from './config';
+
+/**
+ * Limite de fotos por usuario, en memoria (no en la base): ver `contadorFotos` en
+ * el freno de Nova Parking. Lo que corta es un bucle, no a una persona mirando.
+ */
+const fotosPorUsuario = new MemoryWindow(5_000);
+
+export function fotoPermitida(clave: string, limitePorMinuto: number): boolean {
+  return fotosPorUsuario.hit(clave, 60_000).count <= limitePorMinuto;
+}
 
 /**
  * Foto de la entrada de un vehiculo, traida del sistema del parqueadero.
@@ -37,15 +48,24 @@ export async function respuestaDeFoto(
   if (!esRutaDeFoto(src)) return new Response(null, { status: 400 });
 
   try {
-    const client = await novaClientFor(parkingLotId);
+    const client = await novaClientForPhotos(parkingLotId);
     const { bytes, contentType } = await client.media(src);
     return new Response(bytes, {
       headers: {
         'Content-Type': contentType,
-        // La foto de una entrada ya ocurrida no cambia nunca. Privada: es de
-        // este parqueadero y de nadie mas, asi que no la guarda ningun
-        // intermediario, solo el navegador que la pidio.
-        'Cache-Control': 'private, max-age=86400, immutable',
+        /*
+          Privada: es de este parqueadero y de nadie mas, asi que no la guarda
+          ningun intermediario, solo el navegador que la pidio.
+
+          Solo la foto pedida por su id (`?imagen=`) es fija y se guarda un dia.
+          Las de `?tipo=` CAMBIAN: el servidor entrega la mas reciente de ese tipo,
+          y un vehiculo que vuelve a salir, o las camaras de apoyo que llegan
+          segundos despues, cambian cual es. Guardadas un dia "immutable", el
+          navegador seguia mostrando la vieja: parecia la foto de otro vehiculo.
+        */
+        'Cache-Control': /[?&]imagen=\d+$/.test(src)
+          ? 'private, max-age=86400, immutable'
+          : 'private, max-age=60',
         'Content-Disposition': 'inline',
       },
     });

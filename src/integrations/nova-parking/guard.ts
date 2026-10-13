@@ -1,5 +1,6 @@
 import { AppError } from '@/lib/errors';
 import { hit } from '@/lib/security/limiter';
+import { MemoryWindow } from '@/lib/security/memory-window';
 
 /**
  * Proteccion del sistema del parqueadero (Nova Parking, el servidor de Moyano).
@@ -24,6 +25,14 @@ import { hit } from '@/lib/security/limiter';
  */
 
 const LECTURAS_POR_MINUTO = 240;
+
+/**
+ * Las fotos van aparte, con su propio contador y su propio cortacircuito: abrir
+ * la galeria de un tiquete son hasta 11 fotos de golpe, y una pagina del
+ * historial con varias galerias se comia el cupo de los datos del panel (y al
+ * reves). Tambien un tope: lo que pase de esto ya no es una persona mirando.
+ */
+export const FOTOS_POR_MINUTO = 600;
 const FALLOS_PARA_ABRIR = 5;
 const ABIERTO_MS = 20_000;
 
@@ -35,7 +44,21 @@ interface Circuito {
 const circuitos = new Map<string, Circuito>();
 
 /** Llama antes de cada LECTURA. Lanza si no se debe consultar ahora. */
-export async function beforeUpstreamRead(clave: string, operation: string): Promise<void> {
+/**
+ * Contador de las fotos: en la memoria de la instancia, no en la base. La base de
+ * produccion atiende con UNA conexion por instancia (`connection_limit=1`) y una
+ * galeria son 11 fotos a la vez: con un contador en la base cada foto esperaba
+ * turno, pasaba los 10 s del pool y salia "sin foto" (visto el 2026-10-12: 11 de
+ * 30 en una rafaga). Para fotos no hace falta precision entre instancias.
+ */
+const contadorFotos = new MemoryWindow(5_000);
+
+export async function beforeUpstreamRead(
+  clave: string,
+  operation: string,
+  limite = LECTURAS_POR_MINUTO,
+  { enMemoria = false }: { enMemoria?: boolean } = {},
+): Promise<void> {
   const circuito = circuitos.get(clave);
   if (circuito && circuito.abiertoHasta > Date.now()) {
     throw new AppError('UPSTREAM_UNAVAILABLE', {
@@ -45,8 +68,10 @@ export async function beforeUpstreamRead(clave: string, operation: string): Prom
     });
   }
 
-  const { count } = await hit(`nova:${clave}`, 60_000);
-  if (count > LECTURAS_POR_MINUTO) {
+  const { count } = enMemoria
+    ? contadorFotos.hit(`nova:${clave}`, 60_000)
+    : await hit(`nova:${clave}`, 60_000);
+  if (count > limite) {
     throw new AppError('RATE_LIMITED', {
       publicMessage:
         'Hay demasiadas consultas al sistema del parqueadero en este momento. Espera unos segundos.',
