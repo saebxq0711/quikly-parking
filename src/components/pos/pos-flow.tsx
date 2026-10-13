@@ -773,8 +773,6 @@ function Identify({
 
     const alTeclear = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.altKey || event.metaKey) return;
-      // Lo que se escribe en el campo de pruebas (solo en desarrollo) no es el lector.
-      if ((event.target as HTMLElement | null)?.closest?.('[data-busqueda-prueba]')) return;
 
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -838,47 +836,11 @@ function Identify({
             <Notice tone="bad">{error} Vuelve a acercar el código al lector.</Notice>
           ) : null}
         </div>
-
-        {SOLO_EN_DESARROLLO ? <BusquedaDePrueba onSubmit={onSubmit} /> : null}
       </div>
 
       <EspacioParaFlecha />
       <FlechaHacia etiqueta="Lector QR" donde="lector" />
     </KioskStep>
-  );
-}
-
-/** El campo de pruebas solo existe en desarrollo (localhost); en produccion, nunca. */
-const SOLO_EN_DESARROLLO = process.env.NODE_ENV !== 'production';
-
-/**
- * SOLO EN DESARROLLO: buscar escribiendo, para probar en un computador sin lector.
- * Escribir a mano en la pantalla del lector no sirve: las teclas llegan lentas y se
- * toman como lecturas separadas. En produccion este campo no se dibuja.
- */
-function BusquedaDePrueba({ onSubmit }: { onSubmit: (valor: string) => void }) {
-  const [valor, setValor] = useState('');
-  return (
-    <form
-      data-busqueda-prueba
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (valor.trim()) onSubmit(valor.trim());
-      }}
-      className="mx-auto flex max-w-[30rem] gap-2 rounded-2xl border-2 border-dashed border-warn-500/60 p-3"
-    >
-      <input
-        value={valor}
-        onChange={(event) => setValor(event.target.value)}
-        placeholder="Pruebas: placa o número del tiquete"
-        aria-label="Búsqueda de prueba"
-        autoComplete="off"
-        className="min-w-0 flex-1 rounded-xl bg-[var(--surface-sunken)] px-4 py-3 text-lg text-[var(--text-primary)] outline-none ring-1 ring-inset ring-[var(--ring-soft)] focus:ring-2 focus:ring-brand-500"
-      />
-      <button type="submit" className="rounded-xl bg-warn-100 px-4 text-sm font-semibold text-warn-700">
-        Buscar (prueba)
-      </button>
-    </form>
   );
 }
 
