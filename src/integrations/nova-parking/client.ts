@@ -1,8 +1,11 @@
 import { AppError, scrubSecrets } from '@/lib/errors';
 import { env } from '@/lib/env';
-import { beforeUpstreamRead, cachedRead, recordUpstreamResult } from './guard';
+import { FOTOS_POR_MINUTO, beforeUpstreamRead, cachedRead, recordUpstreamResult } from './guard';
 import { asAmount, normalizeCheckout, normalizeTicket } from './normalize';
 import type { NovaCheckout, NovaTicket } from './types';
+
+/** Tiempo maximo para traer una foto por el tunel. */
+const ESPERA_FOTO_MS = 15_000;
 
 /**
  * Cliente HTTP hacia Nova Parking (el sistema existente de Edier).
@@ -213,7 +216,9 @@ export class NovaParkingClient {
       throw new AppError('NOT_FOUND', { detail: { operation: 'media', path } });
     }
 
-    await beforeUpstreamRead(this.guardKey, 'media');
+    // Las fotos llevan su propio freno (ver FOTOS_POR_MINUTO): no compiten con los datos.
+    const clave = `${this.guardKey}:fotos`;
+    await beforeUpstreamRead(clave, 'media', FOTOS_POR_MINUTO, { enMemoria: true });
 
     let response: Response;
     try {
@@ -225,18 +230,19 @@ export class NovaParkingClient {
           Accept: '*/*',
           ...(this.token ? { 'X-Platform-Token': this.token } : {}),
         },
-        signal: AbortSignal.timeout(this.timeoutMs),
+        // Una foto pesa hasta ~550 KB por el tunel: mas margen que una consulta de datos.
+        signal: AbortSignal.timeout(Math.max(this.timeoutMs, ESPERA_FOTO_MS)),
         cache: 'no-store',
       });
     } catch (error) {
-      recordUpstreamResult(this.guardKey, true);
+      recordUpstreamResult(clave, true);
       throw new AppError('UPSTREAM_UNAVAILABLE', {
         detail: { operation: 'media', path },
         cause: error,
       });
     }
 
-    recordUpstreamResult(this.guardKey, response.status >= 500);
+    recordUpstreamResult(clave, response.status >= 500);
     const contentType = response.headers.get('content-type') ?? '';
     /*
       Un 404 aqui casi siempre significa que `/media/` sigue cerrado en el tunel

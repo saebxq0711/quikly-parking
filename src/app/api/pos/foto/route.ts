@@ -1,7 +1,6 @@
 import { AppError } from '@/lib/errors';
 import { requireRole, scopeToParkingLot } from '@/lib/auth/guards';
-import { respuestaDeFoto } from '@/lib/parking/vehicle-photo';
-import { consumeRateLimit } from '@/lib/rate-limit';
+import { fotoPermitida, respuestaDeFoto } from '@/lib/parking/vehicle-photo';
 
 export const runtime = 'nodejs';
 
@@ -20,7 +19,10 @@ export async function GET(request: Request) {
     const user = await requireRole('PUNTO_PAGO');
     const parkingLotId = scopeToParkingLot(user);
     // Una foto por cliente; el limite corta a quien la use para sondear el tunel.
-    await consumeRateLimit({ key: `foto-pos:${user.id}`, limit: 30, windowMs: 60_000 });
+    // En memoria, como el panel: cada foto ahorra una consulta a la base.
+    if (!fotoPermitida(`foto-pos:${user.id}`, 30)) {
+      throw new AppError('RATE_LIMITED');
+    }
     const src = new URL(request.url).searchParams.get('src') ?? '';
     return await respuestaDeFoto(parkingLotId, src);
   } catch (error) {

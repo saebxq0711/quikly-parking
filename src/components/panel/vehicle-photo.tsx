@@ -374,7 +374,9 @@ function ShotGroup({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- misma razon que la miniatura. */}
-              <img src={urlDe(slug, foto.src)} alt="" loading="lazy" className="h-full w-full object-cover" />
+              {/* Sin `lazy`: dentro de una tira que se desplaza de lado, las de la
+                  derecha no cargaban hasta moverla. Son pocas y pequenas. */}
+              <img src={urlDe(slug, foto.src)} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -405,6 +407,9 @@ function Shot({
   emptyHint: string;
 }) {
   const [estado, setEstado] = useState<'cargando' | 'lista' | 'falla'>('cargando');
+  /** Cada reintento pide la foto de nuevo (el navegador no reusa el fallo). */
+  const [intento, setIntento] = useState(0);
+  const urlPedida = url && intento > 0 ? `${url}&intento=${intento}` : url;
   const Icono = kind === 'entrada' ? MdLogin : MdLogout;
   const titulo = kind === 'entrada' ? 'Entrada' : 'Salida';
   const disponible = Boolean(url) && estado !== 'falla';
@@ -458,7 +463,7 @@ function Shot({
             ) : null}
             {/* eslint-disable-next-line @next/next/no-img-element -- misma razon que la miniatura. */}
             <img
-              src={url}
+              src={urlPedida ?? url}
               alt={`${titulo} de ${label}`}
               onLoad={() => setEstado('lista')}
               onError={() => setEstado('falla')}
@@ -474,8 +479,20 @@ function Shot({
               {estado === 'falla' ? 'No se pudo cargar la foto' : emptyTitle}
             </p>
             <p className="max-w-[18rem] text-[13px] leading-relaxed text-[var(--text-muted)]">
-              {estado === 'falla' ? 'El sistema del parqueadero no la entregó. Intenta de nuevo en un momento.' : emptyHint}
+              {estado === 'falla' ? 'El sistema del parqueadero no la entregó a tiempo.' : emptyHint}
             </p>
+            {estado === 'falla' && url ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIntento((n) => n + 1);
+                  setEstado('cargando');
+                }}
+                className="mt-1 rounded-full px-4 py-1.5 text-[13px] font-medium text-[var(--text-primary)] ring-1 ring-inset ring-[var(--ring-soft)] transition-colors duration-150 hover:bg-[var(--fill-soft-hover)]"
+              >
+                Reintentar
+              </button>
+            ) : null}
           </div>
         )}
       </div>

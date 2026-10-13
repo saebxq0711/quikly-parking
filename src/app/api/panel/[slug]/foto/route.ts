@@ -1,7 +1,5 @@
-import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/guards';
-import { respuestaDeFoto } from '@/lib/parking/vehicle-photo';
-import { consumeRateLimit } from '@/lib/rate-limit';
+import { fotoPermitida, respuestaDeFoto } from '@/lib/parking/vehicle-photo';
 
 export const runtime = 'nodejs';
 
@@ -21,22 +19,26 @@ export async function GET(
   if (!user) return new Response(null, { status: 401 });
 
   const { slug } = await params;
-  const lot = await db.parkingLot.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
-  // 404 y no 403: no se confirma que exista un parqueadero ajeno.
-  if (!lot || user.role !== 'ADMIN_PARQUEADERO' || user.parkingLotId !== lot.id) {
+  /*
+    El parqueadero sale de la sesion (ya trae su slug): sin otra consulta a la base.
+    Cada foto cuenta, porque una galeria son 11 a la vez y la base atiende con una
+    sola conexion por instancia. 404 y no 403: no se confirma que exista un
+    parqueadero ajeno.
+  */
+  if (
+    user.role !== 'ADMIN_PARQUEADERO' ||
+    !user.parkingLotId ||
+    user.parkingLot?.slug !== slug
+  ) {
     return new Response(null, { status: 404 });
   }
 
-  // El historial pide una foto por fila; 240 por minuto son varias paginas seguidas.
-  try {
-    await consumeRateLimit({ key: `foto-panel:${user.id}`, limit: 240, windowMs: 60_000 });
-  } catch {
+  // El historial pide una foto por fila y cada galeria hasta 11: 600 por minuto
+  // son muchas paginas seguidas. Se cuenta en memoria (ver `fotoPermitida`).
+  if (!fotoPermitida(`foto-panel:${user.id}`, 600)) {
     return new Response(null, { status: 429, headers: { 'Retry-After': '60' } });
   }
 
   const src = new URL(request.url).searchParams.get('src') ?? '';
-  return respuestaDeFoto(lot.id, src);
+  return respuestaDeFoto(user.parkingLotId, src);
 }
