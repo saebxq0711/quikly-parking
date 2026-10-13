@@ -206,6 +206,12 @@ export function PosFlow({
   /** `valor`: lo que leyo el lector, para no depender de que el estado ya se haya pintado. */
   async function handleLookup(valor: string = identifier) {
     if (!vehicle || busy || valor.length === 0) return;
+    /*
+      Lo buscado es lo que despues se cobra: se guarda aqui, venga del lector o del
+      recuadro de pruebas. Sin esto, el cobro salia sin identificador y el servidor lo
+      rechazaba ("La solicitud de cobro no es valida").
+    */
+    setIdentifier(valor);
     setBusy(true);
     setError(null);
 
@@ -1131,7 +1137,7 @@ function Summary({
 
       <PrimaryButton onClick={onPay} disabled={busy}>
         <MdCreditCard className="h-8 w-8" aria-hidden focusable="false" />
-        {busy ? 'Enviando al datáfono...' : 'Pagar con tarjeta'}
+        {busy ? 'Enviando al datáfono...' : 'Continuar al pago'}
       </PrimaryButton>
     </KioskStep>
   );
