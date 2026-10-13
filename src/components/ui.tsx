@@ -251,7 +251,11 @@ const STATUS_STYLE: Record<PaymentStatus, string> = {
   REFUNDED: 'bg-warn-100/60 text-warn-700 ring-warn-500/30',
 };
 
-export function StatusBadge({ status }: { status: PaymentStatus }) {
+/**
+ * `porVerificar`: el cobro se cerro por tiempo DESPUES de iniciarse en el datafono. Pudo
+ * aprobarse sin que el resultado llegara: hay que revisarlo con el comprobante.
+ */
+export function StatusBadge({ status, porVerificar = false }: { status: PaymentStatus; porVerificar?: boolean }) {
   return (
     <span
       className={cn(
@@ -260,7 +264,7 @@ export function StatusBadge({ status }: { status: PaymentStatus }) {
         STATUS_STYLE[status],
       )}
     >
-      {STATUS_LABEL[status]}
+      {porVerificar ? 'Por verificar' : STATUS_LABEL[status]}
     </span>
   );
 }

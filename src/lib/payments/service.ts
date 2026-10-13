@@ -93,6 +93,16 @@ const MIN_CONSULTA_MS = 3_000;
  */
 const STALE_PAYMENT_MS = 20 * 60_000;
 
+/**
+ * Codigos con los que un cobro quedo marcado si se cerro DESPUES de iniciarse en el
+ * datafono (Cod:01 iniciada, Cod:02 leyendo tarjeta). Esos cobros quedan "por
+ * verificar": el datafono pudo aprobar y no alcanzar a reportarlo.
+ */
+export const CODIGOS_INICIADO = ['01', '02'];
+
+/** Hasta cuando se sigue buscando el resultado tardio de un cobro por verificar. */
+const CONCILIAR_HASTA_MS = 24 * 60 * 60_000;
+
 /** Estados de un cobro vivo: ocupan el datafono de su kiosco. */
 const LIVE_STATUSES: PaymentStatus[] = ['PENDING', 'INITIATED', 'IN_PROGRESS'];
 
@@ -717,35 +727,53 @@ async function liberarOrdenesCerradas(paymentPointId: string | null): Promise<vo
   if (cerradas.length === 0) return;
   const redeban = await redebanClientFor(cerradas[0].parkingLotId, paymentPointId);
   for (const cobro of cerradas) {
-    await redeban.borrar(cobro.providerTransactionId as string).catch(() => undefined);
+    const id = cobro.providerTransactionId as string;
+    /*
+      Una que se cerro despues de iniciarse en el datafono pudo aprobarse sin que el
+      resultado llegara a tiempo: se consulta ANTES de borrarla. Si se aprobo, se
+      registra; solo si sigue sin resultado se borra para liberar la terminal.
+    */
+    if (cobro.status === 'TIMEOUT' && CODIGOS_INICIADO.includes(cobro.providerCode ?? '')) {
+      const r = await redeban.respuesta(id).catch(() => null);
+      if (r?.consulta.kind === 'resuelta') {
+        await aplicarResultado(cobro, redeban, r.code, r.raw, r.consulta.result);
+        continue;
+      }
+    }
+    await redeban.borrar(id).catch(() => undefined);
   }
 }
 
 /**
- * Cobros de este kiosco cerrados POR TIEMPO en la ultima media hora: se consulta una
- * vez cada uno, y si el datafono alcanzo a aprobarlo se registra como aprobado.
+ * Cobros de este kiosco "por verificar" (cerrados por tiempo DESPUES de iniciarse en
+ * el datafono, ultimas 24 h): se consulta cada uno, y si el datafono alcanzo a
+ * aprobarlo se registra como aprobado y se le avisa al parqueadero.
  *
- * Es la red de seguridad del tope de tiempo: un cobro iniciado en el datafono que se
- * cerro sin resultado (el aparato se reinicio, la nube no respondia) pudo aprobarse
- * despues. Sin esto seria un cobro fantasma: el cliente pago y el sistema dice que no.
+ * Es la red de seguridad del tope de tiempo. El 2026-10-13 la nube de Redeban se quedo
+ * 6 minutos en "leyendo tarjeta" (Cod:02) sin recibir el resultado del datafono. Sin
+ * esto, si el resultado llega tarde, seria un cobro fantasma: el cliente pago y el
+ * sistema dice que no. Corre al iniciar cada cobro, cada minuto mientras el kiosco
+ * espera al siguiente cliente y en la tarea diaria.
  */
-export async function conciliarCobrosCerrados(paymentPointId: string): Promise<number> {
+export async function conciliarCobrosCerrados(paymentPointId?: string): Promise<number> {
   const cerrados = await db.payment.findMany({
     where: {
-      paymentPointId,
+      ...(paymentPointId ? { paymentPointId } : { paymentPointId: { not: null } }),
       status: 'TIMEOUT',
+      providerCode: { in: CODIGOS_INICIADO },
       authorizationCode: null,
-      resolvedAt: { gte: new Date(Date.now() - 30 * 60_000) },
+      resolvedAt: { gte: new Date(Date.now() - CONCILIAR_HASTA_MS) },
       providerTransactionId: { not: null },
     },
     orderBy: { resolvedAt: 'desc' },
-    take: 5,
+    take: paymentPointId ? 5 : 30,
   });
   if (cerrados.length === 0) return 0;
 
-  const redeban = await redebanClientFor(cerrados[0].parkingLotId, paymentPointId);
   let recuperados = 0;
   for (const cobro of cerrados) {
+    const redeban = await redebanClientFor(cobro.parkingLotId, cobro.paymentPointId).catch(() => null);
+    if (!redeban) continue;
     const r = await redeban.respuesta(cobro.providerTransactionId as string).catch(() => null);
     if (r?.consulta.kind === 'resuelta' && r.consulta.result.approved) {
       console.error('[payments] cobro cerrado por tiempo que el datafono SI aprobo: se recupera', {
@@ -894,16 +922,20 @@ async function aplicarConsulta(
 }
 
 /**
- * Se acabo el tiempo del POS: se borra la orden en SIP y se cierra el cobro.
+ * Se acabo el tiempo del POS.
  *
- * Que dice Borrar decide (regla 10):
+ * SIN iniciarse en el datafono: se borra la orden en SIP y se cierra (regla 3). Que dice
+ * Borrar decide:
  *  - `Cod:00`: estaba esperando y ya no se puede cobrar. Se cierra.
- *  - `Cod:18`: ya se resolvio. NO se cierra: la siguiente consulta trae el resultado
- *    (pudo haberse aprobado).
- *  - `Cod:17` sin iniciarse: el cliente la acaba de iniciar. Se sigue esperando.
- *  - Iniciada y sin resultado tras la vigencia (el datafono se reinicio): se cierra;
- *    si aprobara despues, la conciliacion lo recupera.
+ *  - `Cod:18`: ya se resolvio. NO se cierra: la siguiente consulta trae el resultado.
+ *  - `Cod:17`: el cliente la acaba de iniciar. Se sigue esperando.
  *  - Sin respuesta de Borrar: se intenta de nuevo en la siguiente consulta.
+ *
+ * YA INICIADA (el datafono leyo la tarjeta) y sin resultado tras la vigencia: se cierra
+ * "por verificar" y NO se borra. El 2026-10-13 la nube se quedo en Cod:02 mientras el
+ * cliente decia que si le cobraron, y Borrar respondio Cod:00 (no Cod:17 como dice la
+ * guia): elimino la operacion y con ella cualquier resultado tardio. Ahora queda en la
+ * nube y la conciliacion la sigue consultando 24 h; si aparece aprobada, se registra.
  */
 async function vencerPorTiempo(
   payment: Payment,
@@ -911,6 +943,16 @@ async function vencerPorTiempo(
   iniciado: boolean,
   r: ConsultaSip,
 ): Promise<Payment> {
+  if (iniciado) {
+    return resolvePayment(payment, {
+      status: 'TIMEOUT',
+      code: CODIGOS_INICIADO.includes(r.code) ? r.code : (payment.providerCode ?? '02'),
+      reason:
+        'El datafono no confirmo el resultado del pago. Si en el datafono aparecio APROBADO o te llego el cobro, NO pagues de nuevo: guarda el comprobante del datafono y acercate a la oficina del parqueadero.',
+      raw: r.raw,
+    });
+  }
+
   const borrado = await redeban
     .borrar(payment.providerTransactionId as string)
     .catch(() => null);
@@ -919,16 +961,12 @@ async function vencerPorTiempo(
     resolvePayment(payment, {
       status: 'TIMEOUT',
       code: r.code,
-      reason: iniciado
-        ? 'El datafono no termino la operacion. Verifica en el aparato antes de volver a cobrar.'
-        : 'El cobro no se inicio en el datafono a tiempo. No se cobro nada.',
+      reason: 'El cobro no se inicio en el datafono a tiempo. No se cobro nada.',
       raw: borrado ? `${r.raw} | Borrar: ${borrado.raw}` : r.raw,
     });
 
   if (borrado?.deleted || r.consulta.kind === 'no_existe') return cerrar();
   if (desdeCreado > STALE_PAYMENT_MS) return cerrar();
-  if (borrado?.code === SIP_CODE.YA_RESUELTA) return payment;
-  if (iniciado && borrado) return cerrar();
   return payment;
 }
 
