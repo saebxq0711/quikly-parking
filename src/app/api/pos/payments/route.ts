@@ -35,6 +35,9 @@ const schema = z.object({
    */
   expectedAmount: z.number().int().positive().optional(),
 
+  /** Cotizacion firmada del valor mostrado: se cobra ese valor, congelado (`quote.ts`). */
+  quote: z.string().max(400).optional(),
+
   /**
    * Cliente que paga. El kiosco ya no lo manda aqui: la factura se elige despues de
    * pagar (`/api/pos/payments/[id]/factura`). Se sigue aceptando por compatibilidad.
@@ -87,6 +90,7 @@ export async function POST(request: Request) {
       ticketId: parsed.data.ticketId,
       idempotencyKey: parsed.data.idempotencyKey,
       expectedAmount: parsed.data.expectedAmount,
+      quote: parsed.data.quote,
     });
 
     return NextResponse.json(serializePayment(payment), { status: 201 });
