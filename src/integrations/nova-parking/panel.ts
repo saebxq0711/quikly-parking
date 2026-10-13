@@ -385,23 +385,30 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
 }
 
 /**
- * Que camara tomo una foto, por el nombre del archivo que pone Nova Parking:
- *   camera_192.168.18.130_*   la camara principal (entrada .130, salida .140)
- *   apoyo_192.168.18.160_*    una camara de apoyo (entrada .160/.170/.233,
- *                             salida .150/.210/.220)
- *   exit_image_0_*            el recorte que manda la camara de placas en su
- *                             evento: pequeno (unos 6 KB), va al final
- * Visto en el 122 el 2026-10-12. El orden deja primero la principal: es la que
- * se muestra de entrada.
+ * Que camara tomo una foto, por el nombre del archivo (Nova Parking,
+ * docs/FOTOS_POR_ID.md, 2026-10-12):
+ *   camera_<ip>_*     la camara principal (LPR), cuando el servidor le pide la
+ *                     foto: .130 entrada, .140 salida. Tamano completo.
+ *   exit_image_N_*    lo que manda la camara principal de SALIDA en su evento
+ *                     de placa: la _0 suele ser la foto completa y el recorte
+ *                     de la placa llega de ultimo. Por el nombre no se sabe
+ *                     cual es el recorte, asi que van en su orden (_0, _1...).
+ *   apoyo_<ip>_*      camaras de apoyo (inventario/piso), reducidas a 1600 px.
+ * Primero la principal: es la que se muestra al abrir. Puede haber varias del
+ * mismo paso de cada clase.
  */
 function camaraDe(ruta: string): { nombre: string; orden: number } {
   const archivo = ruta.split('/').pop() ?? '';
   const ip = archivo.match(/\d+\.\d+\.\d+\.(\d+)/);
   if (/^camera_/i.test(archivo)) return { nombre: 'Cámara principal', orden: 0 };
+  const evento = archivo.match(/^exit_image_(\d+)/i);
+  if (evento) {
+    const n = Number(evento[1]);
+    return { nombre: `Cámara principal · captura ${n + 1}`, orden: 0.1 + n / 1000 };
+  }
   if (/^apoyo_/i.test(archivo)) {
     return { nombre: `Cámara de apoyo${ip ? ` .${ip[1]}` : ''}`, orden: 1 };
   }
-  if (/^exit_image_/i.test(archivo)) return { nombre: 'Recorte de la cámara de placas', orden: 2 };
   return { nombre: 'Cámara', orden: 1 };
 }
 
@@ -468,10 +475,11 @@ function ticketPhotos(
 
   const photos: TicketPhoto[] = [];
   if (photo) {
-    photos.push({ src: photo, kind: 'entrada', camera: primeraEntrada ? camaraDe(primeraEntrada.ruta).nombre : 'Cámara de entrada' });
+    // Cual entrega `?tipo=` lo decide el servidor: no se adivina la camara por la lista.
+    photos.push({ src: photo, kind: 'entrada', camera: 'Cámara de entrada' });
   }
   if (exitPhoto && primeraSalida) {
-    photos.push({ src: exitPhoto, kind: 'salida', camera: camaraDe(primeraSalida.ruta).nombre });
+    photos.push({ src: exitPhoto, kind: 'salida', camera: 'Cámara de salida' });
   }
   return { photo, exitPhoto, photos };
 }
