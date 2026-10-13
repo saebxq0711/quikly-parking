@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MdClose, MdLogin, MdLogout, MdNoPhotography, MdOpenInNew, MdPhotoLibrary } from 'react-icons/md';
+import type { TicketPhoto } from '@/integrations/nova-parking/panel';
 
 /**
- * Fotos del vehiculo tomadas por las camaras del parqueadero: la de ENTRADA y,
- * cuando el sistema la tomo, la de SALIDA.
+ * Fotos del vehiculo tomadas por las camaras del parqueadero: las de ENTRADA y,
+ * cuando el sistema las tomo, las de SALIDA. Cada paso puede tener varias (la
+ * camara principal y las de apoyo): se ven todas, una grande y las demas en una
+ * tira para pasar de una a otra.
  *
  * Las guarda Nova Parking junto al tiquete; aqui llegan como rutas suyas y se
  * piden por `/api/panel/<sitio>/foto`, que es quien tiene el token del tunel.
@@ -23,6 +26,7 @@ import { MdClose, MdLogin, MdLogout, MdNoPhotography, MdOpenInNew, MdPhotoLibrar
 export function VehiclePhoto({
   src,
   exitSrc = null,
+  photos,
   slug,
   label,
   size = 'thumb',
@@ -34,6 +38,8 @@ export function VehiclePhoto({
   src: string | null;
   /** Ruta de la foto de salida, si el sistema la tomo. */
   exitSrc?: string | null;
+  /** Todas las fotos del tiquete, con su camara. Sin ellas, `src` y `exitSrc`. */
+  photos?: TicketPhoto[];
   slug: string;
   /** Codigo o placa: identifica las fotos al ampliarlas y para quien no las ve. */
   label: string;
@@ -55,7 +61,18 @@ export function VehiclePhoto({
   }, []);
 
   const caja = size === 'wide' ? 'h-20 w-32 rounded-xl' : 'h-11 w-16 rounded-lg';
-  const miniatura = src ?? exitSrc;
+
+  // Sin la lista (pantallas que solo conocen una por tipo), se arma con las dos.
+  const todas: TicketPhoto[] =
+    photos && photos.length > 0
+      ? photos
+      : [
+          ...(src ? [{ src, kind: 'entrada' as const, camera: 'Cámara de entrada' }] : []),
+          ...(exitSrc ? [{ src: exitSrc, kind: 'salida' as const, camera: 'Cámara de salida' }] : []),
+        ];
+  const entradas = todas.filter((f) => f.kind === 'entrada');
+  const salidas = todas.filter((f) => f.kind === 'salida');
+  const miniatura = entradas[0]?.src ?? salidas[0]?.src ?? null;
 
   if (!miniatura || falla) {
     return (
@@ -69,7 +86,7 @@ export function VehiclePhoto({
     );
   }
 
-  const conSalida = Boolean(exitSrc);
+  const conSalida = salidas.length > 0;
 
   return (
     <>
@@ -78,7 +95,13 @@ export function VehiclePhoto({
         type="button"
         onClick={() => setAbierta(true)}
         aria-haspopup="dialog"
-        title={conSalida ? 'Ver fotos de entrada y salida' : 'Ver la foto de entrada'}
+        title={
+          conSalida
+            ? 'Ver fotos de entrada y salida'
+            : todas.length > 1
+              ? 'Ver las fotos de entrada'
+              : 'Ver la foto de entrada'
+        }
         className={`group relative block ${caja} overflow-hidden bg-[var(--surface-sunken)] ring-1 ring-inset ring-[var(--line-subtle)] transition-shadow duration-150 hover:ring-2 hover:ring-brand-400`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- la sirve nuestra
@@ -86,15 +109,18 @@ export function VehiclePhoto({
             descargar por el tunel en cada tamano. */}
         <img
           src={urlDe(slug, miniatura)}
-          alt={`${src ? 'Entrada' : 'Salida'} de ${label}`}
+          alt={`${entradas.length > 0 ? 'Entrada' : 'Salida'} de ${label}`}
           loading="lazy"
           onError={() => setFalla(true)}
           className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.04]"
         />
-        {conSalida ? (
+        {todas.length > 1 ? (
           <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-ink-950/85 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-            <MdPhotoLibrary className="h-3 w-3" aria-hidden focusable="false" />2
-            <span className="sr-only"> fotos: entrada y salida</span>
+            <MdPhotoLibrary className="h-3 w-3" aria-hidden focusable="false" />
+            {todas.length}
+            <span className="sr-only">
+              {' '}fotos{conSalida ? ': de entrada y de salida' : ' de entrada'}
+            </span>
           </span>
         ) : null}
       </button>
@@ -103,8 +129,8 @@ export function VehiclePhoto({
         <PhotoViewer
           slug={slug}
           label={label}
-          entrySrc={src}
-          exitSrc={exitSrc}
+          entradas={entradas}
+          salidas={salidas}
           enteredAt={enteredAt}
           exitedAt={exitedAt}
           inside={inside}
@@ -145,8 +171,8 @@ function hora(iso: string | null): string | null {
 function PhotoViewer({
   slug,
   label,
-  entrySrc,
-  exitSrc,
+  entradas,
+  salidas,
   enteredAt,
   exitedAt,
   inside,
@@ -154,8 +180,8 @@ function PhotoViewer({
 }: {
   slug: string;
   label: string;
-  entrySrc: string | null;
-  exitSrc: string | null;
+  entradas: TicketPhoto[];
+  salidas: TicketPhoto[];
   enteredAt: string | null;
   exitedAt: string | null;
   inside: boolean;
@@ -240,7 +266,11 @@ function PhotoViewer({
                 {label}
               </h2>
               <p className="text-[13px] text-[var(--text-muted)]">
-                {dosFotos ? 'Fotos de las cámaras de entrada y salida' : 'Foto de la cámara de entrada'}
+                {dosFotos
+                  ? 'Fotos de las cámaras de entrada y salida'
+                  : entradas.length > 1
+                    ? 'Fotos de las cámaras de entrada'
+                    : 'Foto de la cámara de entrada'}
               </p>
             </div>
             <button
@@ -255,9 +285,10 @@ function PhotoViewer({
           </header>
 
           <div className={`grid gap-3 p-3 sm:gap-4 sm:p-4 ${dosFotos ? 'md:grid-cols-2' : ''}`}>
-            <Shot
+            <ShotGroup
               kind="entrada"
-              url={entrySrc ? urlDe(slug, entrySrc) : null}
+              fotos={entradas}
+              slug={slug}
               when={hora(enteredAt)}
               label={label}
               tall={!dosFotos}
@@ -265,9 +296,10 @@ function PhotoViewer({
               emptyHint="La cámara de entrada no tomó foto de este vehículo."
             />
             {dosFotos ? (
-              <Shot
+              <ShotGroup
                 kind="salida"
-                url={exitSrc ? urlDe(slug, exitSrc) : null}
+                fotos={salidas}
+                slug={slug}
                 when={hora(exitedAt)}
                 label={label}
                 emptyTitle={exitedAt ? 'Sin foto de salida' : 'Todavía no ha salido'}
@@ -286,11 +318,77 @@ function PhotoViewer({
   );
 }
 
-/** Una foto con su encabezado (entrada o salida, y la hora). */
+/**
+ * Las fotos de un paso (entrada o salida): una grande y, si hay mas de una
+ * camara, una tira de miniaturas para cambiar. Arranca en la camara principal.
+ */
+function ShotGroup({
+  kind,
+  fotos,
+  slug,
+  when,
+  label,
+  tall = false,
+  emptyTitle,
+  emptyHint,
+}: {
+  kind: 'entrada' | 'salida';
+  fotos: TicketPhoto[];
+  slug: string;
+  when: string | null;
+  label: string;
+  tall?: boolean;
+  emptyTitle: string;
+  emptyHint: string;
+}) {
+  const [indice, setIndice] = useState(0);
+  const actual = fotos[Math.min(indice, fotos.length - 1)] ?? null;
+  const paso = kind === 'entrada' ? 'entrada' : 'salida';
+
+  return (
+    <div className="min-w-0">
+      <Shot
+        // Una foto nueva vuelve a "cargando": el estado de la anterior no le sirve.
+        key={actual?.src ?? 'vacia'}
+        kind={kind}
+        url={actual ? urlDe(slug, actual.src) : null}
+        when={when}
+        camera={fotos.length > 1 && actual ? `${actual.camera} · ${indice + 1} de ${fotos.length}` : actual?.camera ?? null}
+        label={label}
+        tall={tall}
+        emptyTitle={emptyTitle}
+        emptyHint={emptyHint}
+      />
+      {fotos.length > 1 ? (
+        <div role="group" aria-label={`Cámaras de ${paso}`} className="mt-2.5 flex gap-2 overflow-x-auto px-1 pb-1">
+          {fotos.map((foto, i) => (
+            <button
+              key={foto.src}
+              type="button"
+              onClick={() => setIndice(i)}
+              aria-pressed={i === indice}
+              aria-label={`${foto.camera} (${paso})`}
+              title={foto.camera}
+              className={`relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-[var(--surface-sunken)] ring-inset transition-shadow duration-150 ${
+                i === indice ? 'ring-2 ring-brand-500' : 'ring-1 ring-[var(--line-subtle)] hover:ring-2 hover:ring-brand-300'
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- misma razon que la miniatura. */}
+              <img src={urlDe(slug, foto.src)} alt="" loading="lazy" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Una foto con su encabezado (entrada o salida, la camara y la hora). */
 function Shot({
   kind,
   url,
   when,
+  camera = null,
   label,
   tall = false,
   emptyTitle,
@@ -299,6 +397,8 @@ function Shot({
   kind: 'entrada' | 'salida';
   url: string | null;
   when: string | null;
+  /** Camara que la tomo, cuando el paso tiene varias. */
+  camera?: string | null;
   label: string;
   tall?: boolean;
   emptyTitle: string;
@@ -321,6 +421,7 @@ function Shot({
             <span className="block text-sm font-semibold text-[var(--text-primary)]">{titulo}</span>
             <span className="tnum block truncate text-[13px] text-[var(--text-muted)]">
               {when ?? (kind === 'entrada' ? 'Hora de entrada no registrada' : 'Sin hora de salida')}
+              {camera ? ` · ${camera}` : ''}
             </span>
           </span>
         </span>
