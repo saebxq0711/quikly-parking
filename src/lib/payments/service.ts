@@ -33,6 +33,7 @@ import {
 } from '@/lib/parking/nova-vehicle-types';
 import { SIP_CODE, describeSipFailure } from '@/integrations/sipconnector/codes';
 import { invoiceAbandonedPayments } from '../billing/service';
+import { firmarCotizacion, leerCotizacion } from './quote';
 import { enSegundoPlano } from '../background';
 
 /**
@@ -146,6 +147,11 @@ export interface VehicleLookupResult {
    * pide por `/api/pos/foto`, que es quien tiene el token del tunel.
    */
   photo: string | null;
+  /**
+   * Valor congelado: cotizacion firmada del `amount` que se muestra. Al cobrar se cobra
+   * exactamente ese valor aunque la tarifa haya seguido corriendo (ver `quote.ts`).
+   */
+  quote: string | null;
 }
 
 /**
@@ -227,6 +233,7 @@ export async function lookupVehicle(params: {
       alreadyPaid: false,
       notice: `No encontramos un ingreso activo con ese dato (${config.inputLabel.toLowerCase()}). Verifica e intenta de nuevo.`,
       photo: null,
+      quote: null,
     };
   }
 
@@ -253,6 +260,7 @@ export async function lookupVehicle(params: {
       notice:
         'Este tiquete ya se pago en el kiosco. Si la barrera no abre, acercate a la oficina del parqueadero con tu comprobante.',
       photo: ticket.photo,
+      quote: null,
     };
   }
 
@@ -286,6 +294,7 @@ export async function lookupVehicle(params: {
         alreadyPaid: false,
         notice: 'No fue posible obtener el valor a cobrar para este tiquete.',
         photo: ticket.photo,
+        quote: null,
       };
     }
     throw error;
@@ -307,6 +316,15 @@ export async function lookupVehicle(params: {
       : null,
     // `pay-checkout` no devuelve la foto; la trae la busqueda.
     photo: checkout.ticket.photo ?? ticket.photo,
+    quote:
+      !checkout.alreadyPaid && checkout.amount > 0
+        ? firmarCotizacion({
+            parkingLotId: params.parkingLotId,
+            ticketId: checkout.ticket.id,
+            vehicleType: params.vehicleType,
+            amount: checkout.amount,
+          })
+        : null,
   };
 }
 
@@ -323,10 +341,12 @@ export interface StartPaymentInput {
   ticketId: string;
   idempotencyKey: string;
   /**
-   * Valor que el cliente vio y acepto en pantalla. Si el del parqueadero ya es otro
-   * (la tarifa siguio corriendo), no se cobra: se le muestra el nuevo total.
+   * Valor que el cliente vio y acepto en pantalla. Solo se usa sin cotizacion (kioscos
+   * con la version anterior abierta): si el del parqueadero ya es otro, no se cobra.
    */
   expectedAmount?: number;
+  /** Cotizacion firmada del valor mostrado: con ella se cobra ese valor, congelado. */
+  quote?: string;
 }
 
 /**
@@ -389,6 +409,7 @@ export async function startCardPayment(
         publicMessage: 'Este tiquete ya fue pagado.',
       });
     }
+    // Si el parqueadero ya no tiene nada pendiente, no se cobra, ni siquiera lo congelado.
     if (checkout.amount <= 0) {
       throw new AppError('VALIDATION', {
         publicMessage: 'Este tiquete no tiene un valor pendiente por cobrar.',
@@ -396,21 +417,38 @@ export async function startCardPayment(
     }
 
     /*
-      La tarifa sigue corriendo mientras el cliente lee la pantalla o llena sus datos.
-      Se cobra lo que dice el sistema del parqueadero AHORA, pero nunca un valor
-      distinto del que el cliente acaba de aceptar: si cambio, no se toca el datafono
-      y la pantalla le muestra el nuevo total para que confirme otra vez.
-
-      Una vez enviado al datafono el valor queda fijo. Si la tarifa sube mientras pasa
-      la tarjeta, al parqueadero se le confirma el valor cobrado: su
-      `confirmar-externo` registra el monto que recibe (solo exige que sea mayor a 0).
+      VALOR CONGELADO (decision del dueno, 2026-10-13): se cobra el valor que se le mostro
+      al cliente, aunque la tarifa haya seguido corriendo mientras confirmaba. Viene en una
+      cotizacion firmada por este servidor (`quote.ts`): desde el navegador no se puede
+      cambiar. Al parqueadero se le confirma ese valor; su `confirmar-externo` registra el
+      monto que recibe (solo exige que sea mayor a 0).
     */
-    if (input.expectedAmount !== undefined && checkout.amount !== input.expectedAmount) {
+    const congelado = input.quote
+      ? leerCotizacion(input.quote, {
+          parkingLotId: input.parkingLotId,
+          ticketId: input.ticketId,
+          vehicleType: input.vehicleType,
+        })
+      : null;
+    if (input.quote && congelado === null) {
+      throw new AppError('CONFLICT', {
+        publicMessage: 'La consulta de tu tiquete vencio. Vuelve a escanearlo para pagar.',
+      });
+    }
+
+    // Sin cotizacion (kiosco con la version anterior): no se cobra un valor distinto del aceptado.
+    if (
+      congelado === null &&
+      input.expectedAmount !== undefined &&
+      checkout.amount !== input.expectedAmount
+    ) {
       throw new AppError('CONFLICT', {
         publicMessage: `El valor se actualizo a $ ${checkout.amount.toLocaleString('es-CO')} porque paso mas tiempo. Revisa el nuevo total y toca Pagar de nuevo.`,
         detail: { expectedAmount: input.expectedAmount, amount: checkout.amount },
       });
     }
+
+    const monto = congelado ?? checkout.amount;
 
     // Ya cobrado aqui y sin registrar en el parqueadero: nunca se cobra dos veces.
     if (await unregisteredApprovedPayment(lot.id, input.ticketId)) {
@@ -502,7 +540,7 @@ export async function startCardPayment(
             : checkout.ticket.customerName,
           customerDocument:
             input.customer?.identification ?? checkout.ticket.customerDocument,
-          amount: checkout.amount,
+          amount: monto,
           method: 'CARD',
           status: 'PENDING',
           terminalStage: 'WAITING_TERMINAL',
@@ -541,10 +579,12 @@ export async function startCardPayment(
       entity: 'Payment',
       entityId: payment.id,
       metadata: {
-        amount: checkout.amount,
+        amount: monto,
         ticketId: input.ticketId,
         providerTransactionId,
         paymentPoint: input.paymentPoint.code,
+        // Si la tarifa siguio corriendo, queda constancia de lo que decia el parqueadero.
+        ...(monto !== checkout.amount ? { valorCongelado: true, valorParqueadero: checkout.amount } : {}),
       },
     });
 
@@ -552,7 +592,7 @@ export async function startCardPayment(
       payment,
       redeban,
       {
-        amount: checkout.amount,
+        amount: monto,
         invoiceNumber: providerTransactionId,
         cashierCode: input.paymentPoint.cashierCode ?? 'CAJA',
         boxNumber: input.paymentPoint.boxNumber ?? input.paymentPoint.code,

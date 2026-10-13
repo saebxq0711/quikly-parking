@@ -124,7 +124,7 @@ export default async function InsidePage({
                     <table className="w-full min-w-[56rem] text-sm">
                       <TableHead>
                         <Th first>Foto</Th>
-                        <Th>Codigo</Th>
+                        <Th>Id</Th>
                         <Th>Placa</Th>
                         <Th>Tipo</Th>
                         <Th>Entrada</Th>
@@ -142,14 +142,14 @@ export default async function InsidePage({
                                 src={vehiculo.photo}
                                 photos={vehiculo.photos}
                                 slug={slug}
-                                label={vehiculo.plate ?? vehiculo.code ?? 'vehiculo'}
+                                label={vehiculo.plate ?? `Tiquete ${vehiculo.ticketId}`}
                                 size="wide"
                                 enteredAt={vehiculo.entradaIso}
                                 inside
                               />
                             </td>
                             <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
-                              {vehiculo.code ?? <span className="text-[var(--text-muted)]">—</span>}
+                              {vehiculo.ticketId}
                             </td>
                             <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                               {vehiculo.plate ?? (

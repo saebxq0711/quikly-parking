@@ -69,14 +69,14 @@ export default async function TicketPage({
         />
 
         <p className="mt-6 text-sm font-medium text-[var(--text-secondary)]">
-          Código
+          Tiquete
         </p>
         <p className="tnum mt-1 text-5xl font-bold tracking-[0.2em] text-[var(--text-primary)]">{codigo}</p>
 
         <SaveTicket code={codigo} />
 
         <p className="mx-auto mt-5 max-w-xs text-[13px] leading-relaxed text-[var(--text-muted)]">
-          Al salir, escanea este QR en el punto de pago o escribe el codigo manualmente.
+          Al salir, acerca este QR al lector del punto de pago.
         </p>
       </div>
     </main>

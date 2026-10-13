@@ -11,7 +11,6 @@ import {
   MdCheck,
   MdClose,
   MdCreditCard,
-  MdKeyboard,
   MdNoPhotography,
   MdQrCodeScanner,
 } from 'react-icons/md';
@@ -21,7 +20,6 @@ import { WelcomeScene } from './welcome-scene';
 import { formatCOP, formatDuration } from '@/components/ui';
 import type { PaymentDTO } from '@/lib/payments/serialize';
 import type { InvoiceDocumentDTO, InvoicePrintDTO } from '@/lib/billing/invoice-print';
-import { Keypad } from './keypad';
 import { ExitGate } from './exit-gate';
 import { InvoiceStep } from './invoice-step';
 import { ReceiptScreen } from './receipt';
@@ -103,6 +101,8 @@ interface LookupResult {
   notice: string | null;
   /** Ruta de la foto de entrada en el sistema del parqueadero. */
   photo: string | null;
+  /** Valor congelado: cotizacion firmada del `amount`. Se cobra ese valor (`quote.ts`). */
+  quote: string | null;
 }
 
 /**
@@ -130,12 +130,6 @@ const RESULT_TIMEOUT_S = 15;
 
 /** Con el comprobante en pantalla hay que dar tiempo de leerlo o de escanear su QR. */
 const RECEIPT_TIMEOUT_S = 45;
-
-/**
- * Cada cuanto se vuelve a cotizar mientras el cliente mira el total. La tarifa del
- * parqueadero sigue corriendo: asi el valor en pantalla es el que se va a cobrar.
- */
-const REQUOTE_INTERVAL_MS = 30_000;
 
 /**
  * Inactividad tras la cual se vuelve al inicio a media operacion.
@@ -209,8 +203,15 @@ export function PosFlow({
     setBusy(false);
   }, []);
 
-  async function handleLookup() {
-    if (!vehicle || busy || identifier.length === 0) return;
+  /** `valor`: lo que leyo el lector, para no depender de que el estado ya se haya pintado. */
+  async function handleLookup(valor: string = identifier) {
+    if (!vehicle || busy || valor.length === 0) return;
+    /*
+      Lo buscado es lo que despues se cobra: se guarda aqui, venga del lector o del
+      recuadro de pruebas. Sin esto, el cobro salia sin identificador y el servidor lo
+      rechazaba ("La solicitud de cobro no es valida").
+    */
+    setIdentifier(valor);
     setBusy(true);
     setError(null);
 
@@ -218,7 +219,7 @@ export function PosFlow({
       const response = await fetch('/api/pos/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleType: vehicle.vehicleType, identifier }),
+        body: JSON.stringify({ vehicleType: vehicle.vehicleType, identifier: valor }),
       });
       // Una respuesta que no es JSON (corte de red, bloqueo del proveedor, pagina de
       // error) no debe romper la pantalla: se explica como problema de conexion.
@@ -245,41 +246,11 @@ export function PosFlow({
   }
 
   /*
-    Cotizacion en vivo. La tarifa sigue corriendo mientras el cliente llena sus datos
-    o lee el total, asi que al llegar al resumen y cada 30 s se vuelve a consultar.
-    Si el valor cambio se avisa: el cliente nunca paga algo distinto de lo que ve.
+    VALOR CONGELADO (decision del dueno, 2026-10-13): el total que se le muestra al
+    cliente es el que se cobra, aunque la tarifa siga corriendo. Ya no se vuelve a
+    cotizar mientras mira el resumen: el servidor firmo ese valor al consultar
+    (`lookup.quote`) y cobra exactamente eso.
   */
-  const montoVisto = useRef<number | null>(null);
-  useEffect(() => {
-    montoVisto.current = lookup?.amount ?? null;
-  }, [lookup]);
-
-  const requote = useCallback(async () => {
-    if (!vehicle || identifier.length === 0) return;
-    try {
-      const response = await fetch('/api/pos/lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleType: vehicle.vehicleType, identifier }),
-      });
-      if (!response.ok) return;
-      const result = (await response.json()) as LookupResult;
-      if (montoVisto.current !== null && result.amount !== montoVisto.current) {
-        setError('El total se actualizó porque pasó más tiempo. Revísalo antes de pagar.');
-      }
-      setLookup(result);
-    } catch {
-      // Sin red se conserva el ultimo valor; el servidor lo vuelve a comprobar al pagar.
-    }
-  }, [vehicle, identifier]);
-
-  const enResumen = step === 'summary';
-  useEffect(() => {
-    if (!enResumen) return;
-    void requote();
-    const timer = setInterval(() => void requote(), REQUOTE_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [enResumen, requote]);
 
   /** Candado inmediato: dos toques seguidos no alcanzan a ver `busy` actualizado. */
   const pagando = useRef(false);
@@ -301,20 +272,15 @@ export function PosFlow({
           // Una clave por intento: si el operador toca dos veces o la red
           // reintenta, el servidor devuelve el MISMO cobro, no crea otro.
           idempotencyKey: crypto.randomUUID(),
-          // El total que el cliente esta viendo: si ya cambio, el servidor no cobra.
+          // El total que el cliente esta viendo, firmado por el servidor: se cobra ese.
+          quote: lookup.quote ?? undefined,
           expectedAmount: lookup.amount ?? undefined,
         }),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        const mensaje = data?.error?.message ?? 'No fue posible iniciar el cobro.';
-        // Lo mas comun es que la tarifa subio: se trae el total nuevo y se deja el aviso.
-        if (data?.error?.code === 'CONFLICT') {
-          montoVisto.current = null;
-          await requote();
-        }
-        setError(mensaje);
+        setError(data?.error?.message ?? 'No fue posible iniciar el cobro.');
         return;
       }
       setPayment(data as PaymentDTO);
@@ -736,7 +702,6 @@ function SelectType({
 /* ------------------------------------------------ Paso 2: identificar */
 
 function Identify({
-  vehicle,
   value,
   onChange,
   onSubmit,
@@ -747,185 +712,188 @@ function Identify({
   vehicle: PosVehicle;
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  /** Recibe lo leido: el estado de React puede no haberse actualizado todavia. */
+  onSubmit: (valor: string) => void;
   onBack: () => void;
   busy: boolean;
   error: string | null;
 }) {
-  // El CODIGO es alfanumerico (`A7B48`), asi que lleva teclado completo igual
-  // que la placa. Solo el TICKET_ID —que Nova Parking ya no usa— es numerico.
-  const numeric = vehicle.identifierKind === 'TICKET_ID';
-  const maxLength = numeric ? 12 : 7;
-  const porCodigo = vehicle.identifierKind !== 'PLATE';
-
   /*
-    Lector de codigos QR.
+    SOLO LECTOR QR (2026-10-13). El tiquete de entrada lleva un QR con el NUMERO del
+    tiquete (`0000000238`); el codigo de 5 caracteres ya no se imprime. El cliente no
+    escribe nada: acerca el QR al lector que esta abajo a la derecha, y una flecha se lo
+    senala. Por eso no hay teclado, ni campo, ni boton de consultar.
 
-    El escaner del kiosco se comporta como un teclado: "escribe" el contenido del
-    QR a toda velocidad y termina con Enter. Si el campo tiene el foco, eso ya
-    funciona solo. El problema es que casi nunca lo tiene: el cliente toca el
-    teclado en pantalla, el foco se va a un boton, y lo que manda el escaner cae
-    en el vacio.
-
-    Por eso se escucha en toda la ventana mientras dure este paso. Se acumula en
-    una referencia y no en el estado, porque el escaner manda las teclas mas
-    rapido de lo que React vuelve a pintar, y leyendo `value` del cierre se
-    perderian caracteres.
+    El lector se comporta como un teclado: "escribe" el contenido del QR a toda
+    velocidad y casi siempre termina con Enter. Se escucha en toda la ventana y se
+    acumula en una referencia, porque las teclas llegan mas rapido de lo que React
+    vuelve a pintar. Si el lector no manda Enter, la lectura se envia sola cuando deja
+    de escribir.
   */
   const actual = useRef(value);
   actual.current = value;
-  const campo = useRef<HTMLInputElement>(null);
 
   /*
-    Texto crudo de la lectura en curso.
-
-    El QR puede traer el codigo solo (tiquete impreso) o un ENLACE que termina en el
-    codigo (`https://.../t/A7B48`, el de la pantalla de entrada, o la foto que el cliente
-    le tomo). Si se limpiara tecla por tecla, el enlace quedaria en algo como
-    "HTTPSPAG..." y ademas se cortaria a los 7 caracteres, antes de llegar al codigo. Por
-    eso se guarda lo que manda el escaner tal cual y se extrae el codigo del final.
-
-    Una pausa larga entre teclas marca el comienzo de otra lectura.
+    El QR puede traer el numero solo (tiquete impreso) o un ENLACE que termina en el
+    numero (`https://.../t/0000000238`). Se guarda lo que manda el lector tal cual y se
+    extrae lo del final. Una pausa larga entre teclas marca otra lectura.
   */
   const crudo = useRef('');
   const ultimaTecla = useRef(0);
+  const enviado = useRef(false);
+  const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /*
+    Las funciones del padre cambian en cada pintada (cada tecla del lector pinta). Si el
+    escucha dependiera de ellas, se volveria a registrar en cada tecla y su limpieza
+    cancelaria el envio automatico de los lectores sin Enter. Se leen de referencias y
+    el escucha se registra una sola vez.
+  */
+  const alCambiar = useRef(onChange);
+  const alEnviar = useRef(onSubmit);
+  alCambiar.current = onChange;
+  alEnviar.current = onSubmit;
 
   useEffect(() => {
     const extraer = (texto: string) => {
       const tramo = texto.includes('/')
         ? (texto.split(/[?#]/)[0].replace(/\/+$/, '').split('/').pop() ?? '')
         : texto;
-      const limpio = numeric
-        ? tramo.replace(/\D/g, '')
-        : tramo.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      /*
-        El QR del tiquete trae el NUMERO con ceros a la izquierda (`0000000170`, 10
-        digitos). Cortarlo a los 7 de una placa lo dejaba en "0000000" y no se
-        encontraba nada: un numero no se corta antes de sus 10 digitos.
-      */
-      if (/^\d+$/.test(limpio)) return limpio.slice(0, Math.max(maxLength, 10));
-      return limpio.slice(0, maxLength);
+      return tramo.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 14);
+    };
+
+    const enviar = () => {
+      if (espera.current) clearTimeout(espera.current);
+      espera.current = null;
+      if (enviado.current || actual.current.length === 0) return;
+      enviado.current = true;
+      crudo.current = '';
+      alEnviar.current(actual.current);
     };
 
     const alTeclear = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.altKey || event.metaKey) return;
 
       if (event.key === 'Enter') {
-        if (actual.current.length > 0) {
-          event.preventDefault();
-          crudo.current = '';
-          onSubmit();
-        }
-        return;
-      }
-
-      if (event.key === 'Backspace') {
         event.preventDefault();
-        const siguiente = actual.current.slice(0, -1);
-        crudo.current = siguiente;
-        actual.current = siguiente;
-        onChange(siguiente);
+        enviar();
         return;
       }
-
       if (event.key.length !== 1) return;
       event.preventDefault();
 
       const ahora = Date.now();
-      if (ahora - ultimaTecla.current > 600) crudo.current = actual.current;
+      // Una lectura nueva: se olvida la anterior (y se permite volver a enviar).
+      if (ahora - ultimaTecla.current > 600) {
+        crudo.current = '';
+        enviado.current = false;
+      }
       ultimaTecla.current = ahora;
 
       crudo.current += event.key;
       const siguiente = extraer(crudo.current);
       actual.current = siguiente;
-      onChange(siguiente);
+      alCambiar.current(siguiente);
+
+      // Lectores sin Enter: al dejar de escribir, se envia.
+      if (espera.current) clearTimeout(espera.current);
+      espera.current = setTimeout(enviar, 350);
     };
 
     window.addEventListener('keydown', alTeclear);
-    return () => window.removeEventListener('keydown', alTeclear);
-  }, [numeric, maxLength, onChange, onSubmit]);
+    return () => {
+      window.removeEventListener('keydown', alTeclear);
+      if (espera.current) clearTimeout(espera.current);
+    };
+  }, []);
 
   return (
-    /*
-      Vertical: titulo, campo, teclado, Consultar y Atras, en ese orden, porque se
-      escribe antes de enviar. Horizontal (kland): campo y botones a la izquierda,
-      teclado a la derecha, porque ahi lo que falta es alto.
-    */
     <KioskStep pie={<BackLink onClick={onBack} />}>
-      <div className="kland:grid kland:grid-cols-2 kland:items-center kland:gap-10">
-        <div className="space-y-7 kland:space-y-4">
-          {/*
-            El titulo sale del tipo de dato y no de la configuracion guardada del
-            sitio: asi dice lo mismo que la referencia ("Ingresa la placa") y no
-            depende de como alguien lo escribio en la base.
-          */}
-          <KioskTitle
-            title={porCodigo ? 'Ingresa el código' : 'Ingresa la placa'}
-            subtitle={porCodigo ? undefined : 'Digita la placa o acerca el QR de tu tiquete al escáner'}
+      <div className="space-y-9 text-center kland:space-y-4">
+        <div className="mx-auto flex h-[12rem] w-[12rem] items-center justify-center rounded-[2.2rem] bg-[var(--surface-tile)] kland:h-28 kland:w-28 kshort:h-24 kshort:w-24">
+          <MdQrCodeScanner
+            className="h-[7rem] w-[7rem] text-[var(--text-primary)] kland:h-16 kland:w-16 kshort:h-14 kshort:w-14"
+            aria-hidden
+            focusable="false"
           />
-
-          {porCodigo ? (
-            <div className="mx-auto max-w-[30rem] space-y-3 kshort:space-y-1">
-              <p className="flex items-center gap-3 text-lg font-semibold text-[var(--text-primary)] kshort:text-sm">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-ink-950">
-                  <MdQrCodeScanner className="h-6 w-6" aria-hidden focusable="false" />
-                </span>
-                Acerca el QR de tu tiquete o de tu celular al escáner
-              </p>
-              <p className="flex items-center gap-3 text-lg text-[var(--text-secondary)] kshort:text-sm">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tile)]">
-                  <MdKeyboard className="h-6 w-6" aria-hidden focusable="false" />
-                </span>
-                O escribe el código de 5 caracteres
-              </p>
-            </div>
-          ) : null}
-
-          {/*
-            Solo muestra: todo lo que se escribe entra por el teclado en pantalla o
-            por el escaner, y lo maneja el oyente de arriba. Si el campo aceptara
-            teclas por su cuenta, un QR con enlace leido con el foco aqui se
-            limpiaria letra por letra y se cortaria antes de llegar al codigo.
-          */}
-          <div className="relative">
-            <input
-              ref={campo}
-              value={value}
-              readOnly
-              placeholder={vehicle.inputPlaceholder}
-              inputMode="none"
-              aria-label={porCodigo ? 'Código del tiquete' : 'Placa del vehículo'}
-              className="tnum h-[6.2rem] w-full rounded-[1.4rem] bg-[var(--surface-sunken)] px-20 text-center text-[3.4rem] font-bold tracking-[0.14em] text-[var(--text-primary)] ring-2 ring-inset ring-[var(--ring-soft)] transition-shadow duration-150 placeholder:font-semibold placeholder:tracking-[0.14em] placeholder:text-[var(--ring-strong)] focus:outline-none focus:ring-brand-500 kland:h-20 kland:text-4xl kshort:h-16 kshort:text-3xl"
-            />
-            {value ? (
-              <button
-                type="button"
-                onClick={() => onChange('')}
-                aria-label="Borrar lo escrito"
-                className="absolute right-5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--surface-tile)] text-[var(--text-primary)] transition-colors duration-150 hover:bg-[var(--surface-tile-hover)]"
-              >
-                <MdClose className="h-6 w-6" aria-hidden focusable="false" />
-              </button>
-            ) : null}
-          </div>
-
-          {error ? <Notice tone="bad">{error}</Notice> : null}
         </div>
 
-        <div className="mt-8 space-y-6 kland:mt-0 kland:space-y-4">
-          <Keypad
-            mode={numeric ? 'numeric' : 'alphanumeric'}
-            onKey={(key) => onChange((value + key).slice(0, maxLength))}
-            onBackspace={() => onChange(value.slice(0, -1))}
-            onClear={() => onChange('')}
-          />
-          <PrimaryButton onClick={onSubmit} disabled={busy || value.length === 0}>
-            {busy ? 'Consultando...' : 'Consultar'}
-          </PrimaryButton>
+        <KioskTitle
+          title="Escanea tu tiquete"
+          subtitle="Acerca el código QR de tu tiquete al lector, abajo a la derecha."
+        />
+
+        <div aria-live="polite" className="mx-auto min-h-[4.6rem] max-w-[32rem]">
+          {busy ? (
+            <p className="flex items-center justify-center gap-3 text-xl font-semibold text-[var(--text-primary)] kshort:text-base">
+              <span className="relative flex h-4 w-4">
+                <span className="halo absolute inset-0 rounded-full bg-brand-500" aria-hidden="true" />
+                <span className="relative h-4 w-4 rounded-full bg-brand-500" aria-hidden="true" />
+              </span>
+              Buscando tu vehículo…
+            </p>
+          ) : error ? (
+            <Notice tone="bad">{error} Vuelve a acercar el código al lector.</Notice>
+          ) : null}
         </div>
       </div>
+
+      <EspacioParaFlecha />
+      <FlechaHacia etiqueta="Lector QR" donde="lector" />
     </KioskStep>
   );
+}
+
+/**
+ * Flecha hacia un aparato que esta DEBAJO de la pantalla del kiosco. Vistos de frente,
+ * de izquierda a derecha: la impresora, el datafono (al centro, un poco a la derecha) y
+ * el lector QR (bien a la derecha). Sin la flecha la gente busca en la pantalla; con
+ * ella, baja la mano al aparato.
+ *
+ * Va fija al pie y la pantalla le reserva su espacio (`EspacioParaFlecha`): nunca queda
+ * encima de un boton ni de un recuadro. Su animacion solo baja (`.senalar`).
+ */
+const POSICION_DEL_APARATO = {
+  lector: 'right-[6%]',
+  datafono: 'left-[58%] -translate-x-1/2',
+} as const;
+
+function FlechaHacia({
+  etiqueta,
+  donde,
+}: {
+  etiqueta: string;
+  donde: keyof typeof POSICION_DEL_APARATO;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none fixed bottom-5 z-20 flex flex-col items-center gap-3 kland:bottom-3 ${POSICION_DEL_APARATO[donde]}`}
+    >
+      <span className="rounded-full bg-brand-500 px-5 py-2 text-xl font-bold text-ink-950 shadow-[0_8px_24px_rgb(11_11_11/0.22)] kshort:px-3 kshort:py-1 kshort:text-sm">
+        {etiqueta}
+      </span>
+      <svg
+        viewBox="0 0 64 128"
+        className="senalar h-[7rem] w-[3.5rem] text-brand-500 drop-shadow-[0_6px_12px_rgb(11_11_11/0.25)] kland:h-20 kland:w-10 kshort:h-16 kshort:w-8"
+      >
+        <path d="M32 6 V104" stroke="currentColor" strokeWidth="11" strokeLinecap="round" fill="none" />
+        <path
+          d="M9 80 L32 114 L55 80"
+          stroke="currentColor"
+          strokeWidth="11"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/** Espacio al final de la pantalla para la flecha fija: el contenido termina antes. */
+function EspacioParaFlecha() {
+  return <div aria-hidden="true" className="h-[11.5rem] shrink-0 kland:h-[7.5rem] kshort:h-[6.5rem]" />;
 }
 
 /* ------------------------------------- Paso 3: confirmar que es su vehiculo */
@@ -992,7 +960,7 @@ function ConfirmVehicle({
           />
         )}
         <PlateHeader
-          identifier={lookup.plate ?? lookup.code ?? '—'}
+          identifier={lookup.plate ?? lookup.ticketId ?? '—'}
           vehicleType={vehicleType}
           vehicleLabel={lookup.vehicleTypeLabel ?? vehicleLabel}
         />
@@ -1133,7 +1101,7 @@ function Summary({
           lado.
         */}
         <PlateHeader
-          identifier={lookup.plate ?? lookup.code ?? '—'}
+          identifier={lookup.plate ?? lookup.ticketId ?? '—'}
           vehicleType={vehicleType}
           vehicleLabel={lookup.vehicleTypeLabel ?? vehicleLabel}
         />
@@ -1152,7 +1120,7 @@ function Summary({
 
       <PrimaryButton onClick={onPay} disabled={busy}>
         <MdCreditCard className="h-8 w-8" aria-hidden focusable="false" />
-        {busy ? 'Enviando al datáfono...' : 'Pagar con tarjeta'}
+        {busy ? 'Enviando al datáfono...' : 'Continuar al pago'}
       </PrimaryButton>
     </KioskStep>
   );
@@ -1199,14 +1167,13 @@ function Waiting({
           <KioskTitle
             title={
               <>
-                Toca{' '}
+                Por favor presiona el{' '}
                 <span className="whitespace-nowrap rounded-[0.35em] bg-brand-500 px-[0.25em] text-ink-950 [box-decoration-break:clone]">
-                  Iniciar cobro
+                  botón verde
                 </span>{' '}
-                en el datáfono
+                de cobro para iniciar
               </>
             }
-            subtitle="Está en la pantalla del datáfono, como en esta foto."
           />
         </div>
 
@@ -1233,6 +1200,53 @@ function Waiting({
         <SecondaryButton onClick={onCancel} disabled={busy}>
           {busy ? 'Cancelando...' : 'Cancelar cobro'}
         </SecondaryButton>
+
+        <EspacioParaFlecha />
+        <FlechaHacia etiqueta="Datáfono" donde="datafono" />
+      </KioskStep>
+    );
+  }
+
+  /*
+    Ya se inicio en el datafono: ahora el aparato le pide la tarjeta. Se le muestra la
+    misma pantalla que tiene enfrente, con lo que puede hacer: acercar, insertar o
+    deslizar la tarjeta, o pagar con QR desde el datafono.
+
+    Vale para Cod:01 (iniciada) y para Cod:02 SIN datos de tarjeta: el datafono de
+    pruebas salta directo a Cod:02 con BIN y franquicia vacios al presionar el boton
+    verde (visto el 2026-10-13), y eso es "pasa tu tarjeta", no "leyendo tarjeta". Cuando
+    ya llegan los datos de la tarjeta, se pasa a "Procesando tu pago".
+  */
+  const esperandoTarjeta =
+    payment.stage === 'STARTED' ||
+    (payment.stage === 'READING_CARD' && !payment.cardBrand && !payment.cardMask);
+  if (esperandoTarjeta) {
+    return (
+      <KioskStep>
+        <div aria-live="polite">
+          <KioskTitle
+            title="Paga en el datáfono"
+            subtitle="Acerca, inserta o desliza tu tarjeta. Si prefieres, toca «Pagar con QR» en el datáfono."
+          />
+        </div>
+
+        <figure className="mx-auto w-full max-w-[24rem] kland:max-w-[14rem]">
+          <Image
+            src="/datafono-pagar-tarjeta.jpg"
+            alt="Pantalla del datáfono: acerque, inserte o deslice su tarjeta, o pague con QR"
+            width={1254}
+            height={1254}
+            priority
+            className="w-full rounded-[1.4rem] ring-1 ring-[var(--line-subtle)]"
+          />
+        </figure>
+
+        <TotalBlock amount={formatCOP(payment.amount)} label="Valor a pagar" />
+
+        <Notice tone="warn">{aviso ?? 'Cobro en curso. Espera aquí hasta ver el resultado.'}</Notice>
+
+        <EspacioParaFlecha />
+        <FlechaHacia etiqueta="Datáfono" donde="datafono" />
       </KioskStep>
     );
   }
@@ -1546,7 +1560,7 @@ function Result({
             ? 'Puedes retirar el vehículo. Recoge tu comprobante: la factura electrónica llegará a tu correo.'
             : 'Puedes retirar el vehículo. Recoge tu comprobante.';
 
-  const identificador = payment.plate ?? payment.ticketCode ?? payment.vehicleIdentifier;
+  const identificador = payment.plate ?? payment.ticketId;
 
   return (
     <KioskStep>
@@ -1573,7 +1587,7 @@ function Result({
         <InfoCard>
           <dl className="divide-y divide-[var(--line-subtle)] px-7 py-2 kland:px-5">
             {identificador ? (
-              <InfoRow label={payment.plate ? 'Placa' : 'Código'} value={identificador} />
+              <InfoRow label={payment.plate ? 'Placa' : 'Tiquete'} value={identificador} />
             ) : null}
             <InfoRow
               label="Fecha y hora"

@@ -165,7 +165,7 @@ export default async function PanelHomePage({
                 <table className="w-full min-w-[62rem] text-sm">
                   <TableHead>
                     <Th first>Foto</Th>
-                    <Th>Codigo</Th>
+                    <Th>Id</Th>
                     <Th>Placa</Th>
                     <Th>Tipo</Th>
                     <Th>Entrada</Th>
@@ -190,14 +190,14 @@ export default async function PanelHomePage({
                               exitSrc={ticket.exitPhoto}
                               photos={ticket.photos}
                               slug={slug}
-                              label={ticket.plate ?? ticket.code ?? 'vehiculo'}
+                              label={ticket.plate ?? `Tiquete ${ticket.id}`}
                               enteredAt={entrada?.toISOString() ?? null}
                               exitedAt={parseUpstreamDate(ticket.checkedOutAt)?.toISOString() ?? null}
                               inside={adentro}
                             />
                           </td>
                           <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
-                            {ticket.code ?? '—'}
+                            {ticket.id}
                           </td>
                           <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                             {ticket.plate ?? (

@@ -172,7 +172,7 @@ export default async function ReportsPage({
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[60rem] text-sm">
                         <TableHead>
-                          <Th first>Codigo</Th>
+                          <Th first>Id</Th>
                           <Th>Placa</Th>
                           <Th>Tipo</Th>
                           <Th>Entrada</Th>
@@ -192,7 +192,7 @@ export default async function ReportsPage({
                             return (
                               <Row key={ticket.id}>
                                 <td className="tnum whitespace-nowrap py-3 pl-5 pr-4 font-medium text-[var(--text-primary)]">
-                                  {ticket.code ?? '—'}
+                                  {ticket.id}
                                 </td>
                                 <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                                   {ticket.plate ?? (
