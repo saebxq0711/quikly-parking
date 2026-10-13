@@ -153,6 +153,12 @@ model ParkingLot {
   /// Desarrollo: el simulador (http://127.0.0.1:8100).
   novaBaseUrl String?
 
+  /// Cuando se cambio el logo del parqueadero. `null` = sin logo: el panel y el kiosco
+  /// muestran el de Quikly Parking. Va en la URL del logo como version, para que el
+  /// navegador lo guarde y lo vuelva a pedir solo cuando cambia.
+  logoUpdatedAt DateTime?
+  logo          ParkingLotLogo?
+
   users        User[]
   /// Kioscos de pago: cada uno con su usuario, su datafono y, si la usa, su impresora.
   paymentPoints PaymentPoint[]
@@ -166,6 +172,19 @@ model ParkingLot {
   customers Customer[]
 
   @@map("parking_lots")
+}
+
+/// Logo del parqueadero (`src/lib/parking/logo.ts`). En tabla aparte para que leer un
+/// parqueadero no traiga la imagen: solo la pide la ruta que la sirve.
+model ParkingLotLogo {
+  parkingLotId String     @id
+  parkingLot   ParkingLot @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
+  /// image/png, image/jpeg o image/webp. Nunca SVG: puede llevar codigo.
+  mimeType     String
+  data         Bytes
+  updatedAt    DateTime   @updatedAt
+
+  @@map("parking_lot_logos")
 }
 
 /// Como busca ESTE parqueadero cada tipo de vehiculo.

@@ -17,6 +17,7 @@ import {
 } from '../idempotency';
 import type { CurrentUser } from '../auth/guards';
 import {
+  getVehicleConfig,
   recognizeSearchTerm,
   type SearchTerm,
 } from '@/integrations/nova-parking/vehicle-types';
@@ -28,6 +29,7 @@ import type { OperablePoint } from '../parking/payment-point';
 import type { NovaCheckout } from '@/integrations/nova-parking/types';
 import { declineReason, maskCard } from '@/integrations/sipconnector/codec';
 import {
+  tipoParaCobrar,
   vehicleTypeIdForConfirm,
   vehicleTypeIdForQuote,
 } from '@/lib/parking/nova-vehicle-types';
@@ -135,6 +137,12 @@ export interface VehicleLookupResult {
    */
   code: string | null;
   plate: string | null;
+  /**
+   * Tipo con que se cobra. Desde el 2026-10-13 lo decide el servidor con el tiquete (el
+   * cliente ya no lo elige) y el kiosco lo devuelve tal cual al cobrar. `null` si no se
+   * encontro o no hay nada que cobrar.
+   */
+  vehicleType: VehicleType | null;
   vehicleTypeLabel: string | null;
   entryAt: string | null;
   minutes: number | null;
@@ -190,21 +198,41 @@ async function findTicketForTerm(
   return null;
 }
 
+/**
+ * Busqueda SIN tipo (el kiosco desde el 2026-10-13): por `find-ticket/car/`, que con el
+ * QR encuentra cualquier vehiculo, y la ruta `bike` de respaldo. Una placa se busca como
+ * la del carro.
+ */
+const BUSQUEDA_SIN_TIPO = {
+  searchSegment: 'car',
+  searchQuery: null,
+  identifierKind: 'PLATE',
+  inputLabel: 'Tiquete',
+} as const;
+
 export async function lookupVehicle(params: {
   user: CurrentUser;
   parkingLotId: string;
-  vehicleType: VehicleType;
+  /**
+   * Solo lo mandan los kioscos que siguen con la version anterior abierta (elegian el
+   * vehiculo). Sin el, el tipo sale del tiquete (`tipoParaCobrar`).
+   */
+  vehicleType?: VehicleType;
   identifier: string;
 }): Promise<VehicleLookupResult> {
-  const config = await getVehicleRule(params.parkingLotId, params.vehicleType);
+  const elegido = params.vehicleType ?? null;
+  const config = elegido
+    ? await getVehicleRule(params.parkingLotId, elegido)
+    : BUSQUEDA_SIN_TIPO;
   const termino = recognizeSearchTerm(params.identifier, config.identifierKind);
 
   if (!termino) {
-    // El nombre del dato sale de la configuracion del sitio ("Placa del
-    // vehiculo", "Codigo del tiquete"), para que el mensaje coincida con lo que
-    // el cliente acaba de leer en pantalla.
     throw new AppError('VALIDATION', {
-      publicMessage: `${config.inputLabel}: revisa el dato ingresado.`,
+      publicMessage: elegido
+        ? // El nombre del dato sale de la configuracion del sitio ("Placa del
+          // vehiculo", "Codigo del tiquete"), igual que lo que el cliente leyo.
+          `${config.inputLabel}: revisa el dato ingresado.`
+        : 'No reconocimos el código. Vuelve a acercar el QR de tu tiquete al lector.',
     });
   }
 
@@ -214,7 +242,7 @@ export async function lookupVehicle(params: {
     action: AuditAction.VEHICLE_SEARCH,
     actorId: params.user.id,
     parkingLotId: params.parkingLotId,
-    metadata: { vehicleType: params.vehicleType, identifier: termino.value, forma: termino.kind },
+    metadata: { vehicleType: elegido ?? 'DEL_TIQUETE', identifier: termino.value, forma: termino.kind },
   });
 
   const ticket = await findTicketForTerm(client, config, termino);
@@ -225,13 +253,16 @@ export async function lookupVehicle(params: {
       ticketId: null,
       code: null,
       plate: null,
+      vehicleType: null,
       vehicleTypeLabel: null,
       entryAt: null,
       minutes: null,
       customerName: null,
       amount: null,
       alreadyPaid: false,
-      notice: `No encontramos un ingreso activo con ese dato (${config.inputLabel.toLowerCase()}). Verifica e intenta de nuevo.`,
+      notice: elegido
+        ? `No encontramos un ingreso activo con ese dato (${config.inputLabel.toLowerCase()}). Verifica e intenta de nuevo.`
+        : 'No encontramos un ingreso activo con ese tiquete. Vuelve a acercar el QR al lector.',
       photo: null,
       quote: null,
     };
@@ -251,6 +282,7 @@ export async function lookupVehicle(params: {
       ticketId: ticket.id,
       code: ticket.code,
       plate: ticket.plate,
+      vehicleType: null,
       vehicleTypeLabel: ticket.vehicleTypeLabel,
       entryAt: ticket.entryAt,
       minutes: ticket.minutes,
@@ -271,10 +303,26 @@ export async function lookupVehicle(params: {
   */
   // Por placa es un carro que ya entro tipado. Por QR, numero o codigo puede ser
   // cualquier vehiculo, "Por Definir" incluido: se cotiza con el tipo elegido.
-  const vehicleTypeId =
-    termino.kind === 'PLATE'
-      ? null
-      : await vehicleTypeIdForQuote(client, params.parkingLotId, ticket.id, params.vehicleType);
+  let tipo: VehicleType;
+  let vehicleTypeId: string | null;
+  if (elegido) {
+    tipo = elegido;
+    vehicleTypeId =
+      termino.kind === 'PLATE'
+        ? null
+        : await vehicleTypeIdForQuote(client, params.parkingLotId, ticket.id, elegido);
+  } else {
+    // Sin eleccion: el tipo del tiquete, y "Por Definir" es una moto (por descarte).
+    ({ tipo, vehicleTypeId } = await tipoParaCobrar(client, params.parkingLotId, ticket.id));
+    if (termino.kind === 'PLATE') vehicleTypeId = null;
+    // Que el parqueadero atienda ese tipo: es la misma regla con que se cobrara.
+    await getVehicleRule(params.parkingLotId, tipo);
+  }
+  /*
+    Lo que se le muestra: sin eleccion, el nombre del tipo con que se cobra ("Moto" y no
+    "Por Definir"); con eleccion, el que trae el parqueadero, como antes.
+  */
+  const etiquetaDelTipo = elegido ? null : (getVehicleConfig(tipo)?.label ?? null);
 
   let checkout: NovaCheckout;
   try {
@@ -286,7 +334,8 @@ export async function lookupVehicle(params: {
         ticketId: ticket.id,
         code: ticket.code,
         plate: ticket.plate,
-        vehicleTypeLabel: ticket.vehicleTypeLabel,
+        vehicleType: null,
+        vehicleTypeLabel: etiquetaDelTipo ?? ticket.vehicleTypeLabel,
         entryAt: ticket.entryAt,
         minutes: ticket.minutes,
         customerName: ticket.customerName,
@@ -305,7 +354,9 @@ export async function lookupVehicle(params: {
     ticketId: checkout.ticket.id,
     code: checkout.ticket.code ?? ticket.code,
     plate: checkout.ticket.plate ?? ticket.plate,
-    vehicleTypeLabel: checkout.ticket.vehicleTypeLabel ?? ticket.vehicleTypeLabel,
+    vehicleType: tipo,
+    vehicleTypeLabel:
+      etiquetaDelTipo ?? checkout.ticket.vehicleTypeLabel ?? ticket.vehicleTypeLabel,
     entryAt: checkout.ticket.entryAt ?? ticket.entryAt,
     minutes: checkout.ticket.minutes ?? ticket.minutes,
     customerName: checkout.ticket.customerName ?? ticket.customerName,
@@ -321,7 +372,7 @@ export async function lookupVehicle(params: {
         ? firmarCotizacion({
             parkingLotId: params.parkingLotId,
             ticketId: checkout.ticket.id,
-            vehicleType: params.vehicleType,
+            vehicleType: tipo,
             amount: checkout.amount,
           })
         : null,

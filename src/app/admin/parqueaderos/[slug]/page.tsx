@@ -23,6 +23,8 @@ import { KiosksCard, type KioskView } from './kiosks-card';
 import { TeamCard } from './team-card';
 import { StatusPill } from './redeban-card';
 import { EditableBlock } from '@/components/admin/editable-block';
+import { LogoCard } from './logo-card';
+import { logoUrl } from '@/lib/parking/logo';
 
 export const metadata = { title: 'Parqueadero' };
 
@@ -213,6 +215,10 @@ export default async function ParkingLotDetailPage({
                 </EditableBlock>
               </div>
             </Card>
+          </section>
+
+          <section id="logo" className="scroll-mt-8">
+            <LogoCard parkingLotId={lot.id} lotName={lot.name} logoUrl={logoUrl(lot)} />
           </section>
 
           <section id="sistema" className="scroll-mt-8">

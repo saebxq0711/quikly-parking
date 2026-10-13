@@ -9,6 +9,8 @@ import { serializePayment } from '@/lib/payments/serialize';
 import { PosFlow } from '@/components/pos/pos-flow';
 import { SCRIPT_TEMA_KIOSCO } from '@/components/pos/theme-script';
 import { emisorDe } from '@/lib/printing/receipt-data';
+import { logoUrl } from '@/lib/parking/logo';
+import { VERSION_DESPLEGADA } from '@/lib/version';
 
 export const metadata = { title: 'Punto de pago' };
 
@@ -53,6 +55,7 @@ export default async function PosPage({
       insurer: true,
       insurancePolicy: true,
       businessHours: true,
+      logoUpdatedAt: true,
     },
   });
   if (!lot) notFound();
@@ -121,13 +124,8 @@ export default async function PosPage({
       */}
       <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_KIOSCO }} />
       <PosFlow
-        vehicles={rules.map((rule) => ({
-          vehicleType: rule.vehicleType,
-          label: rule.label,
-          identifierKind: rule.identifierKind,
-          inputLabel: rule.inputLabel,
-          inputPlaceholder: rule.inputPlaceholder,
-        }))}
+        version={VERSION_DESPLEGADA}
+        logoUrl={logoUrl(lot)}
         parkingLotName={lot.name}
         issuer={emisorDe(lot)}
         hasPrinter={point.hasPrinter}

@@ -26,6 +26,7 @@ import {
 import { SiigoClient } from '@/integrations/siigo/client';
 import { blockIp, unblockIp } from '@/lib/security/blocklist';
 import { normalizeIp } from '@/lib/security/ip';
+import { LOGO_MAX_BYTES, tipoDeImagen } from '@/lib/parking/logo';
 
 /**
  * Acciones administrativas.
@@ -215,6 +216,86 @@ export async function updateParkingLot(
     }
     return fail('No fue posible actualizar el parqueadero.');
   }
+}
+
+/* ------------------------------------------------------------------ Logo */
+
+/**
+ * Guarda el logo del parqueadero (`lib/parking/logo.ts`). Llega ya achicado por el
+ * navegador; aqui se valida que de verdad sea una imagen PNG, JPEG o WebP y su peso.
+ */
+export async function saveParkingLotLogo(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireRole('SUPERADMIN');
+
+  const parkingLotId = formData.get('parkingLotId');
+  const archivo = formData.get('logo');
+  if (typeof parkingLotId !== 'string' || !parkingLotId || !(archivo instanceof File)) {
+    return fail('Elige una imagen para el logo.');
+  }
+  if (archivo.size === 0) return fail('La imagen esta vacia.');
+  if (archivo.size > LOGO_MAX_BYTES) return fail('La imagen pesa demasiado. Usa una mas liviana.');
+
+  const bytes = new Uint8Array(await archivo.arrayBuffer());
+  const mimeType = tipoDeImagen(bytes);
+  if (!mimeType) return fail('El logo debe ser una imagen PNG, JPG o WebP.');
+
+  try {
+    const ahora = new Date();
+    await db.$transaction([
+      db.parkingLotLogo.upsert({
+        where: { parkingLotId },
+        create: { parkingLotId, mimeType, data: Buffer.from(bytes) },
+        update: { mimeType, data: Buffer.from(bytes) },
+      }),
+      db.parkingLot.update({ where: { id: parkingLotId }, data: { logoUpdatedAt: ahora } }),
+    ]);
+    await recordAudit({
+      action: AuditAction.PARKING_LOT_UPDATED,
+      actorId: user.id,
+      parkingLotId,
+      entity: 'ParkingLot',
+      entityId: parkingLotId,
+      metadata: { cambio: 'logo', mimeType, bytes: bytes.length },
+    });
+  } catch {
+    return fail('No fue posible guardar el logo.');
+  }
+
+  revalidatePath('/admin/parqueaderos');
+  return ok('Logo guardado. El panel y los kioscos lo muestran al recargar.');
+}
+
+/** Quita el logo: el panel y el kiosco vuelven al de Quikly Parking. */
+export async function removeParkingLotLogo(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireRole('SUPERADMIN');
+  const parkingLotId = formData.get('parkingLotId');
+  if (typeof parkingLotId !== 'string' || !parkingLotId) return fail('Parqueadero no valido.');
+
+  try {
+    await db.$transaction([
+      db.parkingLotLogo.deleteMany({ where: { parkingLotId } }),
+      db.parkingLot.update({ where: { id: parkingLotId }, data: { logoUpdatedAt: null } }),
+    ]);
+    await recordAudit({
+      action: AuditAction.PARKING_LOT_UPDATED,
+      actorId: user.id,
+      parkingLotId,
+      entity: 'ParkingLot',
+      entityId: parkingLotId,
+      metadata: { cambio: 'logo quitado' },
+    });
+  } catch {
+    return fail('No fue posible quitar el logo.');
+  }
+
+  revalidatePath('/admin/parqueaderos');
+  return ok('Logo quitado. Vuelve a verse el de Quikly Parking.');
 }
 
 /* --------------------------------------- Conexion con el sistema del sitio */

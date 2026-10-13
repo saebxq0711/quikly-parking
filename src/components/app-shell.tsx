@@ -25,6 +25,7 @@ export function AppShell({
   role,
   contextName,
   contextHint,
+  logoUrl = null,
   children,
 }: {
   navItems: NavItem[];
@@ -32,6 +33,8 @@ export function AppShell({
   role: keyof typeof ROLE_LABEL;
   contextName: string;
   contextHint?: string;
+  /** Logo del parqueadero (`lib/parking/logo.ts`). Sin el, va el de Quikly Parking. */
+  logoUrl?: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -48,14 +51,19 @@ export function AppShell({
       */}
       <aside className="hidden w-64 shrink-0 flex-col bg-[var(--surface-chrome)] text-[var(--text-on-chrome)] lg:sticky lg:top-0 lg:flex lg:h-dvh">
         <div className="px-6 pb-5 pt-7">
-          <Image
-            src="/quikly-parking.png"
-            alt="Quikly Parking"
-            width={783}
-            height={269}
-            priority
-            className="h-10 w-auto"
-          />
+          {logoUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element -- lo sirve nuestra ruta */
+            <img src={logoUrl} alt={contextName} className="h-20 w-auto max-w-full object-contain" />
+          ) : (
+            <Image
+              src="/quikly-parking.png"
+              alt="Quikly Parking"
+              width={783}
+              height={269}
+              priority
+              className="h-10 w-auto"
+            />
+          )}
           <div className="mt-6 rounded-xl bg-white/[0.06] px-3.5 py-3">
             <p className="truncate text-[13px] font-semibold text-white">{contextName}</p>
             {contextHint ? (
@@ -90,13 +98,18 @@ export function AppShell({
         */}
         <header className="sticky top-0 z-10 bg-[var(--surface-chrome)] text-white lg:hidden">
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
-            <Image
-              src="/quikly-parking.png"
-              alt="Quikly Parking"
-              width={783}
-              height={269}
-              className="h-7 w-auto shrink-0"
-            />
+            {logoUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element -- lo sirve nuestra ruta */
+              <img src={logoUrl} alt={contextName} className="h-10 w-auto shrink-0 object-contain" />
+            ) : (
+              <Image
+                src="/quikly-parking.png"
+                alt="Quikly Parking"
+                width={783}
+                height={269}
+                className="h-7 w-auto shrink-0"
+              />
+            )}
             <div className="flex items-center gap-1">
               <Link
                 href="/cuenta"
