@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { invoiceAbandonedPayments, retryPendingInvoices } from '@/lib/billing/service';
-import { retryParkingConfirmations } from '@/lib/payments/service';
+import { conciliarCobrosCerrados, retryParkingConfirmations } from '@/lib/payments/service';
 import { purgeOldSecurityData } from '@/lib/security/blocklist';
 import { purgeExpiredBuckets } from '@/lib/security/limiter';
 
@@ -30,6 +30,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
+  // Cobros por verificar (el datafono no confirmo a tiempo) que si se aprobaron.
+  const conciliados = await conciliarCobrosCerrados().catch(() => 0);
   // Primero los pagos cuyo cliente se fue sin elegir como queria la factura.
   const sinEleccion = await invoiceAbandonedPayments();
   const reintentadas = await retryPendingInvoices();
@@ -37,5 +39,5 @@ export async function GET(request: Request) {
   const avisos = await retryParkingConfirmations();
   // Limpieza de seguridad: contadores vencidos, eventos de mas de 90 dias.
   const [contadores, seguridad] = await Promise.all([purgeExpiredBuckets(), purgeOldSecurityData()]);
-  return NextResponse.json({ sinEleccion, reintentadas, avisos, limpieza: { contadores, ...seguridad } });
+  return NextResponse.json({ conciliados, sinEleccion, reintentadas, avisos, limpieza: { contadores, ...seguridad } });
 }

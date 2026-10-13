@@ -216,7 +216,13 @@ export default async function PaymentsPage({
                       {formatCOP(payment.amount)}
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={payment.status} />
+                      <StatusBadge
+                        status={payment.status}
+                        porVerificar={
+                          payment.status === 'TIMEOUT' &&
+                          ['01', '02'].includes(payment.providerCode ?? '')
+                        }
+                      />
                       {payment.status === 'APPROVED' &&
                       payment.parkingConfirmStatus &&
                       payment.parkingConfirmStatus !== 'CONFIRMED' ? (

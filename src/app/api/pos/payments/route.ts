@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { requireRole, scopeToParkingLot } from '@/lib/auth/guards';
 import { AppError, toErrorResponse } from '@/lib/errors';
 import { consumeRateLimit } from '@/lib/rate-limit';
-import { findLivePayment, startCardPayment } from '@/lib/payments/service';
+import {
+  conciliarCobrosCerrados,
+  findLivePayment,
+  startCardPayment,
+} from '@/lib/payments/service';
+import { enSegundoPlano } from '@/lib/background';
 import { getPaymentPoint } from '@/lib/parking/payment-point';
 import { saveCustomer } from '@/lib/payments/customers';
 import { serializePayment } from '@/lib/payments/serialize';
@@ -105,6 +110,14 @@ export async function GET() {
     const point = await getPaymentPoint(user, parkingLotId);
 
     const live = await findLivePayment(parkingLotId, point.id);
+
+    // El kiosco pregunta esto cada minuto mientras espera al siguiente cliente: es el
+    // momento de buscar el resultado tardio de los cobros por verificar.
+    enSegundoPlano(() =>
+      conciliarCobrosCerrados(point.id).catch((error) =>
+        console.error('[payments] fallo la conciliacion', { error }),
+      ),
+    );
     return NextResponse.json(live ? serializePayment(live) : null);
   } catch (error) {
     return toErrorResponse(error, 'pos/payments/live');
