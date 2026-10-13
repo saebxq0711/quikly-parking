@@ -64,6 +64,7 @@ export default async function InsidePage({
             // El reporte de presentes no trae la foto; el volcado de tiquetes
             // abiertos si, y ya se esta cruzando para sacar el codigo.
             photo: porId.get(vehiculo.ticketId)?.photo ?? null,
+            photos: porId.get(vehiculo.ticketId)?.photos ?? [],
             entradaIso: entrada?.toISOString() ?? null,
             entradaMs: entrada?.getTime() ?? Number.MAX_SAFE_INTEGER,
             mensualidad: /mensual/i.test(vehiculo.clientKind ?? ''),
@@ -139,6 +140,7 @@ export default async function InsidePage({
                             <td className="py-2 pl-5 pr-4">
                               <VehiclePhoto
                                 src={vehiculo.photo}
+                                photos={vehiculo.photos}
                                 slug={slug}
                                 label={vehiculo.plate ?? vehiculo.code ?? 'vehiculo'}
                                 size="wide"

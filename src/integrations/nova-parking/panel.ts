@@ -95,6 +95,20 @@ export interface NovaTicketRow {
   exitPhoto: string | null;
   /** Segunda camara: el plano cerrado de la placa, cuando existe. */
   platePhoto: string | null;
+  /**
+   * TODAS las fotos del tiquete, de entrada y de salida, con la camara que tomo
+   * cada una. `photo` y `exitPhoto` son la primera de cada tipo.
+   */
+  photos: TicketPhoto[];
+}
+
+/** Una foto del tiquete, lista para pedirla por el proxy. */
+export interface TicketPhoto {
+  /** Ruta en el sistema del parqueadero (`/api/parking/ticket/<id>/foto/...`). */
+  src: string;
+  kind: 'entrada' | 'salida';
+  /** Que camara la tomo: "Camara principal", "Camara de apoyo .160"... */
+  camera: string;
 }
 
 export interface NovaTicketPage {
@@ -342,33 +356,7 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
   // El campo `vehicle_type` suelto es el id de su catalogo: no sirve en pantalla.
   const vehicle = item.vehicle_type;
 
-  /*
-    Fotos. Nova Parking las guarda en dos campos del tiquete (`front_image`,
-    `plate_image`) y en una lista aparte (`images`). Desde el 2026-10-09 cada
-    foto de la lista dice si es de entrada o de salida (`image_type`: ENTRY /
-    EXIT; las viejas quedaron todas en ENTRY). El orden de la lista no esta
-    garantizado: se filtra por tipo, nunca por posicion.
-
-    Cada una se pide por su tipo (`?tipo=entrada` / `?tipo=salida`), y la de
-    salida solo si el tiquete dice tenerla: asi no se gasta una peticion en un
-    404 seguro.
-  */
-  const galeria = list(item.images).flatMap((foto) =>
-    isDict(foto) && str(foto.image)
-      ? [{ ruta: str(foto.image) as string, tipo: str(foto.image_type)?.toUpperCase() ?? null }]
-      : [],
-  );
-  const conTipo = galeria.some((foto) => foto.tipo !== null);
-  const entradaOriginal =
-    str(item.front_image) ?? galeria.find((foto) => foto.tipo !== 'EXIT')?.ruta ?? null;
-  const tieneSalida = galeria.some((foto) => foto.tipo === 'EXIT');
-
-  const photo = conTipo && entradaOriginal && /^\d+$/.test(id)
-    ? `/api/parking/ticket/${id}/foto/?tipo=entrada`
-    : ticketPhotoPath(id, entradaOriginal);
-  const exitPhoto = tieneSalida && /^\d+$/.test(id)
-    ? `/api/parking/ticket/${id}/foto/?tipo=salida`
-    : null;
+  const { photo, exitPhoto, photos } = ticketPhotos(id, item);
 
   return [
     {
@@ -391,8 +379,101 @@ function parseTicketRow(item: unknown): NovaTicketRow[] {
       photo,
       exitPhoto,
       platePhoto: str(item.plate_image),
+      photos,
     } satisfies NovaTicketRow,
   ];
+}
+
+/**
+ * Que camara tomo una foto, por el nombre del archivo que pone Nova Parking:
+ *   camera_192.168.18.130_*   la camara principal (entrada .130, salida .140)
+ *   apoyo_192.168.18.160_*    una camara de apoyo (entrada .160/.170/.233,
+ *                             salida .150/.210/.220)
+ *   exit_image_0_*            el recorte que manda la camara de placas en su
+ *                             evento: pequeno (unos 6 KB), va al final
+ * Visto en el 122 el 2026-10-12. El orden deja primero la principal: es la que
+ * se muestra de entrada.
+ */
+function camaraDe(ruta: string): { nombre: string; orden: number } {
+  const archivo = ruta.split('/').pop() ?? '';
+  const ip = archivo.match(/\d+\.\d+\.\d+\.(\d+)/);
+  if (/^camera_/i.test(archivo)) return { nombre: 'Cámara principal', orden: 0 };
+  if (/^apoyo_/i.test(archivo)) {
+    return { nombre: `Cámara de apoyo${ip ? ` .${ip[1]}` : ''}`, orden: 1 };
+  }
+  if (/^exit_image_/i.test(archivo)) return { nombre: 'Recorte de la cámara de placas', orden: 2 };
+  return { nombre: 'Cámara', orden: 1 };
+}
+
+/**
+ * Las fotos de un tiquete.
+ *
+ * Nova Parking las guarda en dos campos del tiquete (`front_image`, `plate_image`)
+ * y en una lista aparte (`images`): desde el 2026-10-12 son varias por paso, la
+ * camara principal y las de apoyo, de entrada y de salida (`image_type`: ENTRY /
+ * EXIT). El orden de la lista no esta garantizado: se filtra por tipo.
+ *
+ * COMO SE PIDE CADA UNA. Si cada foto de la lista trae su `id`, se pide esa foto
+ * exacta (`?imagen=<id>`) y se ven todas. Si no lo trae (el servidor hoy solo
+ * entrega una por tipo), se pide una por tipo (`?tipo=entrada` / `?tipo=salida`),
+ * como antes. Asi, el dia que Nova Parking publique cada foto por su id, aparecen
+ * todas sin tocar nada aqui. La de salida solo se pide si el tiquete dice tenerla:
+ * no se gasta una peticion en un 404 seguro.
+ */
+function ticketPhotos(
+  id: string,
+  item: Record<string, unknown>,
+): { photo: string | null; exitPhoto: string | null; photos: TicketPhoto[] } {
+  const galeria = list(item.images).flatMap((foto) => {
+    if (!isDict(foto) || !str(foto.image)) return [];
+    const ruta = str(foto.image) as string;
+    const imagenId = str(foto.id);
+    return [{
+      ruta,
+      tipo: str(foto.image_type)?.toUpperCase() ?? null,
+      imagenId: imagenId && /^\d+$/.test(imagenId) ? imagenId : null,
+      camara: camaraDe(ruta),
+    }];
+  });
+  const idValido = /^\d+$/.test(id);
+
+  // Una por una, cuando el servidor dice el id de cada foto.
+  if (idValido && galeria.length > 0 && galeria.every((foto) => foto.imagenId && foto.tipo)) {
+    const photos = galeria
+      .map((foto) => ({
+        src: `/api/parking/ticket/${id}/foto/?imagen=${foto.imagenId}`,
+        kind: foto.tipo === 'EXIT' ? ('salida' as const) : ('entrada' as const),
+        camera: foto.camara.nombre,
+        orden: foto.camara.orden,
+      }))
+      .sort((a, b) => Number(a.kind === 'salida') - Number(b.kind === 'salida') || a.orden - b.orden)
+      .map(({ orden: _orden, ...foto }) => foto);
+    return {
+      photo: photos.find((f) => f.kind === 'entrada')?.src ?? null,
+      exitPhoto: photos.find((f) => f.kind === 'salida')?.src ?? null,
+      photos,
+    };
+  }
+
+  // Una por tipo: lo que el servidor entrega hoy.
+  const conTipo = galeria.some((foto) => foto.tipo !== null);
+  const primeraEntrada = galeria.find((foto) => foto.tipo !== 'EXIT');
+  const primeraSalida = galeria.find((foto) => foto.tipo === 'EXIT');
+  const entradaOriginal = str(item.front_image) ?? primeraEntrada?.ruta ?? null;
+
+  const photo = conTipo && entradaOriginal && idValido
+    ? `/api/parking/ticket/${id}/foto/?tipo=entrada`
+    : ticketPhotoPath(id, entradaOriginal);
+  const exitPhoto = primeraSalida && idValido ? `/api/parking/ticket/${id}/foto/?tipo=salida` : null;
+
+  const photos: TicketPhoto[] = [];
+  if (photo) {
+    photos.push({ src: photo, kind: 'entrada', camera: primeraEntrada ? camaraDe(primeraEntrada.ruta).nombre : 'Cámara de entrada' });
+  }
+  if (exitPhoto && primeraSalida) {
+    photos.push({ src: exitPhoto, kind: 'salida', camera: camaraDe(primeraSalida.ruta).nombre });
+  }
+  return { photo, exitPhoto, photos };
 }
 
 /** Historial de tiquetes, paginado por Nova Parking (10 por pagina hoy). */

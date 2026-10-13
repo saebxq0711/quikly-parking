@@ -188,6 +188,7 @@ export default async function PanelHomePage({
                             <VehiclePhoto
                               src={ticket.photo}
                               exitSrc={ticket.exitPhoto}
+                              photos={ticket.photos}
                               slug={slug}
                               label={ticket.plate ?? ticket.code ?? 'vehiculo'}
                               enteredAt={entrada?.toISOString() ?? null}
