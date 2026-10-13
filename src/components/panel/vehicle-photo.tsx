@@ -50,15 +50,59 @@ export function VehiclePhoto({
   /** El vehiculo sigue adentro: la salida no existe todavia. */
   inside?: boolean;
 }) {
-  const [falla, setFalla] = useState(false);
   const [abierta, setAbierta] = useState(false);
   const disparador = useRef<HTMLButtonElement>(null);
 
+  /*
+    Carga de la miniatura. Fallaba de dos formas que dejaban un recuadro en blanco
+    o el icono de imagen rota del navegador:
+      - La pagina llega armada del servidor y la imagen empieza a cargar ANTES de
+        que React se conecte. Si fallaba en ese instante, el `onError` no existia
+        todavia y nadie se enteraba. Por eso al montar se mira la imagen misma.
+      - Un fallo pasajero (el tunel, la base ocupada) era definitivo. Ahora se
+        reintenta dos veces con una pausa, y si aun asi no carga se vuelve a
+        intentar al cerrar el visor, cuando la foto ya quedo en el navegador.
+  */
+  const imagen = useRef<HTMLImageElement>(null);
+  const [carga, setCarga] = useState<'cargando' | 'lista' | 'falla'>('cargando');
+  const [intento, setIntento] = useState(0);
+  const reintento = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const alFallar = useCallback(() => {
+    if (reintento.current) return;
+    if (intento >= REINTENTOS_MINIATURA) {
+      setCarga('falla');
+      return;
+    }
+    reintento.current = setTimeout(() => {
+      reintento.current = null;
+      setCarga('cargando');
+      setIntento((n) => n + 1);
+    }, 1_200 * (intento + 1));
+  }, [intento]);
+
+  useEffect(() => () => {
+    if (reintento.current) clearTimeout(reintento.current);
+  }, []);
+
+  // La imagen ya pudo cargar o fallar antes de que React se conectara.
+  useEffect(() => {
+    const img = imagen.current;
+    if (!img || !img.complete) return;
+    if (img.naturalWidth > 0) setCarga('lista');
+    else alFallar();
+  }, [intento, alFallar]);
+
   const cerrar = useCallback(() => {
     setAbierta(false);
+    // Si la miniatura no habia cargado, ahora la foto ya esta en el navegador.
+    if (carga === 'falla') {
+      setCarga('cargando');
+      setIntento((n) => n + 1);
+    }
     // El foco vuelve a la miniatura: quien usa teclado sigue donde estaba.
     requestAnimationFrame(() => disparador.current?.focus());
-  }, []);
+  }, [carga]);
 
   const caja = size === 'wide' ? 'h-20 w-32 rounded-xl' : 'h-11 w-16 rounded-lg';
 
@@ -74,7 +118,7 @@ export function VehiclePhoto({
   const salidas = todas.filter((f) => f.kind === 'salida');
   const miniatura = entradas[0]?.src ?? salidas[0]?.src ?? null;
 
-  if (!miniatura || falla) {
+  if (!miniatura) {
     return (
       <span
         title="Sin foto"
@@ -104,16 +148,33 @@ export function VehiclePhoto({
         }
         className={`group relative block ${caja} overflow-hidden bg-[var(--surface-sunken)] ring-1 ring-inset ring-[var(--line-subtle)] transition-shadow duration-150 hover:ring-2 hover:ring-brand-400`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- la sirve nuestra
-            propia ruta; pasarla por el optimizador de Next la volveria a
-            descargar por el tunel en cada tamano. */}
-        <img
-          src={urlDe(slug, miniatura)}
-          alt={`${entradas.length > 0 ? 'Entrada' : 'Salida'} de ${label}`}
-          loading="lazy"
-          onError={() => setFalla(true)}
-          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.04]"
-        />
+        {carga === 'cargando' ? (
+          <span className="absolute inset-0 animate-pulse bg-[var(--fill-soft)]" aria-hidden />
+        ) : null}
+        {carga === 'falla' ? (
+          // Las fotos existen (el visor las intenta): un icono limpio, no la imagen rota.
+          <span className="absolute inset-0 flex items-center justify-center bg-[var(--fill-soft)] text-[var(--text-muted)]">
+            <MdNoPhotography className="h-4 w-4" aria-hidden focusable="false" />
+            <span className="sr-only">La foto no cargó; toca para verla</span>
+          </span>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element -- la sirve nuestra
+             propia ruta; pasarla por el optimizador de Next la volveria a
+             descargar por el tunel en cada tamano. */
+          <img
+            // Cada reintento es otra URL: el navegador no reusa el fallo.
+            key={intento}
+            ref={imagen}
+            src={`${urlDe(slug, miniatura)}${intento > 0 ? `&intento=${intento}` : ''}`}
+            alt={`${entradas.length > 0 ? 'Entrada' : 'Salida'} de ${label}`}
+            loading="lazy"
+            onLoad={() => setCarga('lista')}
+            onError={alFallar}
+            className={`h-full w-full object-cover transition-[transform,opacity] duration-200 group-hover:scale-[1.04] ${
+              carga === 'lista' ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        )}
         {todas.length > 1 ? (
           <span className="absolute bottom-1 right-1 flex items-center gap-0.5 rounded-full bg-ink-950/85 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
             <MdPhotoLibrary className="h-3 w-3" aria-hidden focusable="false" />
@@ -140,6 +201,9 @@ export function VehiclePhoto({
     </>
   );
 }
+
+/** Reintentos solos de una miniatura antes de dejar el icono de "no cargo". */
+const REINTENTOS_MINIATURA = 2;
 
 function urlDe(slug: string, ruta: string): string {
   return `/api/panel/${slug}/foto?src=${encodeURIComponent(ruta)}`;
