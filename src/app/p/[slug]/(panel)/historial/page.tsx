@@ -135,7 +135,7 @@ export default async function HistoryPage({
                   <table className="w-full min-w-[72rem] text-sm">
                     <TableHead>
                       <Th first>Foto</Th>
-                      <Th>Codigo</Th>
+                      <Th>Id</Th>
                       <Th>Placa</Th>
                       <Th>Tipo</Th>
                       <Th>Entrada</Th>
@@ -164,15 +164,15 @@ export default async function HistoryPage({
                                 exitSrc={ticket.exitPhoto}
                                 photos={ticket.photos}
                                 slug={slug}
-                                label={ticket.plate ?? ticket.code ?? 'vehiculo'}
+                                label={ticket.plate ?? `Tiquete ${ticket.id}`}
                                 enteredAt={entrada?.toISOString() ?? null}
                                 exitedAt={salida?.toISOString() ?? null}
                                 inside={ticket.status === 'IN' && !ticket.cancelled}
                               />
                             </td>
-                            {/* El CODIGO, nunca el id: el id es secuencial y dejaria deducir otros. */}
+                            {/* El numero del tiquete: es el que lleva su QR (desde el 2026-10-13 ya no hay codigo). */}
                             <td className="tnum whitespace-nowrap py-3 pr-4 font-medium text-[var(--text-primary)]">
-                              {ticket.code ?? <span className="text-[var(--text-muted)]">—</span>}
+                              {ticket.id}
                             </td>
                             <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
                               {ticket.plate ?? (

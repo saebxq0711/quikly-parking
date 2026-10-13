@@ -201,7 +201,7 @@ export default async function PaymentsPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
-                      {payment.plate ?? payment.ticketCode ?? payment.vehicleIdentifier}
+                      {payment.plate ?? payment.externalTicketId}
                     </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">
                       {payment.customerName ?? '—'}

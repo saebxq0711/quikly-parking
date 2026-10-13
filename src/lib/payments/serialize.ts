@@ -21,8 +21,10 @@ export interface PaymentDTO {
   plate: string | null;
   vehicleIdentifier: string;
   vehicleType: string;
-  /** Codigo del tiquete (`A7B48`). Los carros van por placa y no lo tienen. */
+  /** Codigo del tiquete (`A7B48`). Desde el 2026-10-13 ya no se imprime: queda null. */
   ticketCode: string | null;
+  /** Numero del tiquete en el sistema del parqueadero: el que lleva su QR (`238`). */
+  ticketId: string;
   /** Ingreso y permanencia liquidada, segun el sistema del parqueadero. */
   entryAt: string | null;
   stayMinutes: number | null;
@@ -90,6 +92,7 @@ export function serializePayment(payment: Payment): PaymentDTO {
     vehicleIdentifier: payment.vehicleIdentifier,
     vehicleType: payment.vehicleType,
     ticketCode: payment.ticketCode,
+    ticketId: payment.externalTicketId,
     entryAt: payment.entryAt?.toISOString() ?? null,
     stayMinutes: payment.stayMinutes,
     customerName: payment.customerName,

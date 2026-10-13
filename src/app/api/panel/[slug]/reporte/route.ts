@@ -173,7 +173,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 
   /* ------------------------------------------------------------ Vehiculos */
   const columnasVehiculos: Columna[] = [
-    { header: 'Codigo', key: 'codigo', width: 11 },
+    { header: 'Id', key: 'codigo', width: 11 },
     { header: 'Placa', key: 'placa', width: 12 },
     { header: 'Tipo', key: 'tipo', width: 18 },
     { header: 'Estado', key: 'estado', width: 12 },
@@ -219,7 +219,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     }
 
     const fila = vehiculos.addRow({
-      codigo: ticket.code ?? '',
+      codigo: ticket.id,
       placa: ticket.plate ?? 'Sin placa',
       tipo: ticket.vehicleType ?? '',
       estado: ticketStateLabel(ticket),
@@ -275,7 +275,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   const columnasKiosco: Columna[] = [
     { header: 'Fecha', key: 'fecha', width: 18, numFmt: FECHA },
     { header: 'Kiosco', key: 'kiosco', width: 18 },
-    { header: 'Codigo', key: 'codigo', width: 11 },
+    { header: 'Id', key: 'codigo', width: 11 },
     { header: 'Placa', key: 'placa', width: 12 },
     { header: 'Tipo', key: 'tipo', width: 13 },
     { header: 'Entrada', key: 'entrada', width: 18, numFmt: FECHA },
@@ -308,7 +308,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     const fila = kiosco.addRow({
       fecha: enBogota(pago.resolvedAt ?? pago.createdAt),
       kiosco: pago.paymentPoint?.name ?? '',
-      codigo: pago.ticketCode ?? (pago.plate ? '' : pago.vehicleIdentifier),
+      codigo: pago.externalTicketId,
       placa: pago.plate ?? '',
       tipo: VEHICULO[pago.vehicleType] ?? pago.vehicleType,
       entrada: enBogota(pago.entryAt),

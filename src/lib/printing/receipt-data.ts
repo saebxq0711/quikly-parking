@@ -181,7 +181,8 @@ function seccionVehiculo(pago: PaymentDTO): ReceiptSection {
     rows: filas([
       ['Tipo', VEHICULO[pago.vehicleType] ?? pago.vehicleType],
       ['Placa', pago.plate],
-      ['Tiquete', pago.ticketCode ?? (pago.plate ? null : pago.vehicleIdentifier)],
+      // El numero del tiquete, el de su QR: se ve siempre, haya placa o no.
+      ['Tiquete', pago.ticketId],
       ['Entrada', pago.entryAt ? fechaHora(pago.entryAt) : null],
       ['Salida', fechaHora(salida)],
       ['Permanencia', minutos !== null && Number.isFinite(minutos) ? permanencia(minutos) : null],
