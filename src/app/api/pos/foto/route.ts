@@ -24,7 +24,8 @@ export async function GET(request: Request) {
       throw new AppError('RATE_LIMITED');
     }
     const src = new URL(request.url).searchParams.get('src') ?? '';
-    return await respuestaDeFoto(parkingLotId, src);
+    // Achicada: en el kiosco se ve a lo ancho de la pantalla, y completa tardaba en llegar.
+    return await respuestaDeFoto(parkingLotId, src, { anchoMax: 960 });
   } catch (error) {
     if (error instanceof AppError && error.code === 'RATE_LIMITED') {
       return new Response(null, { status: 429, headers: { 'Retry-After': '60' } });
