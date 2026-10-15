@@ -59,6 +59,8 @@ export async function getSiigoSettings(
     documentId: toInt(values.documentId),
     sellerId: toInt(values.sellerId),
     paymentTypeId: toInt(values.paymentTypeId),
+    creditPaymentTypeId: toInt(values.creditPaymentTypeId),
+    debitPaymentTypeId: toInt(values.debitPaymentTypeId),
     itemCode: values.itemCode ?? null,
     itemDescription: values.itemDescription ?? 'Servicio de parqueadero',
     defaultCustomerIdType: values.defaultCustomerIdType ?? '13',
@@ -233,6 +235,8 @@ export interface SiigoConfigToCheck {
   documentId: number;
   sellerId: number;
   paymentTypeId: number;
+  /** Formas de pago de credito y debito, si se configuraron (`formaDePago`). */
+  otherPaymentTypeIds?: number[];
   itemCode: string;
   sendStamp: boolean;
 }
@@ -302,11 +306,13 @@ export async function verifySiigoConfig(
     }
   }
 
-  const pago = filas(pagos).find((p) => Number(p.id) === config.paymentTypeId);
-  if (!pago) {
-    problemas.push(`La forma de pago ${config.paymentTypeId} no existe para facturas en SIIGO.`);
-  } else if (!activo(pago)) {
-    problemas.push(`La forma de pago "${String(pago.name)}" esta inactiva en SIIGO.`);
+  for (const id of new Set([config.paymentTypeId, ...(config.otherPaymentTypeIds ?? [])])) {
+    const pago = filas(pagos).find((p) => Number(p.id) === id);
+    if (!pago) {
+      problemas.push(`La forma de pago ${id} no existe para facturas en SIIGO.`);
+    } else if (!activo(pago)) {
+      problemas.push(`La forma de pago "${String(pago.name)}" esta inactiva en SIIGO.`);
+    }
   }
 
   /*

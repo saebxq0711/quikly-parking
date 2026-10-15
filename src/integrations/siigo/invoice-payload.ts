@@ -30,8 +30,15 @@ export interface SiigoInvoiceSettings {
   documentId: number | null;
   /** `seller` — id del vendedor en SIIGO. PENDIENTE. */
   sellerId: number | null;
-  /** `payments[].id` — forma de pago del catalogo de SIIGO. PENDIENTE. */
+  /**
+   * `payments[].id` — forma de pago del catalogo de SIIGO. Es la de POR DEFECTO: la que
+   * se usa cuando el datafono no dice si la tarjeta es credito o debito.
+   */
   paymentTypeId: number | null;
+  /** Forma de pago para tarjeta de credito (`CR`). Sin ella, la de por defecto. */
+  creditPaymentTypeId: number | null;
+  /** Forma de pago para tarjeta debito (`AH`/`CC`, o franquicia debito). Sin ella, la de por defecto. */
+  debitPaymentTypeId: number | null;
   /** `items[].code` — codigo del servicio de parqueadero en SIIGO. PENDIENTE. */
   itemCode: string | null;
   /** Descripcion del item en la factura. */
@@ -70,6 +77,39 @@ export function findMissingSettings(settings: SiigoInvoiceSettings): string[] {
     missing.push(REQUIRED_SETTING_LABELS.defaultCustomerIdentification);
   }
   return missing;
+}
+
+/**
+ * Tipo de tarjeta segun lo que informo el datafono.
+ *
+ * El tipo de cuenta de la respuesta de Redeban: `CR` credito, `AH` ahorros y `CC`
+ * corriente (debito). Con pago sin contacto llega muchas veces vacio (`00`): ahi la
+ * franquicia a veces lo dice ("VISA DEBIT", "MAESTRO"). Si nada lo dice, `null`.
+ */
+export function tipoDeTarjeta(payment: {
+  accountType: string | null;
+  cardBrand: string | null;
+}): 'CREDITO' | 'DEBITO' | null {
+  const cuenta = (payment.accountType ?? '').trim().toUpperCase();
+  if (cuenta === 'CR') return 'CREDITO';
+  if (cuenta === 'AH' || cuenta === 'CC') return 'DEBITO';
+  if (/DEBIT|DEBITO|DÉBITO|MAESTRO|ELECTRON/i.test(payment.cardBrand ?? '')) return 'DEBITO';
+  return null;
+}
+
+/**
+ * Forma de pago de SIIGO para este cobro (2026-10-15): Tarjeta Credito o Tarjeta Debito
+ * segun la tarjeta; la de por defecto si el datafono no lo dijo o si el parqueadero no
+ * configuro una forma de pago para ese tipo.
+ */
+export function formaDePago(
+  payment: { accountType: string | null; cardBrand: string | null },
+  settings: Pick<SiigoInvoiceSettings, 'paymentTypeId' | 'creditPaymentTypeId' | 'debitPaymentTypeId'>,
+): number | null {
+  const tipo = tipoDeTarjeta(payment);
+  if (tipo === 'CREDITO' && settings.creditPaymentTypeId !== null) return settings.creditPaymentTypeId;
+  if (tipo === 'DEBITO' && settings.debitPaymentTypeId !== null) return settings.debitPaymentTypeId;
+  return settings.paymentTypeId;
 }
 
 /*
@@ -161,7 +201,7 @@ export function buildInvoicePayload(
     ],
     payments: [
       {
-        id: settings.paymentTypeId,
+        id: formaDePago(payment, settings),
         value: payment.amount,
         due_date: toIsoDate(payment.resolvedAt ?? payment.createdAt),
       },

@@ -573,6 +573,8 @@ const siigoSchema = z.object({
   documentId: z.string().regex(/^\d+$/, 'El tipo de comprobante debe ser numerico.'),
   sellerId: z.string().regex(/^\d+$/, 'El vendedor debe ser numerico.'),
   paymentTypeId: z.string().regex(/^\d+$/, 'La forma de pago debe ser numerica.'),
+  creditPaymentTypeId: z.string().regex(/^\d*$/, 'La forma de pago de credito debe ser numerica.'),
+  debitPaymentTypeId: z.string().regex(/^\d*$/, 'La forma de pago de debito debe ser numerica.'),
   itemCode: z.string().min(1, 'El codigo del servicio es obligatorio.').max(60),
   itemDescription: z.string().max(120).optional(),
   defaultCustomerIdType: z.string().max(4).optional(),
@@ -605,6 +607,8 @@ export async function saveSiigoConfig(
     documentId: String(formData.get('documentId') ?? '').trim(),
     sellerId: String(formData.get('sellerId') ?? '').trim(),
     paymentTypeId: String(formData.get('paymentTypeId') ?? '').trim(),
+    creditPaymentTypeId: String(formData.get('creditPaymentTypeId') ?? '').trim(),
+    debitPaymentTypeId: String(formData.get('debitPaymentTypeId') ?? '').trim(),
     itemCode: String(formData.get('itemCode') ?? '').trim(),
     itemDescription: formData.get('itemDescription') || undefined,
     defaultCustomerIdType: formData.get('defaultCustomerIdType') || undefined,
@@ -648,6 +652,9 @@ export async function saveSiigoConfig(
           documentId: Number(parsed.data.documentId),
           sellerId: Number(parsed.data.sellerId),
           paymentTypeId: Number(parsed.data.paymentTypeId),
+          otherPaymentTypeIds: [parsed.data.creditPaymentTypeId, parsed.data.debitPaymentTypeId]
+            .filter(Boolean)
+            .map(Number),
           itemCode: parsed.data.itemCode,
           sendStamp,
         },
@@ -678,6 +685,9 @@ export async function saveSiigoConfig(
     documentId: parsed.data.documentId,
     sellerId: parsed.data.sellerId,
     paymentTypeId: parsed.data.paymentTypeId,
+    // Vacias = se usa la de por defecto para ese tipo de tarjeta.
+    creditPaymentTypeId: parsed.data.creditPaymentTypeId,
+    debitPaymentTypeId: parsed.data.debitPaymentTypeId,
     itemCode: parsed.data.itemCode,
     itemDescription: parsed.data.itemDescription ?? 'Servicio de parqueadero',
     defaultCustomerIdType: parsed.data.defaultCustomerIdType ?? '13',
@@ -746,6 +756,9 @@ export async function testSiigo(
       documentId: settings.documentId,
       sellerId: settings.sellerId,
       paymentTypeId: settings.paymentTypeId,
+      otherPaymentTypeIds: [settings.creditPaymentTypeId, settings.debitPaymentTypeId].filter(
+        (id): id is number => id !== null,
+      ),
       itemCode: settings.itemCode,
       sendStamp: settings.sendStamp,
     });
