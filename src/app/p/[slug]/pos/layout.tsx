@@ -1,5 +1,6 @@
 import type { Viewport } from 'next';
 import { NoZoom } from '@/components/pos/no-zoom';
+import { FullscreenLock } from '@/components/pos/fullscreen-lock';
 
 /**
  * Area del kiosco (`/p/<sitio>/pos` y su prueba de impresora).
@@ -22,6 +23,8 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
     <>
       <NoZoom />
       {children}
+      {/* Despues del contenido: su capa queda encima de todo si se sale de pantalla completa. */}
+      <FullscreenLock />
     </>
   );
 }

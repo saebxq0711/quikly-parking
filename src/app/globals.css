@@ -227,6 +227,10 @@ html.sin-zoom body {
   touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Sin el rebote del borde: deslizar de lado navegaba atras/adelante y tirar hacia
+     abajo recargaba la pagina (`fullscreen-lock.tsx`). */
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
 }
 
 /*
