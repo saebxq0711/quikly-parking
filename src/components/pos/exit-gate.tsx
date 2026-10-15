@@ -65,6 +65,8 @@ export function ExitGate({
         return;
       }
 
+      // El personal sale del kiosco: se le devuelve la ventana normal (`FullscreenLock`).
+      if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
       router.replace('/login');
       router.refresh();
     } finally {
