@@ -133,6 +133,36 @@ const RECEIPT_TIMEOUT_S = 45;
  */
 const IDLE_TIMEOUT_MS = 90_000;
 
+/** Ruta de la foto de entrada en el kiosco (la sirve `/api/pos/foto`, achicada). */
+function urlDeFoto(photo: string): string {
+  return `/api/pos/foto?src=${encodeURIComponent(photo)}`;
+}
+
+/**
+ * Cuanto se espera la foto antes de mostrar "¿Este es tu vehiculo?". Llega por el tunel
+ * del parqueadero; si se pasa, la pantalla sale igual y la foto aparece al llegar.
+ */
+const ESPERA_FOTO_MS = 3_500;
+
+/**
+ * Pide la foto mientras sigue "Buscando tu vehiculo..." y espera a que este lista (o a
+ * que falle, o a `ESPERA_FOTO_MS`). Antes la foto se empezaba a pedir cuando ya se
+ * mostraba la pantalla, y el cliente seguia con el pago sin haberla visto.
+ */
+function precargarFoto(url: string): Promise<void> {
+  return new Promise((listo) => {
+    const imagen = new window.Image();
+    const reloj = setTimeout(listo, ESPERA_FOTO_MS);
+    const fin = () => {
+      clearTimeout(reloj);
+      listo();
+    };
+    imagen.onload = fin;
+    imagen.onerror = fin;
+    imagen.src = url;
+  });
+}
+
 /** Para no recargar en bucle si algo raro hace que las versiones no coincidan nunca. */
 const RECARGA_MINIMA_MS = 5 * 60_000;
 
@@ -250,10 +280,12 @@ export function PosFlow({
         return;
       }
       const result = data as LookupResult;
-      setLookup(result);
       // Solo se sigue si de verdad hay algo que cobrar. Antes de pedir datos, el
       // cliente confirma que el vehiculo encontrado es el suyo.
       const cobrable = result.found && !result.alreadyPaid && (result.amount ?? 0) > 0;
+      // La foto, lista antes de preguntar "¿Este es tu vehiculo?".
+      if (cobrable && result.photo) await precargarFoto(urlDeFoto(result.photo));
+      setLookup(result);
       setStep(cobrable ? 'confirm' : 'summary');
     } catch {
       setError('No fue posible consultar. Intenta nuevamente.');
@@ -866,9 +898,22 @@ function ConfirmVehicle({
   // `falla` cubre los dos casos de "no se ve": que no haya ruta y que la imagen
   // no cargue (que es lo que pasa hoy, con /media/ cerrado en el tunel).
   const [falla, setFalla] = useState(!lookup.photo);
-  const url = lookup.photo
-    ? `/api/pos/foto?src=${encodeURIComponent(lookup.photo)}`
-    : null;
+  const url = lookup.photo ? urlDeFoto(lookup.photo) : null;
+  /*
+    Mientras la foto no se ve, "Si, es mi vehiculo" espera: confirmar sin verla es justo
+    lo que este paso quiere evitar. Casi siempre ya llego (`precargarFoto`); si el tunel
+    esta lento, el boton se habilita igual a los pocos segundos para no dejar al cliente
+    atrapado.
+  */
+  const [cargando, setCargando] = useState(Boolean(lookup.photo));
+  useEffect(() => {
+    if (!cargando) return;
+    const reloj = setTimeout(() => setCargando(false), 6_000);
+    return () => clearTimeout(reloj);
+  }, [cargando]);
+  const yaLlego = useCallback((imagen: HTMLImageElement | null) => {
+    if (imagen?.complete && imagen.naturalWidth > 0) setCargando(false);
+  }, []);
 
   return (
     <KioskStep>
@@ -892,10 +937,15 @@ function ConfirmVehicle({
              nuestra propia ruta; pasarla por el optimizador de Next la volveria
              a bajar por el tunel en cada tamano. */
           <img
+            ref={yaLlego}
             src={url ?? ''}
             alt="Foto del vehículo al entrar al parqueadero"
-            onError={() => setFalla(true)}
-            className="h-[19rem] w-full bg-[var(--surface-tile)] object-cover kland:h-44"
+            onLoad={() => setCargando(false)}
+            onError={() => {
+              setFalla(true);
+              setCargando(false);
+            }}
+            className={`h-[19rem] w-full bg-[var(--surface-tile)] object-cover kland:h-44 ${cargando ? 'animate-pulse' : ''}`}
           />
         )}
         <PlateHeader
@@ -910,8 +960,8 @@ function ConfirmVehicle({
       </InfoCard>
 
       <div className="grid gap-4">
-        <PrimaryButton onClick={onConfirm}>
-          Sí, es mi vehículo
+        <PrimaryButton onClick={onConfirm} disabled={cargando}>
+          {cargando ? 'Cargando la foto…' : 'Sí, es mi vehículo'}
         </PrimaryButton>
         <SecondaryButton onClick={onReject}>No es el mío</SecondaryButton>
       </div>

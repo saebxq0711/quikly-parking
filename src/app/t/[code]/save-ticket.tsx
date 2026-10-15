@@ -15,7 +15,7 @@ import { MdCheck, MdDownload } from 'react-icons/md';
  * La imagen lleva el QR con el CODIGO solo, igual que el tiquete impreso: es lo que
  * leen los escaneres del punto de pago y de la salida.
  */
-export function SaveTicket({ code }: { code: string }) {
+export function SaveTicket({ code, label = code }: { code: string; /** Lo que se escribe bajo el QR. */ label?: string }) {
   const [estado, setEstado] = useState<'listo' | 'generando' | 'guardado' | 'error'>('listo');
 
   async function crearImagen(): Promise<Blob> {
@@ -50,11 +50,11 @@ export function SaveTicket({ code }: { code: string }) {
 
     ctx.fillStyle = '#111111';
     ctx.font = '700 104px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-    ctx.fillText(code.split('').join(' '), ancho / 2, 830);
+    ctx.fillText(label.split('').join(' '), ancho / 2, 830);
 
     ctx.fillStyle = '#666666';
     ctx.font = '400 26px system-ui, -apple-system, Segoe UI, sans-serif';
-    ctx.fillText('Muestralo al pagar o escribe el codigo en la pantalla.', ancho / 2, 910);
+    ctx.fillText('Al salir, acerca este QR al lector del punto de pago.', ancho / 2, 910);
 
     return new Promise((resolve, reject) =>
       lienzo.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Sin imagen'))), 'image/png'),
@@ -65,10 +65,10 @@ export function SaveTicket({ code }: { code: string }) {
     setEstado('generando');
     try {
       const blob = await crearImagen();
-      const archivo = new File([blob], `tiquete-${code}.png`, { type: 'image/png' });
+      const archivo = new File([blob], `tiquete-${label}.png`, { type: 'image/png' });
 
       if (navigator.canShare?.({ files: [archivo] })) {
-        await navigator.share({ files: [archivo], title: `Tiquete ${code}` });
+        await navigator.share({ files: [archivo], title: `Tiquete ${label}` });
       } else {
         const url = URL.createObjectURL(blob);
         const enlace = document.createElement('a');

@@ -9,8 +9,13 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Letra-numero-letra-numero-numero, sin I ni O. El mismo patron que Nova Parking. */
+/** Letra-numero-letra-numero-numero, sin I ni O: el codigo de los tiquetes viejos. */
 const CODIGO = /^[A-HJ-NP-Z][0-9][A-HJ-NP-Z][0-9]{2}$/;
+/**
+ * El NUMERO del tiquete (`0000000238` o `238`): desde el 2026-10-13 es lo que lleva el QR
+ * y ya no hay codigo. Sin esto, el QR de la pantalla de entrada abria un "no encontrado".
+ */
+const NUMERO = /^\d{1,14}$/;
 
 /**
  * El tiquete en el celular del cliente.
@@ -34,7 +39,9 @@ export default async function TicketPage({
 }) {
   const { code } = await params;
   const codigo = decodeURIComponent(code).trim().toUpperCase();
-  if (!CODIGO.test(codigo)) notFound();
+  if (!CODIGO.test(codigo) && !NUMERO.test(codigo)) notFound();
+  // Se muestra sin los ceros de relleno, como en el tiquete impreso; el QR lleva el valor tal cual.
+  const visible = NUMERO.test(codigo) ? String(Number(codigo)) : codigo;
 
   const qr = await QRCode.toString(codigo, {
     type: 'svg',
@@ -71,9 +78,9 @@ export default async function TicketPage({
         <p className="mt-6 text-sm font-medium text-[var(--text-secondary)]">
           Tiquete
         </p>
-        <p className="tnum mt-1 text-5xl font-bold tracking-[0.2em] text-[var(--text-primary)]">{codigo}</p>
+        <p className="tnum mt-1 text-5xl font-bold tracking-[0.2em] text-[var(--text-primary)]">{visible}</p>
 
-        <SaveTicket code={codigo} />
+        <SaveTicket code={codigo} label={visible} />
 
         <p className="mx-auto mt-5 max-w-xs text-[13px] leading-relaxed text-[var(--text-muted)]">
           Al salir, acerca este QR al lector del punto de pago.

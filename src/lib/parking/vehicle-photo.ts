@@ -41,16 +41,45 @@ export function esRutaDeFoto(src: string): boolean {
   return src.startsWith('/media/') && !src.includes('..');
 }
 
+/**
+ * Achica la foto para una pantalla (2026-10-15). La camara la entrega completa, unos
+ * 700 KB, y en el kiosco tardaba tanto en llegar que el cliente seguia con el pago sin
+ * haberla visto. A 960 px de ancho pesa ~10 veces menos y se ve igual en la pantalla.
+ * Si no se puede achicar (formato raro, sin `sharp`), se entrega la original.
+ */
+async function achicar(
+  bytes: ArrayBuffer | Uint8Array,
+  contentType: string,
+  anchoMax: number,
+): Promise<{ bytes: ArrayBuffer | Uint8Array; contentType: string }> {
+  if (!/^image\/(jpe?g|png|webp)/i.test(contentType)) return { bytes, contentType };
+  try {
+    const { default: sharp } = await import('sharp');
+    const salida = await sharp(Buffer.from(bytes as ArrayBuffer))
+      .rotate()
+      .resize({ width: anchoMax, withoutEnlargement: true })
+      .jpeg({ quality: 78, mozjpeg: true })
+      .toBuffer();
+    return { bytes: new Uint8Array(salida), contentType: 'image/jpeg' };
+  } catch {
+    return { bytes, contentType };
+  }
+}
+
 export async function respuestaDeFoto(
   parkingLotId: string,
   src: string,
+  opciones: { anchoMax?: number } = {},
 ): Promise<Response> {
   if (!esRutaDeFoto(src)) return new Response(null, { status: 400 });
 
   try {
     const client = await novaClientForPhotos(parkingLotId);
-    const { bytes, contentType } = await client.media(src);
-    return new Response(bytes, {
+    const original = await client.media(src);
+    const { bytes, contentType } = opciones.anchoMax
+      ? await achicar(original.bytes, original.contentType, opciones.anchoMax)
+      : original;
+    return new Response(bytes as BodyInit, {
       headers: {
         'Content-Type': contentType,
         /*
