@@ -28,6 +28,8 @@ export function SiigoCard(props: {
   documentId: string;
   sellerId: string;
   paymentTypeId: string;
+  creditPaymentTypeId: string;
+  debitPaymentTypeId: string;
   itemCode: string;
   itemDescription: string;
   defaultCustomerIdType: string;
@@ -83,7 +85,14 @@ export function SiigoCard(props: {
             { label: 'Clave de acceso', value: props.hasAccessKey ? 'Guardada' : 'Falta', missing: !props.hasAccessKey },
             { label: 'Comprobante de factura', value: nombre(catalogs.ok ? catalogs.documents : undefined, props.documentId), tabular: true },
             { label: 'Vendedor', value: nombre(catalogs.ok ? catalogs.sellers : undefined, props.sellerId), tabular: true },
-            { label: 'Forma de pago', value: nombre(catalogs.ok ? catalogs.paymentTypes : undefined, props.paymentTypeId), tabular: true },
+            {
+              label: 'Forma de pago',
+              value:
+                props.creditPaymentTypeId || props.debitPaymentTypeId
+                  ? `Crédito: ${nombre(catalogs.ok ? catalogs.paymentTypes : undefined, props.creditPaymentTypeId || props.paymentTypeId)} · Débito: ${nombre(catalogs.ok ? catalogs.paymentTypes : undefined, props.debitPaymentTypeId || props.paymentTypeId)} · Sin dato: ${nombre(catalogs.ok ? catalogs.paymentTypes : undefined, props.paymentTypeId)}`
+                  : nombre(catalogs.ok ? catalogs.paymentTypes : undefined, props.paymentTypeId),
+              tabular: true,
+            },
             { label: 'Servicio', value: nombre(catalogs.ok ? catalogs.products : undefined, props.itemCode), tabular: true },
             { label: 'Facturar cada pago', value: siNo(props.enabled), missing: !props.enabled },
             { label: 'Envío a la DIAN · al correo', value: `${siNo(props.sendStamp)} · ${siNo(props.sendMail)}` },
@@ -144,7 +153,26 @@ export function SiigoCard(props: {
               numeric
             />
             <CatalogField
-              label="Forma de pago con tarjeta"
+              label="Forma de pago con tarjeta crédito"
+              name="creditPaymentTypeId"
+              value={props.creditPaymentTypeId}
+              options={catalogs.ok ? catalogs.paymentTypes : null}
+              placeholder="La de por defecto"
+              numeric
+              optional
+            />
+            <CatalogField
+              label="Forma de pago con tarjeta débito"
+              name="debitPaymentTypeId"
+              value={props.debitPaymentTypeId}
+              options={catalogs.ok ? catalogs.paymentTypes : null}
+              placeholder="La de por defecto"
+              numeric
+              optional
+            />
+            <CatalogField
+              label="Forma de pago por defecto"
+              hint="Cuando el datáfono no dice si la tarjeta es crédito o débito."
               name="paymentTypeId"
               value={props.paymentTypeId}
               options={catalogs.ok ? catalogs.paymentTypes : null}
@@ -218,32 +246,37 @@ export function SiigoCard(props: {
  */
 function CatalogField({
   label,
+  hint,
   name,
   value,
   options,
   placeholder,
   numeric = false,
+  optional = false,
 }: {
   label: string;
+  hint?: string;
   name: string;
   value: string;
   options: SiigoOption[] | null;
   placeholder: string;
   numeric?: boolean;
+  /** Se puede dejar vacio (las formas de pago de credito y debito). */
+  optional?: boolean;
 }) {
   if (!options) {
     return (
-      <Field label={label} hint="Id en SIIGO.">
-        <Input name={name} required inputMode={numeric ? 'numeric' : undefined} defaultValue={value} />
+      <Field label={label} hint={hint ?? (optional ? 'Id en SIIGO. Vacío = el de por defecto.' : 'Id en SIIGO.')}>
+        <Input name={name} required={!optional} inputMode={numeric ? 'numeric' : undefined} defaultValue={value} />
       </Field>
     );
   }
 
   const conocido = value === '' || options.some((opcion) => opcion.value === value);
   return (
-    <Field label={label}>
-      <Select name={name} required defaultValue={value}>
-        <option value="" disabled>
+    <Field label={label} hint={hint}>
+      <Select name={name} required={!optional} defaultValue={value}>
+        <option value="" disabled={!optional}>
           {placeholder}
         </option>
         {!conocido ? <option value={value}>Actual: {value}</option> : null}

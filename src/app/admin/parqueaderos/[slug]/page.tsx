@@ -247,6 +247,8 @@ export default async function ParkingLotDetailPage({
               documentId={siigoValues.documentId ?? ''}
               sellerId={siigoValues.sellerId ?? ''}
               paymentTypeId={siigoValues.paymentTypeId ?? ''}
+              creditPaymentTypeId={siigoValues.creditPaymentTypeId ?? ''}
+              debitPaymentTypeId={siigoValues.debitPaymentTypeId ?? ''}
               itemCode={siigoValues.itemCode ?? ''}
               itemDescription={siigoValues.itemDescription ?? 'Servicio de parqueadero'}
               defaultCustomerIdType={siigoValues.defaultCustomerIdType ?? '13'}
