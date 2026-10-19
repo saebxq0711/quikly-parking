@@ -576,6 +576,7 @@ const siigoSchema = z.object({
   creditPaymentTypeId: z.string().regex(/^\d*$/, 'La forma de pago de credito debe ser numerica.'),
   debitPaymentTypeId: z.string().regex(/^\d*$/, 'La forma de pago de debito debe ser numerica.'),
   itemCode: z.string().min(1, 'El codigo del servicio es obligatorio.').max(60),
+  taxId: z.string().regex(/^\d*$/, 'El impuesto debe ser numerico.'),
   itemDescription: z.string().max(120).optional(),
   defaultCustomerIdType: z.string().max(4).optional(),
   defaultCustomerIdentification: z.string().max(30).optional(),
@@ -610,6 +611,7 @@ export async function saveSiigoConfig(
     creditPaymentTypeId: String(formData.get('creditPaymentTypeId') ?? '').trim(),
     debitPaymentTypeId: String(formData.get('debitPaymentTypeId') ?? '').trim(),
     itemCode: String(formData.get('itemCode') ?? '').trim(),
+    taxId: String(formData.get('taxId') ?? '').trim(),
     itemDescription: formData.get('itemDescription') || undefined,
     defaultCustomerIdType: formData.get('defaultCustomerIdType') || undefined,
     defaultCustomerIdentification:
@@ -656,6 +658,7 @@ export async function saveSiigoConfig(
             .filter(Boolean)
             .map(Number),
           itemCode: parsed.data.itemCode,
+          taxId: parsed.data.taxId ? Number(parsed.data.taxId) : null,
           sendStamp,
         },
       );
@@ -689,6 +692,8 @@ export async function saveSiigoConfig(
     creditPaymentTypeId: parsed.data.creditPaymentTypeId,
     debitPaymentTypeId: parsed.data.debitPaymentTypeId,
     itemCode: parsed.data.itemCode,
+    // Vacio = la factura sale sin impuesto.
+    taxId: parsed.data.taxId,
     itemDescription: parsed.data.itemDescription ?? 'Servicio de parqueadero',
     defaultCustomerIdType: parsed.data.defaultCustomerIdType ?? '13',
     defaultCustomerIdentification:
@@ -760,6 +765,7 @@ export async function testSiigo(
         (id): id is number => id !== null,
       ),
       itemCode: settings.itemCode,
+      taxId: settings.taxId,
       sendStamp: settings.sendStamp,
     });
     return problemas.length === 0

@@ -31,6 +31,7 @@ export function SiigoCard(props: {
   creditPaymentTypeId: string;
   debitPaymentTypeId: string;
   itemCode: string;
+  taxId: string;
   itemDescription: string;
   defaultCustomerIdType: string;
   defaultCustomerIdentification: string;
@@ -94,6 +95,11 @@ export function SiigoCard(props: {
               tabular: true,
             },
             { label: 'Servicio', value: nombre(catalogs.ok ? catalogs.products : undefined, props.itemCode), tabular: true },
+            {
+              label: 'IVA del servicio',
+              value: props.taxId ? `${nombre(catalogs.ok ? catalogs.taxes : undefined, props.taxId)} (incluido en lo cobrado)` : 'Sin impuesto',
+              tabular: true,
+            },
             { label: 'Facturar cada pago', value: siNo(props.enabled), missing: !props.enabled },
             { label: 'Envío a la DIAN · al correo', value: `${siNo(props.sendStamp)} · ${siNo(props.sendMail)}` },
           ]}
@@ -185,6 +191,16 @@ export function SiigoCard(props: {
               value={props.itemCode}
               options={catalogs.ok ? catalogs.products : null}
               placeholder="Elige el producto"
+            />
+            <CatalogField
+              label="IVA del servicio"
+              hint="Va incluido en el valor cobrado: SIIGO separa la base y el IVA."
+              name="taxId"
+              value={props.taxId}
+              options={catalogs.ok ? catalogs.taxes : null}
+              placeholder="Sin impuesto"
+              numeric
+              optional
             />
           </div>
 
