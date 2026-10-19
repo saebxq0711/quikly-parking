@@ -41,6 +41,12 @@ export interface SiigoInvoiceSettings {
   debitPaymentTypeId: number | null;
   /** `items[].code` — codigo del servicio de parqueadero en SIIGO. PENDIENTE. */
   itemCode: string | null;
+  /**
+   * Impuesto del servicio (id del catalogo `/v1/taxes`, p. ej. IVA 19 %). Con el, la
+   * factura lleva el IVA INCLUIDO en lo cobrado: SIIGO saca la base y el impuesto del
+   * total. `null` = sin impuesto (como se facturo hasta el 19/10/2026).
+   */
+  taxId: number | null;
   /** Descripcion del item en la factura. */
   itemDescription: string;
   /** Datos del cliente generico usado cuando el vehiculo no tiene cliente asociado. */
@@ -191,13 +197,27 @@ export function buildInvoicePayload(
       `tiquete ${payment.externalTicketId} - pago ${payment.id}` +
       (payment.authorizationCode ? ` - aut. ${payment.authorizationCode}` : ''),
     items: [
-      {
-        code: settings.itemCode,
-        description: `${settings.itemDescription} (${vehicleRef})`,
-        quantity: 1,
-        price: payment.amount,
-        discount: 0,
-      },
+      settings.taxId !== null
+        ? {
+            /*
+              IVA INCLUIDO: el cliente pago la tarifa del parqueadero, que ya trae el IVA.
+              `taxed_price` es el precio con impuesto y SIIGO calcula la base y el IVA; con
+              `price` el IVA se sumaria encima y la factura no cuadraria con lo cobrado.
+              SIIGO no aplica solo el impuesto del producto: hay que mandarlo en cada item.
+            */
+            code: settings.itemCode,
+            description: `${settings.itemDescription} (${vehicleRef})`,
+            quantity: 1,
+            taxed_price: payment.amount,
+            taxes: [{ id: settings.taxId }],
+          }
+        : {
+            code: settings.itemCode,
+            description: `${settings.itemDescription} (${vehicleRef})`,
+            quantity: 1,
+            price: payment.amount,
+            discount: 0,
+          },
     ],
     payments: [
       {

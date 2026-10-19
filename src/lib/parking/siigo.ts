@@ -62,6 +62,7 @@ export async function getSiigoSettings(
     creditPaymentTypeId: toInt(values.creditPaymentTypeId),
     debitPaymentTypeId: toInt(values.debitPaymentTypeId),
     itemCode: values.itemCode ?? null,
+    taxId: toInt(values.taxId),
     itemDescription: values.itemDescription ?? 'Servicio de parqueadero',
     defaultCustomerIdType: values.defaultCustomerIdType ?? '13',
     defaultCustomerIdentification: values.defaultCustomerIdentification ?? null,
@@ -142,6 +143,8 @@ export type SiigoCatalogs =
       sellers: SiigoOption[];
       paymentTypes: SiigoOption[];
       products: SiigoOption[];
+      /** Impuestos de tipo IVA, para el del servicio. */
+      taxes: SiigoOption[];
     }
   | { ok: false; message: string };
 
@@ -183,12 +186,13 @@ export async function getSiigoCatalogs(parkingLotId: string): Promise<SiigoCatal
 
   try {
     const client = await siigoClientFor(parkingLotId);
-    const [documentos, usuarios, pagos, productos] = await conLimite(
+    const [documentos, usuarios, pagos, productos, impuestos] = await conLimite(
       Promise.all([
         client.get<unknown>('/v1/document-types?type=FV'),
         client.get<unknown>('/v1/users?page_size=100'),
         client.get<unknown>('/v1/payment-types?document_type=FV'),
         client.get<unknown>('/v1/products?page_size=100'),
+        client.get<unknown>('/v1/taxes'),
       ]),
       12_000,
     );
@@ -220,6 +224,9 @@ export async function getSiigoCatalogs(parkingLotId: string): Promise<SiigoCatal
           value: String(producto.code),
           label: `${String(producto.code)} · ${String(producto.name ?? '')}`,
         })),
+      taxes: filas(impuestos)
+        .filter((impuesto) => activo(impuesto) && String(impuesto.type) === 'IVA')
+        .map((impuesto) => ({ value: String(impuesto.id), label: String(impuesto.name ?? impuesto.id) })),
     };
   } catch (error) {
     return {
@@ -237,6 +244,8 @@ export interface SiigoConfigToCheck {
   paymentTypeId: number;
   /** Formas de pago de credito y debito, si se configuraron (`formaDePago`). */
   otherPaymentTypeIds?: number[];
+  /** IVA del servicio, si se configuro. */
+  taxId?: number | null;
   itemCode: string;
   sendStamp: boolean;
 }
@@ -256,12 +265,13 @@ export async function verifySiigoConfig(
   client: SiigoClient,
   config: SiigoConfigToCheck,
 ): Promise<string[]> {
-  const [documentos, pagos, usuarios, productos] = await conLimite(
+  const [documentos, pagos, usuarios, productos, impuestos] = await conLimite(
     Promise.all([
       client.get<unknown>('/v1/document-types?type=FV'),
       client.get<unknown>('/v1/payment-types?document_type=FV'),
       client.get<unknown>('/v1/users?page_size=100'),
       client.get<unknown>(`/v1/products?code=${encodeURIComponent(config.itemCode)}`),
+      config.taxId ? client.get<unknown>('/v1/taxes') : Promise.resolve([]),
     ]),
     15_000,
   );
@@ -336,6 +346,17 @@ export async function verifySiigoConfig(
     problemas.push(`El servicio con codigo ${config.itemCode} no existe en SIIGO.`);
   } else if (!activo(producto)) {
     problemas.push(`El servicio "${String(producto.name)}" esta inactivo en SIIGO.`);
+  }
+
+  if (config.taxId) {
+    const impuesto = filas(impuestos).find((t) => Number(t.id) === config.taxId);
+    if (!impuesto) {
+      problemas.push(`El impuesto ${config.taxId} no existe en SIIGO.`);
+    } else if (!activo(impuesto)) {
+      problemas.push(`El impuesto "${String(impuesto.name)}" esta inactivo en SIIGO.`);
+    } else if (String(impuesto.type) !== 'IVA') {
+      problemas.push(`El impuesto "${String(impuesto.name)}" no es un IVA.`);
+    }
   }
 
   return problemas;
