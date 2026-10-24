@@ -67,8 +67,13 @@ export default async function HistoryPage({
   const { client } = await panelAccess(slug);
 
   const page = Math.max(1, Number(query.pagina) || 1);
+  /*
+    La placa se busca sin espacios ni guiones y en mayusculas: el sistema del parqueadero
+    la guarda asi (`PHL548`), y "PHL 548" o "PHL-548" no encontraban nada.
+  */
+  const busqueda = query.q?.toUpperCase().replace(/[^A-Z0-9]/g, '') || undefined;
   const filtros: TicketFilters = {
-    plate: query.q,
+    plate: busqueda,
     status: query.estado,
     fromDate: query.desde,
     toDate: query.hasta,

@@ -54,7 +54,7 @@ export function HistoryFilters({
         <Input
           name="q"
           defaultValue={current.q ?? ''}
-          placeholder="Placa o codigo del tiquete"
+          placeholder="Placa o número del tiquete"
         />
       </div>
 

@@ -78,9 +78,11 @@ export default async function PaymentsPage({
 
   if (filters.q) {
     const term = filters.q.trim();
+    // La placa va guardada sin espacios ni guiones: "PHL 548" debe encontrar PHL548.
+    const placa = term.toUpperCase().replace(/[^A-Z0-9]/g, '');
     where.OR = [
-      { plate: { contains: term, mode: 'insensitive' } },
-      { vehicleIdentifier: { contains: term, mode: 'insensitive' } },
+      { plate: { contains: placa || term, mode: 'insensitive' } },
+      { vehicleIdentifier: { contains: placa || term, mode: 'insensitive' } },
       { externalTicketId: term },
       { authorizationCode: term },
     ];
